@@ -3,6 +3,7 @@ import * as D from './diagnostics';
 import { probeEnv, type EnvSnapshot } from './env';
 import { debugWanted, enableDebug, toggleDebug } from './debug';
 import { initDay2 } from './day2';
+import { initDay3 } from './day3';
 
 D.installGlobalHandlers();
 D.checkPreviousSession();
@@ -26,14 +27,14 @@ document.getElementById('app')!.innerHTML = `
     <h1>SketchyAR</h1>
     <button id="ver" class="ver" type="button" aria-label="Версия на приложението"></button>
   </header>
-  <p class="lead">Ден 2: проверка на камерата и реални NumPy/OpenCV benchmark-и в Python чрез Pyodide.</p>
+  <p class="lead">Ден 3: камера на цял екран, тестов overlay и продължително Python натоварване.</p>
   <section><h2>Build</h2><dl id="build"></dl></section>
   <section><h2>Среда</h2><dl id="env"><dt>Зареждане</dt><dd>…</dd></dl></section>
   <section><h2>Възможности на устройството</h2><ul id="caps" class="caps"></ul></section>
   <section id="day2">
     <h2>Ден 2 — Camera + Python Spike</h2>
     <p class="hint">Работи само след натискане на бутон. Първото зареждане изисква интернет; Pyodide още не е част от офлайн кеша.</p>
-    <div class="camera-container"><video id="camera-preview" autoplay muted playsinline></video></div>
+    <div id="camera-container" class="camera-container"><div id="camera-stage" class="camera-stage"><video id="camera-preview" autoplay muted playsinline></video><img id="day3-art" class="day3-art" alt="Тестов полупрозрачен контур" hidden /></div></div>
     <div class="actions"><button class="act" id="btn-camera" type="button">Пусни камера</button></div>
     <p class="hint">Изпълни последователно: инициализация → NumPy proxy → OpenCV Canny → 10× Canny. Остави камерата включена за комбинираните тестове. Измерванията ще се запишат в JSON.</p>
     <div class="actions">
@@ -46,6 +47,41 @@ document.getElementById('app')!.innerHTML = `
     <p id="day2-status" role="status" aria-live="polite">Готово за тест.</p>
     <pre id="day2-result" class="benchmark-result" aria-label="Резултат от измерването">Няма измервания.</pre>
   </section>
+  <section id="day3">
+    <h2>Ден 3 — Fullscreen Camera + Stress Test</h2>
+    <p class="hint">Сравняваме един и същ поток (цел 1280×720, 30 FPS) в три режима. „Цял екран“ е CSS immersive режим в PWA — не променя резолюцията на камерата. Измерваме плавността, не процесната RAM.</p>
+    <div class="actions">
+      <button class="act" id="btn-day3-off" type="button">Камера OFF</button>
+      <button class="act" id="btn-day3-preview" type="button">Малък прозорец</button>
+      <button class="act" id="btn-day3-fullscreen" type="button">Камера на цял екран</button>
+    </div>
+    <p class="hint">Режим: <strong id="day3-mode">Малък прозорец</strong>. Промени тестовия overlay само между измерванията:</p>
+    <label class="day3-label" for="day3-overlay-size">Тестов контур: </label>
+    <select id="day3-overlay-size" class="day3-select"><option value="0" selected>Изключен</option><option value="1024">1024 px / прозрачен PNG</option><option value="2048">2048 px / прозрачен PNG</option></select>
+    <p class="hint">Препоръчителна последователност: OFF baseline → мини preview → 2048 px overlay → fullscreen baseline → fullscreen 20s NumPy → fullscreen 20s OpenCV. Пусни измерванията и с камера на малък прозорец за сравнение.</p>
+    <div class="actions">
+      <button class="act" id="btn-day3-idle" data-python type="button">12s без Python</button>
+      <button class="act" id="btn-day3-numpy" data-python type="button">20s NumPy натоварване</button>
+      <button class="act" id="btn-day3-opencv" data-python type="button">20s OpenCV натоварване</button>
+      <button class="act" id="btn-day3-stop" type="button" disabled>Спри теста</button>
+    </div>
+    <p class="hint">При background/foreground резултатът се маркира като прекъснат. За „истински cold start“ затвори от app switcher, отвори Home Screen отново и стартирай Pyodide.</p>
+    <p id="day3-status" role="status" aria-live="polite">Готово за тест на Ден 3.</p>
+    <pre id="day3-result" class="benchmark-result" aria-label="Измервания от Ден 3">Няма резултати.</pre>
+  </section>
+  <div id="day3-fullscreen" class="day3-fullscreen" hidden role="dialog" aria-modal="true" aria-label="Камера на цял екран">
+    <div id="day3-full-stage" class="day3-full-stage"></div>
+    <div class="day3-full-hud">
+      <div class="day3-hud-head"><strong>SketchyAR • Fullscreen</strong><button class="act" id="btn-day3-exit" type="button">Изход</button></div>
+      <p id="day3-full-status" role="status">Камера на цял екран.</p>
+      <div class="actions">
+        <button class="act" id="btn-day3-full-idle" data-python type="button">12s без Python</button>
+        <button class="act" id="btn-day3-full-numpy" data-python type="button">20s NumPy</button>
+        <button class="act" id="btn-day3-full-opencv" data-python type="button">20s OpenCV</button>
+        <button class="act" id="btn-day3-full-stop" type="button" disabled>Спри</button>
+      </div>
+    </div>
+  </div>
   <section>
     <h2>Събития</h2>
     <ol id="log"></ol>
@@ -64,6 +100,7 @@ document.getElementById('app')!.innerHTML = `
 </main>`;
 
 initDay2();
+initDay3();
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 

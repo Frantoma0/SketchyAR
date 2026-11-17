@@ -1,66 +1,63 @@
-# SketchyAR — Ден 2
+# SketchyAR — Ден 3: Fullscreen + Stress
 
-Лично iPhone PWA приложение за AR Drawing. **Текущият етап е технически spike**, а не готов режим за рисуване: камера + NumPy/Pyodide + опционален OpenCV.
+**Вход:** съществуващият работещ SketchyAR v0.2.0 от Ден 2. **Резултат:** v0.3.0,
+проверка на голям камера viewport + тестово изображение 2048px при 20 секунди Pyodide натоварване.
 
-Оригиналният Ден 1 scaffold и диагностика са запазени. Версията на приложението е `0.2.0`. Иконите и визуалният интерфейс остават временни; готовите UI елементи ще се интегрират на следващите етапи.
+Съхранени са диагностика, Python модул, GitHub Actions и старите Day 2 бутони.
+Това **не** е final Drawing UI; готовите дизайн елементи остават за следващите дни.
+Няма Service Worker до Ден 19 и няма login/backend/платени услуги.
 
-## Windows — актуализиране на съществуващото GitHub хранилище
+## Как да обновиш проекта на Windows
 
-**Не изпълнявай отново `git init` и не създавай второ репо!** Копирай файловете от този пакет в локалното си хранилище `SketchyAR`, като запазиш `.git/` и локалните си допълнения. Подмени съвпадащите файлове; добавени са `app/src/day2.ts`, `app/src/python-{worker,client}.ts`, `docs/day2.md`.
-
-Отвори PowerShell в корена на проекта (папката, която съдържа `app/`):
+1. Разархивирай този ZIP. В него има папка `ar-drawing/`.
+2. От нея копирай файловете **в съществуващото** си локално Git repository `SketchyAR`.
+   Запази `.git/` и собствените си файлове. Не изпълнявай `git init` отново.
+3. В PowerShell от корена на repo:
 
 ```powershell
 cd app
+node -v
 npm ci
 npm run typecheck
 npm run build
 cd ..
+python -m pytest python_engine -q
 git status
 ```
 
-Ако `npm run build` върне грешка, **не push-вай**. Ако е зелен:
+`node -v` трябва да покрива изискването от `app/package.json`: **>=20.19**.
+Ако Python тестовете не тръгват, активирай вече създадената virtual environment и изпълни
+`python -m pip install -r requirements-dev.txt` и `python -m pip install -e ./python_engine`.
+
+4. Ако командите са успешни:
 
 ```powershell
 git add .
-git commit -m "Day 2: camera and Pyodide benchmarks"
+git commit -m "Day 3: fullscreen camera and Python stress tests"
 git push origin main
 ```
 
-От GitHub → Actions провери, че `deploy-pages` е зелен. Не използвай стар кеширан build; провери новия commit на екрана. Отвори същия инсталиран Home Screen SketchyAR.
+5. GitHub → Actions: изчакай зелен deploy и отвори Home Screen приложението.
+   Провери, че показва **v0.3.0** и новия commit — GitHub Pages може да поднесе стар HTML за кратко.
 
-## Ден 2 на iPhone — действия
+## Работа на iPhone
 
-1. Натисни **„Пусни камера“**, потвърди разрешението. Видеото трябва да се появи.
-2. **„1. Стартирай Pyodide“** — първоначално има изтегляне от CDN; трябва интернет. Наблюдавай log за `loader`, `python-runtime`, `numpy`.
-3. **„2. NumPy 5×“** — същият `spike_proxy.py` като в CPython тестовете. Резултатът има `median_s`, `dtype`, `output_checksum`.
-4. **„3. cv2.Canny 5×“** — опционален backend, може да се провали без да спре NumPy.
-5. **„4. cv2.Canny 10×“** — проверка за повторяемост при активна камера.
-6. **„Запази / сподели JSON“**. Изпрати резултата за преглед на G1.
-7. **„Освободи Python Worker“**, затвори PWA от app switcher и повтори стартирането. Използвай `docs/day2.md` за пълните проверки.
+Виж **`docs/day3.md`** за точната последователност в Home Screen и Safari.
+Първо baseline без камера, после малък preview, след това fullscreen със 2048px PNG.
+Накрая експортирай **два JSON файла**: един Home Screen и един Safari tab.
 
-Прагът **NumPy ≤ 3.0 s медиана** е предварително фиксиран в `docs/gates.md`. Ако някой от тестовете не мине, документираме причината, вместо да заместваме измерванията с предположения.
+**Важно:** `navigator.storage.estimate()` не измерва RAM. Пълният екран може да
+натовари GPU/compositor, без да увеличи резолюцията на камерата.
 
-**Важно:** Service Worker няма до Ден 19, поради което Pyodide и страницата още не могат да работят гарантирано офлайн. При първите тестове телефонът трябва да има интернет.
+## Какво добавихме
 
-## Python на Windows (самостоятелна проверка)
+- `app/src/day3.ts` — трите режима, тестов overlay, 12s baseline и 20s stress.
+- `app/src/day3-monitor.ts` — rAF + `requestVideoFrameCallback` метрики.
+- `app/src/day2.ts` — същата камера, споделена с Day 3; Python busy guard.
+- `app/src/main.ts`, `styles.css` — временен Day 3 тестов екран и fullscreen HUD.
+- `docs/day3.md` — методология/тестове/G1 и условия за приемане.
 
-```powershell
-py -3.12 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements-dev.txt
-python -m pip install -e ./python_engine
-pytest python_engine
-python -m ar_drawing.spike_proxy --size 1024 --runs 5
-```
+## Защо още не използваме вече готовия визуален дизайн
 
-Първите три команди не са необходими, ако вече имаш настроен `.venv`. Windows времената не са резултати за iPhone.
-
-## Файлове
-- `app/src/main.ts` — екран Ден 1 + секция Ден 2.
-- `app/src/day2.ts` — минимална камера, бутони, rAF/video мониторинг, диагностика.
-- `app/src/python-worker.ts` — Pyodide 314.0.8, NumPy, Canny, Python benchmarks.
-- `app/src/python-client.ts` — requestId, timeout, worker lifecycle.
-- `python_engine/ar_drawing/spike_proxy.py` — един Python файл за Windows и iPhone.
-- `docs/gates.md` — предварително определени G1 прагове.
-- `docs/day2.md` — инструкции и интерпретация.
+Ден 3 е контролна точка за памет и стабилност. Тестовият fullscreen е умишлено
+минимален и не вкарва допълнителни UI библиотеки, преди да вземем окончателно G1 решение.

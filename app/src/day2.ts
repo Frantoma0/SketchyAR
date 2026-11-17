@@ -4,8 +4,9 @@ import { resetPythonWorker, runPythonCommand, type Command } from './python-clie
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 let stream: MediaStream | null = null;
 let busy = false;
+export const isBusy = (): boolean => busy;
 
-function cameraActive(): boolean {
+export function cameraActive(): boolean {
   return !!stream?.getVideoTracks().some((track) => track.readyState === 'live');
 }
 
@@ -13,12 +14,14 @@ function setStatus(value: string): void {
   el('day2-status').textContent = value;
 }
 
-function setBusy(value: boolean): void {
+export function setBusy(value: boolean): void {
   busy = value;
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-python]')) button.disabled = value;
+  const cameraButton = document.getElementById('btn-camera') as HTMLButtonElement | null;
+  if (cameraButton) cameraButton.disabled = value;
 }
 
-function cameraStop(): void {
+export function cameraStop(): void {
   for (const track of stream?.getTracks() ?? []) track.stop();
   stream = null;
   const video = el<HTMLVideoElement>('camera-preview');
@@ -28,7 +31,7 @@ function cameraStop(): void {
   D.log('info', 'camera', 'stop');
 }
 
-async function cameraStart(): Promise<void> {
+export async function cameraStart(): Promise<void> {
   if (!navigator.mediaDevices?.getUserMedia) throw new Error('Camera API не се поддържа');
   // No forced autofocus/exposure constraints; Day 4 will inspect support on this iPhone.
   const next = await navigator.mediaDevices.getUserMedia({
