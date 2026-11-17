@@ -1,72 +1,66 @@
-# AR Drawing
+# SketchyAR — Ден 2
 
-Offline-first асистент за рисуване на iPhone 17 (PWA): камера + Fixed Overlay, собствен NumPy-first
-Python engine (Pyodide), опционален Edge AI (TEED / ONNX Runtime Web). Спецификация: v1.3.
+Лично iPhone PWA приложение за AR Drawing. **Текущият етап е технически spike**, а не готов режим за рисуване: камера + NumPy/Pyodide + опционален OpenCV.
 
-## Ден 1: какво има
-- `app/`: Vite + TypeScript PWA; страница с версия, среда, възможности на Safari и диагностични логове.
-- `python_engine/`: пакет `ar_drawing` + pytest (CPython; Pyodide се добавя на Ден 2).
-- `.github/workflows/`: `pages.yml` (deploy към GitHub Pages), `test.yml` (typecheck + pytest).
-- `docs/gates.md`: прагове за G1, записани преди измерванията.
-- Service Worker умишлено още няма (Ден 19): така iPhone не държи стари build-ове. Верният build се познава по commit в горния десен ъгъл.
+Оригиналният Ден 1 scaffold и диагностика са запазени. Версията на приложението е `0.2.0`. Иконите и визуалният интерфейс остават временни; готовите UI елементи ще се интегрират на следващите етапи.
 
-## Windows: първо пускане (PowerShell)
+## Windows — актуализиране на съществуващото GitHub хранилище
 
-Изисквания: Git, Node.js 22 LTS (Vite 8: Node ≥20.19 или ≥22.12), Python 3.12.
-**Отвори PowerShell в разархивираната папка `ar-drawing/`**, така че да виждаш `app/` и `python_engine/`.
+**Не изпълнявай отново `git init` и не създавай второ репо!** Копирай файловете от този пакет в локалното си хранилище `SketchyAR`, като запазиш `.git/` и локалните си допълнения. Подмени съвпадащите файлове; добавени са `app/src/day2.ts`, `app/src/python-{worker,client}.ts`, `docs/day2.md`.
 
-**Терминал A — уеб приложение (остава отворен):**
+Отвори PowerShell в корена на проекта (папката, която съдържа `app/`):
+
 ```powershell
-node -v
 cd app
 npm ci
-npm run dev
+npm run typecheck
+npm run build
+cd ..
+git status
 ```
 
-**Терминал B — Python и тестове:**
+Ако `npm run build` върне грешка, **не push-вай**. Ако е зелен:
+
 ```powershell
-# Отвори втори PowerShell в ar-drawing/
+git add .
+git commit -m "Day 2: camera and Pyodide benchmarks"
+git push origin main
+```
+
+От GitHub → Actions провери, че `deploy-pages` е зелен. Не използвай стар кеширан build; провери новия commit на екрана. Отвори същия инсталиран Home Screen SketchyAR.
+
+## Ден 2 на iPhone — действия
+
+1. Натисни **„Пусни камера“**, потвърди разрешението. Видеото трябва да се появи.
+2. **„1. Стартирай Pyodide“** — първоначално има изтегляне от CDN; трябва интернет. Наблюдавай log за `loader`, `python-runtime`, `numpy`.
+3. **„2. NumPy 5×“** — същият `spike_proxy.py` като в CPython тестовете. Резултатът има `median_s`, `dtype`, `output_checksum`.
+4. **„3. cv2.Canny 5×“** — опционален backend, може да се провали без да спре NumPy.
+5. **„4. cv2.Canny 10×“** — проверка за повторяемост при активна камера.
+6. **„Запази / сподели JSON“**. Изпрати резултата за преглед на G1.
+7. **„Освободи Python Worker“**, затвори PWA от app switcher и повтори стартирането. Използвай `docs/day2.md` за пълните проверки.
+
+Прагът **NumPy ≤ 3.0 s медиана** е предварително фиксиран в `docs/gates.md`. Ако някой от тестовете не мине, документираме причината, вместо да заместваме измерванията с предположения.
+
+**Важно:** Service Worker няма до Ден 19, поради което Pyodide и страницата още не могат да работят гарантирано офлайн. При първите тестове телефонът трябва да има интернет.
+
+## Python на Windows (самостоятелна проверка)
+
+```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements-dev.txt
 python -m pip install -e ./python_engine
 pytest python_engine
-# Само предварителна локална проверка; G1 се мери на iPhone с Pyodide:
 python -m ar_drawing.spike_proxy --size 1024 --runs 5
 ```
 
-`npm ci` и Python инсталацията изискват интернет на Windows. Не са част от офлайн използването на iPhone.
+Първите три команди не са необходими, ако вече имаш настроен `.venv`. Windows времената не са резултати за iPhone.
 
-## NumPy proxy за G1 (Ден 2)
-`python_engine/ar_drawing/spike_proxy.py` е малък, без OpenCV, repeatable бенчмарк:
-separable Gaussian (5 taps) + Sobel magnitude с `float32`.
-На Ден 2 същият код се зарежда през Pyodide Worker и се записват петте времена, медианата,
-версията на NumPy и времето за стартиране на runtime-а. **Не ползвай времето от Windows като резултат за iPhone.**
-Прагът за G1 е записан предварително в `docs/gates.md` (3.0 s медиана, проектна цел).
-
-## GitHub Pages (стабилен HTTPS origin за iPhone)
-1. Създай **публично** репо в GitHub и изпълни от корена на `ar-drawing/`:
-   ```powershell
-   git init -b main
-   git add .
-   git commit -m "Day 1 scaffold and diagnostics"
-   git remote add origin https://github.com/USERNAME/REPO.git
-   git push -u origin main
-   ```
-   Замени `USERNAME` и `REPO` с твоите стойности. Git може да поиска първоначална конфигурация на име и email или вход в GitHub.
-2. Settings → Pages → Source: **GitHub Actions**.
-3. След зелен workflow адресът е `https://<потребител>.github.io/<репо>/`.
-4. На iPhone отвори адреса с `?debug=1` (Eruda). В Home Screen режим включваш/изключваш debug с 5 бързи докосвания върху версията.
-
-## Проверки преди първия push
-- След `npm run build` отвори `app/dist/index.html` и се увери, че пътищата към JS, CSS, manifest и иконите са коректни за поддиректорията на GitHub Pages.
-- Тестът в Safari и този в Home Screen са отделни: не приемай, че локалните им хранилища се споделят.
-- Индикаторите `opfs` и `webGPU` доказват само наличие на API; реалните read/write и inference се проверяват в следващите дни.
-
-## Готово за Ден 1, когато
-- [ ] Страницата се отваря на iPhone и показва версия и commit
-- [ ] `?debug=1` показва Eruda; събитията се виждат и в самата страница
-- [ ] „Тест: грешка“ добавя два error записа
-- [ ] Crash marker: старт на тестовата задача, затваряне от app switcher, ново отваряне дава `unexpected_stop`
-- [ ] „Запази / сподели JSON“ дава файл без снимки и лични пътища
-- [ ] `Add to Home Screen` работи; в Home Screen режим „Режим“ показва standalone
+## Файлове
+- `app/src/main.ts` — екран Ден 1 + секция Ден 2.
+- `app/src/day2.ts` — минимална камера, бутони, rAF/video мониторинг, диагностика.
+- `app/src/python-worker.ts` — Pyodide 314.0.8, NumPy, Canny, Python benchmarks.
+- `app/src/python-client.ts` — requestId, timeout, worker lifecycle.
+- `python_engine/ar_drawing/spike_proxy.py` — един Python файл за Windows и iPhone.
+- `docs/gates.md` — предварително определени G1 прагове.
+- `docs/day2.md` — инструкции и интерпретация.

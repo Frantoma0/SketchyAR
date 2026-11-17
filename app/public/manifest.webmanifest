@@ -1,6 +1,6 @@
 {
-  "name": "AR Drawing",
-  "short_name": "AR Drawing",
+  "name": "SketchyAR",
+  "short_name": "SketchyAR",
   "description": "Offline-first асистент за рисуване с камера и Fixed Overlay",
   "start_url": "./",
   "scope": "./",

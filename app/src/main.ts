@@ -2,6 +2,7 @@ import './styles.css';
 import * as D from './diagnostics';
 import { probeEnv, type EnvSnapshot } from './env';
 import { debugWanted, enableDebug, toggleDebug } from './debug';
+import { initDay2 } from './day2';
 
 D.installGlobalHandlers();
 D.checkPreviousSession();
@@ -22,13 +23,29 @@ if (debugWanted()) {
 document.getElementById('app')!.innerHTML = `
 <main>
   <header>
-    <h1>AR Drawing</h1>
+    <h1>SketchyAR</h1>
     <button id="ver" class="ver" type="button" aria-label="Версия на приложението"></button>
   </header>
-  <p class="lead">Основата на проекта: версия, среда, възможности на Safari и диагностични логове.</p>
+  <p class="lead">Ден 2: проверка на камерата и реални NumPy/OpenCV benchmark-и в Python чрез Pyodide.</p>
   <section><h2>Build</h2><dl id="build"></dl></section>
   <section><h2>Среда</h2><dl id="env"><dt>Зареждане</dt><dd>…</dd></dl></section>
   <section><h2>Възможности на устройството</h2><ul id="caps" class="caps"></ul></section>
+  <section id="day2">
+    <h2>Ден 2 — Camera + Python Spike</h2>
+    <p class="hint">Работи само след натискане на бутон. Първото зареждане изисква интернет; Pyodide още не е част от офлайн кеша.</p>
+    <div class="camera-container"><video id="camera-preview" autoplay muted playsinline></video></div>
+    <div class="actions"><button class="act" id="btn-camera" type="button">Пусни камера</button></div>
+    <p class="hint">Изпълни последователно: инициализация → NumPy proxy → OpenCV Canny → 10× Canny. Остави камерата включена за комбинираните тестове. Измерванията ще се запишат в JSON.</p>
+    <div class="actions">
+      <button class="act" id="btn-init" data-python type="button">1. Стартирай Pyodide</button>
+      <button class="act" id="btn-numpy" data-python type="button">2. NumPy 5×</button>
+      <button class="act" id="btn-opencv" data-python type="button">3. cv2.Canny 5×</button>
+      <button class="act" id="btn-opencv10" data-python type="button">4. cv2.Canny 10×</button>
+      <button class="act" id="btn-reset-python" type="button">Освободи Python Worker</button>
+    </div>
+    <p id="day2-status" role="status" aria-live="polite">Готово за тест.</p>
+    <pre id="day2-result" class="benchmark-result" aria-label="Резултат от измерването">Няма измервания.</pre>
+  </section>
   <section>
     <h2>Събития</h2>
     <ol id="log"></ol>
@@ -45,6 +62,8 @@ document.getElementById('app')!.innerHTML = `
     <p class="hint">Проверка на crash marker: старт на тестова задача, затваряне на приложението от app switcher, ново отваряне. В събитията трябва да се появи unexpected_stop.</p>
   </section>
 </main>`;
+
+initDay2();
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -146,7 +165,7 @@ $('ver').addEventListener('click', () => {
 
 async function shareReport(): Promise<void> {
   const json = D.reportJson(); // синхронно, преди първия await
-  const name = `ar-drawing-diagnostics-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+  const name = `sketchyar-diagnostics-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
   const file = new File([json], name, { type: 'application/json' });
   try {
     if (navigator.canShare?.({ files: [file] })) {

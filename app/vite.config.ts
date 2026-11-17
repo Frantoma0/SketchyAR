@@ -22,6 +22,10 @@ export default defineConfig({
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
   },
   // allowedHosts: за Cloudflare Quick Tunnel при UI цикъла (Дни 4-6).
-  server: { host: true, port: 5173, allowedHosts: ['.trycloudflare.com'] },
+  server: {
+    host: true, port: 5173, allowedHosts: ['.trycloudflare.com'],
+    // Allows Vite to import the single shared Python module as ?raw from ../python_engine/.
+    fs: { allow: ['..'] },
+  },
   build: { target: 'es2022', sourcemap: true },
 });
