@@ -1,0 +1,9 @@
+# Dev/reference среда (CPython на Windows).
+# Ден 2: когато изберете Pyodide release, закачете numpy на версията, която той носи,
+# после: pip freeze > requirements-lock.txt
+numpy
+scipy            # по избор: connected components за hysteresis (решава се Ден 12)
+pillow
+opencv-python-headless   # референция за сравнения; не е задължителен за iPhone build
+pytest
+pytest-cov
