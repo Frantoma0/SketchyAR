@@ -11,6 +11,10 @@ export function initHome(openDrawing: () => Promise<void>): void {
   const developer = el<HTMLElement>('developer-screen');
   const note = el<HTMLElement>('home-message');
   const group = el<HTMLElement>('sketchy-home-group');
+  // Public asset URL resolves to /SketchyAR/ui/... on GitHub Pages and /ui/ on Vite dev.
+  // Do not put ./ui/... in src/styles.css: relative URLs there resolve against src/.
+  const wallpaperURL = new URL(`${import.meta.env.BASE_URL}ui/home-background.png`, document.baseURI).href;
+  document.documentElement.style.setProperty('--sketchy-home-image', `url("${wallpaperURL}")`);
   let messageTimer: number | undefined;
   let layoutFrame = 0;
 

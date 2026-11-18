@@ -25,8 +25,7 @@ if (debugWanted()) {
 
 document.getElementById('app')!.innerHTML = `
 <section id="sketchy-home" class="sketchy-home" aria-label="Начална страница на SketchyAR">
-  <!-- One paper texture fills the viewport, independently of the non-scrolling content group. -->
-  <img class="sketchy-home-wallpaper" src="./ui/home-background.png" alt="" aria-hidden="true" />
+  <!-- The wallpaper is now painted ON html, outside the iOS PWA fixed viewport. -->
   <div id="sketchy-home-group" class="sketchy-home-group">
     <button id="home-new-project" class="home-pill home-new" type="button" aria-label="Нова рисунка">
       <img class="home-pill-bg" src="./ui/pill-base-white.svg" alt="" />

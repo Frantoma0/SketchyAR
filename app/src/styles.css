@@ -94,7 +94,15 @@ body.drawing-open { overscroll-behavior: none; }
 
 /* Day 4.8 — one full-viewport wallpaper, independent of the Figma content.
    Figma content group 351.43×745 is scaled uniformly into the safe area. */
-html.sketchy-home-active { background: #faf9f7; }
+/* v0.4.9: paint the ROOT canvas instead of a clipped child viewport.
+   The bottom strip in iOS v0.4.8 was the fallback #FAF9F7 of html. */
+html.sketchy-home-active {
+  background-color: #faf9f7;
+  background-image: var(--sketchy-home-image, none);
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
 body.sketchy-home-active { background: transparent; overflow: hidden !important; }
 .sketchy-home[hidden], #developer-screen[hidden], .home-message[hidden] { display: none !important; }
 .sketchy-home {
@@ -104,11 +112,6 @@ body.sketchy-home-active { background: transparent; overflow: hidden !important;
   overflow: hidden !important;
   overscroll-behavior: none;
   touch-action: none;
-}
-.sketchy-home-wallpaper {
-  position: absolute; inset: 0; z-index: 0;
-  width: 100%; height: 100%; object-fit: cover;
-  pointer-events: none; user-select: none; -webkit-user-drag: none;
 }
 /* Safe fallback if JS fails: the group is still visible near its intended place. */
 .sketchy-home-group {

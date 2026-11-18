@@ -1,3 +1,47 @@
+# SketchyAR v0.4.9 — Root Wallpaper Experiment (without status-bar changes)
+
+**Scope:** Only one structural adjustment: paint the PNG texture as the root
+`html.sketchy-home-active` background. Remove the redundant `<img>` from the
+fixed Homepage container. Keep Figma content coordinates, its safe-area fitting,
+and all Drawing/Python modules unchanged.
+
+In v0.4.8 the solid band in the screenshot matched the root background color
+`#FAF9F7`. This experiment tests whether painting the paper texture at the root
+eliminates the band while leaving the already-correct content layout unchanged.
+
+**No change to** `apple-mobile-web-app-status-bar-style` (`default` stays in place).
+No PWA reinstallation and no deletion of user data is required for this test.
+
+## Windows (from the repository root)
+
+```powershell
+cd app
+npm ci
+npm run typecheck
+npm run build
+cd ..
+python -m pytest python_engine -q
+git add .
+git commit -m "Day 4.9: paint paper background on HTML root"
+git push origin main
+```
+
+Check the deployed version/commit through the temporary diagnostics button.
+Test the existing Home Screen installation first. The textured background should
+reach the bottom of the screenshot with no smooth cream band. All buttons should
+remain in place and drawing gestures should work as in v0.4.8.
+
+**If the bottom strip remains:** keep v0.4.8 as rollback; the next controlled
+experiment is a separate test with the meta status bar style `black-translucent`.
+It may need a fresh test Home Screen installation because WebKit can preserve
+some standalone chrome geometry at installation time. It can also change the
+contrast/placement of the time and icons over our pale paper background. Do not
+combine it with arbitrary `100lvh` or safe-area offsets before measuring.
+
+See `docs/day4_9_root_wallpaper.md` for technical reasoning.
+
+---
+
 # SketchyAR v0.4.8 — безопасен Figma Home без скрол
 
 **Основна промяна:** няма скрол на Homepage; хартиеният PNG е на root background,
