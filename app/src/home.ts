@@ -125,6 +125,8 @@ export function initHome(openDrawing: () => Promise<void>): void {
     developer.hidden = active;
     document.body.classList.toggle('sketchy-home-active', active);
     document.documentElement.classList.toggle('sketchy-home-active', active);
+    document.documentElement.style.minHeight =
+      active && standalone ? `${window.screen.height}px` : '';
     if (active) { home.scrollTop = 0; scheduleFit(); }
   };
   setHome(true);

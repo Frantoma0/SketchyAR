@@ -95,11 +95,16 @@ body.drawing-open { overscroll-behavior: none; }
 /* v0.4.12 — wallpaper is a layer of the fixed Home view (always the full viewport).
    html keeps only a colour equal to the texture's average (#f6f6f6), so any strip that
    iOS paints outside the web view does not show a seam. */
-html.sketchy-home-active { background-color: #f6f6f6; }
-.sketchy-home::before {
-  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
-  background: var(--sketchy-home-image, none) center top / cover no-repeat;
-}
+   html.sketchy-home-active {
+    min-height: 100%;
+    min-height: 100lvh;
+    background: #f6f6f6 var(--sketchy-home-image, none) center top / cover no-repeat;
+  }
+  
+  /* Премахваме ::before от .sketchy-home, за да няма втори отрязан слой тапет */
+  .sketchy-home::before {
+    content: none;
+  }
 body.sketchy-home-active { background: transparent; overflow: hidden !important; }
 .sketchy-home[hidden], #developer-screen[hidden], .home-message[hidden] { display: none !important; }
 .sketchy-home {
