@@ -94,20 +94,25 @@ body.drawing-open { overscroll-behavior: none; }
 
 /* Day 4.1/4.3: Figma-based Home screen with paper background and Caveat labels. */
 body.sketchy-home-active { overflow: hidden; background: #fbfaf8; }
+html.sketchy-home-active { overflow: hidden; }
 .sketchy-home[hidden], #developer-screen[hidden], .home-message[hidden] { display: none !important; }
 .sketchy-home {
   position: fixed; z-index: 900; inset: 0; overflow-x: hidden; overflow-y: auto;
-  background: #f6f5f2; padding: 0; border: 0; color: #222; overscroll-behavior: contain;
+  background: #f6f5f2;
+  padding: 0; border: 0; color: #222; overscroll-behavior: none;
+  height: 100dvh;
 }
+/* Exactly the 385 × 835 Figma coordinate system. home.ts scales this stage
+   uniformly for the real visual viewport; do NOT set a second CSS scale. */
 .sketchy-home-canvas {
-  position: relative;
-  width: min(100vw, calc((100dvh - env(safe-area-inset-bottom, 0px) - 10px) * 0.461078), 440px);
-  aspect-ratio: 385 / 835;
-  margin: 0 auto;
+  position: absolute; top: 0; left: 50%;
+  width: 385px; height: 835px; margin: 0;
+  transform: translateX(-50%) scale(1);
+  transform-origin: top center;
 }
 .sketchy-home-bg {
-  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill;
-  pointer-events: none; user-select: none; -webkit-user-drag: none;
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; pointer-events: none; user-select: none; -webkit-user-drag: none;
 }
 .home-pill, .home-save {
   z-index: 1; position: absolute; display: grid; place-items: center; padding: 0;
@@ -124,7 +129,12 @@ body.sketchy-home-active { overflow: hidden; background: #fbfaf8; }
   line-height: 1; letter-spacing: 0;
   text-shadow: 0 1px 0 rgba(255,255,255,.55), 0 1px 2px rgba(70,70,70,.18);
 }
-.home-pill-text { display: inline-block; transform: translateY(-2%); }
+.home-pill-text {
+  display: flex; position: relative; align-items: center; justify-content: center;
+  width: 100%; height: 100%; box-sizing: border-box; padding: 0 12px;
+  text-align: center; line-height: 1; transform: none;
+  pointer-events: none; white-space: nowrap;
+}
 .home-new { left: 6.49%; top: 8.62%; width: 86.65%; height: 10.66%; }
 .home-load { left: 7.79%; top: 22.75%; width: 86.65%; height: 10.66%; }
 .home-new-text, .home-load-text { font-size: 37.35px; }
@@ -151,13 +161,6 @@ body.sketchy-home-active { overflow: hidden; background: #fbfaf8; }
   text-align: center; font: 600 clamp(12px, 3.4vw, 15px)/1.35 var(--font);
 }
 .developer-back { margin-bottom: 12px; }
-@media (max-width: 390px) {
-  .home-new-text, .home-load-text, .home-old-heading { font-size: 34px; }
-  .home-offline-text { font-size: 31px; }
-}
-@media (orientation: landscape) {
-  .sketchy-home-canvas { width: min(100vw, 440px); }
-}
 
 /* Drawing: art scales independently of fixed full-bleed camera. */
 #drawing-camera { object-fit: cover !important; }
@@ -186,8 +189,31 @@ body.sketchy-home-active { overflow: hidden; background: #fbfaf8; }
 }
 
 
-@supports (width: calc((100dvh - 10px) * 0.46)) {
- .sketchy-home-canvas {
-  width: min(100vw, calc((100dvh - env(safe-area-inset-bottom, 0px) - 10px) * 0.461078), 440px);
- }
+
+/* Paper texture fills the entire viewport, including the part outside the 385×835 stage. */
+.sketchy-home-fullbg {
+  position: fixed; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; pointer-events: none; user-select: none;
 }
+/* Real gestures act on the artwork, never the camera or page viewport. */
+html.drawing-open, body.drawing-open {
+  width: 100%; height: 100%; overflow: hidden !important; overscroll-behavior: none;
+}
+.drawing-screen, .drawing-video-stage { overscroll-behavior: none; }
+.drawing-video-stage {
+  touch-action: none; -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+}
+#drawing-camera, #drawing-artwork, .drawing-user-image, .drawing-overlay-grid {
+  -webkit-user-select: none; user-select: none; -webkit-user-drag: none;
+  touch-action: none; pointer-events: none;
+}
+.drawing-top-controls, .drawing-bottom-controls { z-index: 5; }
+.drawing-artwork {
+  transform: translate(-50%, -50%) translate3d(var(--artwork-x, 0px), var(--artwork-y, 0px), 0)
+    rotate(var(--artwork-angle, 0deg)) scale(var(--artwork-scale, 1));
+}
+
+/* If a WebKit PWA reports a short 100dvh, prevent a white strip below the video. */
+body.drawing-open { background: #090b0c !important; }
+.drawing-screen { min-height: 100vh; }

@@ -10,7 +10,31 @@ export function initHome(openDrawing: () => Promise<void>): void {
   const home = el<HTMLElement>('sketchy-home');
   const developer = el<HTMLElement>('developer-screen');
   const note = el<HTMLElement>('home-message');
+  const stage = home.querySelector<HTMLElement>('.sketchy-home-canvas')!;
   let messageTimer: number | undefined;
+
+  // The Figma frame measures 385×835. iPhone 17 has its own CSS viewport;
+  // scale the COMPLETE design once, instead of scaling widths and fonts separately.
+  // Dynamic Island was already accommodated by the original Figma top spacing.
+  const fitFigmaFrame = (): void => {
+    const vw = window.visualViewport?.width ?? window.innerWidth;
+    const vh = window.visualViewport?.height ?? window.innerHeight;
+    // Keep the bottom Figma controls above the Home Indicator, even with
+    // viewport-fit=cover. The paper texture itself remains full-bleed.
+    const safeProbe = document.createElement('div');
+    safeProbe.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;padding-bottom:env(safe-area-inset-bottom,0px)';
+    document.body.appendChild(safeProbe);
+    const safeBottom = parseFloat(getComputedStyle(safeProbe).paddingBottom) || 0;
+    safeProbe.remove();
+    const usableHeight = Math.max(1, vh - safeBottom);
+    const scale = Math.min(vw / 385, usableHeight / 835);
+    const offsetY = Math.max(0, (usableHeight - 835 * scale) / 2);
+    stage.style.top = `${offsetY}px`;
+    stage.style.transform = `translateX(-50%) scale(${scale})`;
+  };
+  fitFigmaFrame();
+  window.addEventListener('resize', fitFigmaFrame, { passive: true });
+  window.visualViewport?.addEventListener('resize', fitFigmaFrame, { passive: true });
 
   function toast(message: string): void {
     note.textContent = message;
@@ -22,6 +46,8 @@ export function initHome(openDrawing: () => Promise<void>): void {
     home.hidden = !active;
     developer.hidden = active;
     document.body.classList.toggle('sketchy-home-active', active);
+    document.documentElement.classList.toggle('sketchy-home-active', active);
+    if (active) fitFigmaFrame();
     if (active) window.scrollTo(0, 0);
   };
   setHome(true);

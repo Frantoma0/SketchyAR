@@ -25,6 +25,7 @@ if (debugWanted()) {
 
 document.getElementById('app')!.innerHTML = `
 <section id="sketchy-home" class="sketchy-home" aria-label="Начална страница на SketchyAR" hidden>
+  <img class="sketchy-home-fullbg" src="./ui/home-background.png" alt="" aria-hidden="true" />
   <div class="sketchy-home-canvas">
     <img class="sketchy-home-bg" src="./ui/home-background.png" alt="" aria-hidden="true" />
     <button id="home-new-project" class="home-pill home-new" type="button" aria-label="Нова рисунка">
@@ -95,13 +96,14 @@ document.getElementById('app')!.innerHTML = `
         <button class="drawing-btn" id="btn-day4-image" type="button">Избери снимка</button>
         <input id="drawing-image-file" type="file" accept="image/*" hidden />
         <button class="drawing-btn" id="btn-day4-fit" type="button">Размер 100%</button>
+        <button class="drawing-btn" id="btn-day4-center" type="button">Центрирай</button>
         <button class="drawing-btn" id="btn-day4-grid" type="button">Скрий мрежата</button>
       </div>
       <label class="drawing-slider-label" for="day4-scale">Размер само на изображението <strong id="day4-scale-number">100%</strong></label>
       <input id="day4-scale" type="range" min="25" max="250" value="100" step="5" />
       <label class="drawing-slider-label" for="day4-opacity">Прозрачност на изображението <strong id="day4-opacity-number">50%</strong></label>
       <input id="day4-opacity" type="range" min="0" max="100" value="50" step="1" />
-      <p class="drawing-note">Камерата остава на цял екран. Плъзгачите променят само мрежата или избраната снимка.</p>
+      <p class="drawing-note">Един пръст мести изображението, два пръста го мащабират и въртят. Камерата остава неподвижна.</p>
     </div>
   </div>
   <section id="day2">
