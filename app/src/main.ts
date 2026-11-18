@@ -79,13 +79,13 @@ document.getElementById('app')!.innerHTML = `
     <h1>SketchyAR</h1>
     <button id="ver" class="ver" type="button" aria-label="Версия на приложението"></button>
   </header>
-  <p class="lead">Ден 4: Camera Controller и реална fullscreen основа на Drawing екрана. Тестовете от Дни 2–3 са запазени.</p>
+  <p class="lead">Ден 4.16: Figma Camera UI, Camera Controller и fullscreen Drawing. Тестовете от Дни 2–3 са запазени.</p>
   <section><h2>Build</h2><dl id="build"></dl></section>
   <section><h2>Среда</h2><dl id="env"><dt>Зареждане</dt><dd>…</dd></dl></section>
   <section><h2>Възможности на устройството</h2><ul id="caps" class="caps"></ul></section>
   <section id="day4">
     <h2>Ден 4 — Drawing основа</h2>
-    <p class="hint">Нов fullscreen Drawing изглед с един Camera Controller, автоматична пауза при background и възстановяване при връщане. Управлява камерата независимо от Python. Контролите и мрежата са временни до Figma имплементацията.</p>
+    <p class="hint">Нов fullscreen Drawing изглед с един Camera Controller, автоматична пауза при background и възстановяване при връщане. Управлява камерата независимо от Python. Използваме отделните SVG икони от Figma; тестовата мрежа остава помощна функция.</p>
     <div class="actions">
       <button class="act" id="btn-day4-open" type="button">Отвори Drawing</button>
       <button class="act" id="btn-day4-capabilities" type="button">Провери камерата</button>
@@ -103,25 +103,49 @@ document.getElementById('app')!.innerHTML = `
         <img id="drawing-user-image" class="drawing-user-image" alt="Избрана рисунка върху камерата" hidden />
       </div>
     </div>
-    <div class="drawing-top-controls">
-      <button class="drawing-btn" id="btn-day4-exit" type="button" aria-label="Изход от Drawing">← Назад</button>
-      <span class="drawing-title">SketchyAR · Drawing</span>
+    <!-- Camera UI: real interactive layers, not a flattened Camera_Screen.svg. -->
+    <div class="drawing-top-controls sketch-camera-top">
+      <button class="sketch-camera-import" id="sketch-camera-import" type="button" aria-label="Избери изображение" title="Избери изображение">
+        <img src="./ui/camera/import.svg" alt="" />
+      </button>
+      <button class="sketch-camera-finish" id="sketch-camera-finish" type="button" aria-label="Завършено — към началната страница">
+        <img src="./ui/camera/finish-pill.svg" alt="" />
+        <span>Завършено</span>
+      </button>
     </div>
-    <div class="drawing-bottom-controls">
-      <p id="drawing-camera-status" class="drawing-camera-status" role="status" aria-live="polite">Камерата се стартира…</p>
-      <div class="drawing-controls-row">
-        <button class="drawing-btn" id="btn-day4-retry" type="button">Опитай пак</button>
-        <button class="drawing-btn" id="btn-day4-image" type="button">Избери снимка</button>
-        <input id="drawing-image-file" type="file" accept="image/*" hidden />
-        <button class="drawing-btn" id="btn-day4-fit" type="button">Размер 100%</button>
-        <button class="drawing-btn" id="btn-day4-center" type="button">Центрирай</button>
-        <button class="drawing-btn" id="btn-day4-grid" type="button">Скрий мрежата</button>
+    <div class="drawing-bottom-controls sketch-camera-bottom">
+      <div class="sketch-camera-slider-label-row">
+        <label for="sketch-camera-opacity" class="sketch-camera-slider-title">Прозрачност</label>
+        <output for="sketch-camera-opacity" id="sketch-camera-opacity-value" class="sketch-camera-slider-value">50%</output>
       </div>
-      <label class="drawing-slider-label" for="day4-scale">Размер само на изображението <strong id="day4-scale-number">100%</strong></label>
-      <input id="day4-scale" type="range" min="25" max="250" value="100" step="5" />
-      <label class="drawing-slider-label" for="day4-opacity">Прозрачност на изображението <strong id="day4-opacity-number">50%</strong></label>
-      <input id="day4-opacity" type="range" min="0" max="100" value="50" step="1" />
-      <p class="drawing-note">Един пръст мести изображението, два пръста го мащабират и въртят. Камерата остава неподвижна.</p>
+      <div class="sketch-camera-slider-wrap">
+        <img class="sketch-camera-slider-back" src="./ui/camera/slider-tray.svg" alt="" />
+        <img class="sketch-camera-slider-rail" src="./ui/camera/slider-graphite.svg" alt="" />
+        <img class="sketch-camera-slider-thumb" src="./ui/camera/slider-thumb.svg" alt="" />
+        <input id="sketch-camera-opacity" type="range" min="0" max="100" step="1" value="50" aria-label="Прозрачност на рисунката от 0 до 100 процента" />
+      </div>
+      <div class="sketch-camera-actions" role="group" aria-label="Управление на рисунката">
+        <button id="sketch-camera-mirror" class="sketch-camera-icon" type="button" aria-label="Огледално обръщане" aria-pressed="false" title="Огледално обръщане"><img src="./ui/camera/mirror.svg" alt="" /></button>
+        <button id="sketch-camera-grid" class="sketch-camera-icon" type="button" aria-label="Мрежа" aria-pressed="true" title="Покажи или скрий мрежата"><img src="./ui/camera/grid.svg" alt="" /></button>
+        <button id="sketch-camera-reset" class="sketch-camera-icon" type="button" aria-label="Центрирай и възстанови мащаба" title="Центрирай"><img src="./ui/camera/reset.svg" alt="" /></button>
+        <button id="sketch-camera-lock" class="sketch-camera-icon" type="button" aria-label="Заключи позицията на рисунката" aria-pressed="false" title="Заключи рисунката"><img src="./ui/camera/lock.svg" alt="" /></button>
+      </div>
+      <div class="sketch-camera-status" id="sketch-camera-status" role="status" aria-live="polite"></div>
+      <button class="sketch-camera-retry" id="btn-day4-retry" type="button" hidden>Камерата спря — опитай пак</button>
+    </div>
+    <!-- Retain Day 4 functionality and hooks; visual controls are replaced above. -->
+    <div class="drawing-legacy-controls" aria-hidden="true">
+      <button id="btn-day4-exit" type="button" tabindex="-1">Назад</button>
+      <button id="btn-day4-image" type="button" tabindex="-1">Избери снимка</button>
+      <input id="drawing-image-file" type="file" accept="image/*" hidden />
+      <button id="btn-day4-fit" type="button" tabindex="-1">Размер 100%</button>
+      <button id="btn-day4-center" type="button" tabindex="-1">Центрирай</button>
+      <button id="btn-day4-grid" type="button" tabindex="-1">Скрий мрежата</button>
+      <label for="day4-scale">Размер <span id="day4-scale-number">100%</span></label>
+      <input id="day4-scale" type="range" min="25" max="250" value="100" step="5" tabindex="-1" />
+      <label for="day4-opacity">Прозрачност <span id="day4-opacity-number">50%</span></label>
+      <input id="day4-opacity" type="range" min="0" max="100" value="50" step="1" tabindex="-1" />
+      <span id="drawing-camera-status" role="status" aria-live="polite"></span>
     </div>
   </div>
   <section id="day2">

@@ -301,3 +301,58 @@ body.drawing-open { background: #090b0c !important; }
 #startup-fallback a { display: inline-block; padding: 12px 18px; border: 1px solid #45413e;
   border-radius: 22px; color: inherit; text-decoration: none; background: #fff; }
 #startup-fallback[hidden] { display: none !important; }
+
+/* Day 4.16 — Figma graphite camera UI, intentionally independent of homepage/wallpaper. */
+.drawing-screen .drawing-top-controls.sketch-camera-top {
+  position: absolute; inset: 0 0 auto 0; display:flex; align-items:center;
+  justify-content:space-between; background: none; z-index: 15;
+  padding: calc(env(safe-area-inset-top, 0px) + 8px) max(18px, env(safe-area-inset-right, 0px)) 0 max(18px, env(safe-area-inset-left, 0px));
+}
+.sketch-camera-top button, .sketch-camera-actions button { background:none; border:0; padding:0; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+.sketch-camera-top button img, .sketch-camera-actions button img { display:block; width:100%; height:100%; object-fit:fill; pointer-events:none; user-select:none; }
+.sketch-camera-top button:focus-visible, .sketch-camera-actions button:focus-visible { outline: 2px solid white; outline-offset:2px; border-radius:16px; }
+.sketch-camera-import { width:63px; height:51px; flex:none; }
+.sketch-camera-finish { position:relative; width:129px; height:51px; flex:none; display:grid; place-items:center; }
+.sketch-camera-finish > img { position:absolute; inset:0; }
+.sketch-camera-finish span { position:relative; color:#494640; font:700 25px/1 'Caveat',cursive; transform:translateY(-2px); white-space:nowrap; }
+.drawing-screen .drawing-bottom-controls.sketch-camera-bottom {
+  position:absolute; inset:auto max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 12px) max(16px, env(safe-area-inset-left, 0px));
+  width:auto; max-width:420px; margin-inline:auto; padding:0;
+  display:flex; flex-direction:column; gap:8px; background:none; z-index:15;
+}
+.sketch-camera-slider-label-row { display:flex; align-items:baseline; justify-content:space-between; gap:10px; padding-inline:6px; }
+.sketch-camera-slider-title { color:#faf9f7; font:700 27px/1.1 'Caveat',cursive; text-shadow:0 1px 4px rgba(0,0,0,.95),0 0 8px #000; }
+.sketch-camera-slider-value { color:#fff; font:700 19px/1.1 'Caveat',cursive; text-shadow:0 1px 4px black; }
+.sketch-camera-slider-wrap { position:relative; height:40px; margin:0 7px 2px; }
+.sketch-camera-slider-back { position:absolute; inset:7px 0 0 0; width:100%; height:30px; object-fit:fill; pointer-events:none; }
+.sketch-camera-slider-rail { position:absolute; inset:11px 0 0 0; width:100%; height:15px; pointer-events:none; object-fit:fill; }
+.sketch-camera-slider-thumb { position:absolute; left:var(--opacity-percent,50%); top:6px; transform:translateX(-50%); width:25px; height:26px; pointer-events:none; z-index:2; }
+#sketch-camera-opacity { appearance:none; -webkit-appearance:none; background:transparent; position:absolute; left:0; right:0; top:0; width:100%; height:40px; margin:0; touch-action:pan-x; z-index:3; cursor:pointer; }
+#sketch-camera-opacity::-webkit-slider-runnable-track { background:transparent; height:40px; }
+#sketch-camera-opacity::-webkit-slider-thumb { appearance:none; -webkit-appearance:none; width:30px; height:40px; background:transparent; border:0; }
+#sketch-camera-opacity::-moz-range-track { background:transparent; }
+#sketch-camera-opacity::-moz-range-thumb { width:30px; height:40px; border:0; background:transparent; }
+.sketch-camera-actions { display:flex; align-items:center; justify-content:space-between; gap:4px; width:100%; }
+.sketch-camera-icon { flex:0 1 79px; min-width:0; aspect-ratio:79 / 69; position:relative; }
+.sketch-camera-icon img { object-fit:contain !important; }
+.sketch-camera-icon[aria-pressed="true"]::after { content:''; position:absolute; inset:7px; border:2px solid rgba(32,31,29,.65); border-radius:13px; pointer-events:none; }
+.sketch-camera-icon:disabled { opacity:.4; }
+.sketch-camera-status { color:white; font-size:13px; text-align:center; text-shadow:0 2px 3px #000; min-height:0; }
+.sketch-camera-status:empty { display:none; }
+.sketch-camera-retry:not([hidden]) { background:rgba(255,255,255,.94); border:1px solid #777; border-radius:13px; color:#333; min-height:40px; }
+.drawing-legacy-controls { display:none !important; }
+/* Artwork uses one CSS transform; mirroring never changes the live video stream. */
+.drawing-artwork {
+  transform:translate(-50%,-50%) translate3d(var(--artwork-x,0px),var(--artwork-y,0px),0)
+    rotate(var(--artwork-angle,0deg)) scale(var(--artwork-scale,1)) scaleX(var(--artwork-mirror,1));
+}
+/* Let the grid be independently enabled without replacing an imported picture. */
+.drawing-artwork { isolation:isolate; aspect-ratio:3/4; display:flex; align-items:center; justify-content:center; }
+.drawing-overlay-grid:not([hidden]) { position:absolute; inset:0; z-index:2; width:100%; height:100%; opacity:.55; }
+.drawing-user-image:not([hidden]) { position:relative; z-index:1; }
+@media (max-height:720px) {
+  .drawing-screen .drawing-top-controls.sketch-camera-top { padding-top:calc(env(safe-area-inset-top,0px) + 4px); }
+  .drawing-screen .drawing-bottom-controls.sketch-camera-bottom { gap:3px; bottom:calc(env(safe-area-inset-bottom,0px) + 4px); }
+  .sketch-camera-icon { max-height:60px; }
+  .sketch-camera-slider-wrap { height:34px; }
+}

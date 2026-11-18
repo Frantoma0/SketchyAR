@@ -1,5 +1,5 @@
-/** Day 4: a responsive fullscreen Drawing shell. Figma assets are integrated in Day 5,
- *  so this file deliberately contains no permanent UI icons or final visual layout.
+/** Day 4.16: Figma camera controls on top of a responsive fullscreen camera.
+ * All camera lifecycle and gesture code remains separate from the decorative SVG assets.
  */
 import * as D from './diagnostics';
 import { cameraController, type CameraSnapshot } from './camera-controller';
@@ -16,6 +16,8 @@ let artworkY = 0;
 let artworkAngle = 0;
 let userImageUrl: string | null = null;
 let opacity = 50;
+let artworkLocked = false;
+let artworkMirrored = false;
 
 /** iOS Home Screen sometimes reports a smaller dynamic viewport than the
  *  full physical viewport. Keep the camera behind the system safe areas too;
@@ -39,7 +41,7 @@ function reflect(): void {
   el<HTMLButtonElement>('btn-day4-open').disabled = entering || drawingOpen || isBusy();
   el<HTMLButtonElement>('btn-day4-exit').disabled = entering;
   el<HTMLButtonElement>('btn-day4-retry').hidden = cameraController.active || entering;
-  el('drawing-grid').hidden = !showGrid || !!userImageUrl;
+  el('drawing-grid').hidden = !showGrid;
   el<HTMLButtonElement>('btn-day4-grid').textContent = userImageUrl ? 'Тестова мрежа' : showGrid ? 'Скрий мрежата' : 'Покажи мрежата';
   // Video remains fixed to cover. Only the artwork can change scale.
   el<HTMLButtonElement>('btn-day4-fit').textContent = 'Размер 100%';
@@ -47,12 +49,21 @@ function reflect(): void {
   el('drawing-artwork').style.setProperty('--artwork-x', `${artworkX}px`);
   el('drawing-artwork').style.setProperty('--artwork-y', `${artworkY}px`);
   el('drawing-artwork').style.setProperty('--artwork-angle', `${artworkAngle}deg`);
+  el('drawing-artwork').style.setProperty('--artwork-mirror', artworkMirrored ? '-1' : '1');
   el<HTMLInputElement>('day4-scale').value = String(artworkScale);
   el('day4-scale-number').textContent = `${artworkScale}%`;
   el('drawing-artwork').style.opacity = String(opacity / 100);
   el<HTMLImageElement>('drawing-user-image').hidden = !userImageUrl;
   el('day4-opacity-number').textContent = `${opacity}%`;
   el<HTMLInputElement>('day4-opacity').value = String(opacity);
+  el<HTMLInputElement>('sketch-camera-opacity').value = String(opacity);
+  el('sketch-camera-opacity-value').textContent = `${opacity}%`;
+  el('sketch-camera-opacity').parentElement?.style.setProperty('--opacity-percent', `${opacity}%`);
+  el<HTMLButtonElement>('sketch-camera-lock').setAttribute('aria-pressed', String(artworkLocked));
+  el<HTMLButtonElement>('sketch-camera-mirror').setAttribute('aria-pressed', String(artworkMirrored));
+  el<HTMLButtonElement>('sketch-camera-grid').setAttribute('aria-pressed', String(showGrid));
+  el<HTMLButtonElement>('sketch-camera-reset').disabled = artworkLocked;
+  el('drawing-video-stage').classList.toggle('artwork-locked', artworkLocked);
 }
 function statusFromController(snapshot: CameraSnapshot): void {
   const names: Record<CameraSnapshot['phase'], string> = {
@@ -60,7 +71,11 @@ function statusFromController(snapshot: CameraSnapshot): void {
     active: 'Камерата е активна', suspended: 'Камерата е паузирана — ще опитаме възстановяване',
     error: 'Камерата е прекъсната — използвай „Опитай пак“',
   };
-  if (drawingOpen) setMessage(names[snapshot.phase]);
+  if (drawingOpen) {
+    setMessage(names[snapshot.phase]);
+    const status = el('sketch-camera-status');
+    status.textContent = snapshot.phase === 'error' ? names[snapshot.phase] : '';
+  }
   reflect();
 }
 function safeAreaSnapshot(): Record<string, unknown> {
@@ -167,6 +182,7 @@ function clearFingers(): void {
  *  Camera frames and page scroll are never part of this transform.
  */
 function updateArtworkGesture(): void {
+  if (artworkLocked) return;
   const values = [...fingers.values()];
   if (values.length === 1 && dragOrigin) {
     artworkX = dragOrigin.x + values[0].x - dragOrigin.point.x;
@@ -201,7 +217,7 @@ function initArtworkGestures(): void {
     return { x: event.clientX - rect.left, y: event.clientY - rect.top };
   };
   stage.addEventListener('pointerdown', (event) => {
-    if (!drawingOpen || entering || fingers.size >= 2) return;
+    if (!drawingOpen || entering || artworkLocked || fingers.size >= 2) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     event.preventDefault();
     fingers.set(event.pointerId, toLocal(event));
@@ -258,6 +274,7 @@ export async function openDrawing(): Promise<void> {
     const message = error instanceof Error ? error.message : String(error);
     D.log('error', 'day4', 'drawing.camera.failed', { message });
     setMessage(`Камера: ${message}`);
+    el('sketch-camera-status').textContent = `Камера: ${message}`;
   } finally {
     entering = false;
     reflect();
@@ -277,6 +294,8 @@ async function exit(): Promise<void> {
     el<HTMLImageElement>('drawing-user-image').removeAttribute('src');
   }
   showGrid = true;
+  artworkLocked = false;
+  artworkMirrored = false;
   artworkScale = 100;
   artworkX = 0;
   artworkY = 0;
@@ -315,14 +334,8 @@ export function initDay4(): void {
   el('btn-day4-exit').addEventListener('click', () => void exit());
   el('btn-day4-retry').addEventListener('click', () => void retry());
   el('btn-day4-grid').addEventListener('click', () => {
-    if (userImageUrl) {
-      URL.revokeObjectURL(userImageUrl);
-      userImageUrl = null;
-      el<HTMLImageElement>('drawing-user-image').removeAttribute('src');
-      showGrid = true;
-    } else {
-      showGrid = !showGrid;
-    }
+    // Grid is a view-only guide; never discard the user's loaded image.
+    showGrid = !showGrid;
     reflect();
   });
   el('btn-day4-center').addEventListener('click', () => {
@@ -405,6 +418,38 @@ export function initDay4(): void {
   });
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && drawingOpen) void exit();
+  });
+  // SketchyAR 4.16: original Figma graphite controls overlay the unchanged camera.
+  el<HTMLButtonElement>('sketch-camera-import').addEventListener('click', () => {
+    el<HTMLButtonElement>('btn-day4-image').click();
+  });
+  el<HTMLButtonElement>('sketch-camera-finish').addEventListener('click', () => {
+    void exit(); // Day 4 has no persistent project save. "Завършено" returns home.
+  });
+  el<HTMLButtonElement>('sketch-camera-grid').addEventListener('click', () => {
+    el<HTMLButtonElement>('btn-day4-grid').click();
+  });
+  el<HTMLButtonElement>('sketch-camera-reset').addEventListener('click', () => {
+    if (!artworkLocked) el<HTMLButtonElement>('btn-day4-center').click();
+  });
+  el<HTMLButtonElement>('sketch-camera-mirror').addEventListener('click', () => {
+    if (artworkLocked) return;
+    artworkMirrored = !artworkMirrored;
+    reflect();
+    D.log('info', 'day4', 'artwork.mirror', { mirrored: artworkMirrored });
+  });
+  el<HTMLButtonElement>('sketch-camera-lock').addEventListener('click', () => {
+    artworkLocked = !artworkLocked;
+    clearFingers();
+    reflect();
+    D.log('info', 'day4', 'artwork.lock', { locked: artworkLocked });
+  });
+  el<HTMLInputElement>('sketch-camera-opacity').addEventListener('input', (event) => {
+    opacity = clamp(Number((event.currentTarget as HTMLInputElement).value), 0, 100);
+    reflect();
+  });
+  el<HTMLInputElement>('sketch-camera-opacity').addEventListener('change', () => {
+    D.log('info', 'day4', 'artwork.opacity', { opacity });
   });
   cameraController.subscribe(statusFromController);
   reflect();
