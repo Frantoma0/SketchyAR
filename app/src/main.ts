@@ -25,9 +25,9 @@ if (debugWanted()) {
 
 document.getElementById('app')!.innerHTML = `
 <section id="sketchy-home" class="sketchy-home" aria-label="Начална страница на SketchyAR">
-  <img class="sketchy-home-fullbg" src="./ui/home-background.png" alt="" aria-hidden="true" />
-  <div class="sketchy-home-canvas">
-    <img class="sketchy-home-bg" src="./ui/home-background.png" alt="" aria-hidden="true" />
+  <!-- One paper texture fills the viewport, independently of the non-scrolling content group. -->
+  <img class="sketchy-home-wallpaper" src="./ui/home-background.png" alt="" aria-hidden="true" />
+  <div id="sketchy-home-group" class="sketchy-home-group">
     <button id="home-new-project" class="home-pill home-new" type="button" aria-label="Нова рисунка">
       <img class="home-pill-bg" src="./ui/pill-base-white.svg" alt="" />
       <span class="home-pill-text home-new-text">Нова рисунка</span>
@@ -51,8 +51,8 @@ document.getElementById('app')!.innerHTML = `
       <img class="home-square-bg" src="./ui/square-button-white.svg" alt="" />
       <img class="home-floppy" src="./ui/floppy.png" alt="" />
     </button>
-    <p id="home-message" class="home-message" role="status" aria-live="polite" hidden></p>
   </div>
+  <p id="home-message" class="home-message" role="status" aria-live="polite" hidden></p>
 </section>
 <div id="developer-screen" hidden>
 <main>

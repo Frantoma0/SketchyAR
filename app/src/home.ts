@@ -10,33 +10,82 @@ export function initHome(openDrawing: () => Promise<void>): void {
   const home = el<HTMLElement>('sketchy-home');
   const developer = el<HTMLElement>('developer-screen');
   const note = el<HTMLElement>('home-message');
-  const stage = home.querySelector<HTMLElement>('.sketchy-home-canvas')!;
+  const group = el<HTMLElement>('sketchy-home-group');
   let messageTimer: number | undefined;
+  let layoutFrame = 0;
 
-  // Figma is a 385×835 DESIGN frame, not a viewport-height instruction.
-  // Its content has a fixed aspect ratio. If the visible iOS PWA viewport is
-  // shorter, Home scrolls, instead of shrinking and clipping the bottom row.
-  // Most importantly, do not force screen.height onto the scroll container:
-  // screen.height may include space that visualViewport currently cannot show.
-  const fitFigmaFrame = (): void => {
-    const width = Math.max(1, stage.getBoundingClientRect().width);
-    const scale = width / 385;
-    stage.style.setProperty('--home-font-scale', String(scale));
-    stage.style.setProperty('--home-design-gap', `${20 * scale}px`);
-    D.log('debug', 'home.layout', 'figma-scroll-fit', {
-      stageWidth: Math.round(width),
-      stageHeight: Math.round(stage.getBoundingClientRect().height),
-      viewportHeight: window.innerHeight,
-      visualHeight: window.visualViewport?.height ?? null,
-      scrollHeight: home.scrollHeight,
-      scrollClientHeight: home.clientHeight,
-      designGap: Math.round(20 * scale * 100) / 100,
+  // Figma content bounds: x=17, y=72, width=351.43, height=745.
+  // Fit the CONTENT rather than stretching the 385×835 outer frame.
+  // Never use screen.height to size a web scroll container on iOS.
+  const designWidth = 351.43;
+  const designHeight = 745;
+  const horizontalInset = 10;
+  const verticalInset = 8;
+
+  const safeProbe = document.createElement('div');
+  safeProbe.setAttribute('aria-hidden', 'true');
+  safeProbe.style.cssText = [
+    'position:absolute', 'visibility:hidden', 'pointer-events:none',
+    'width:0', 'height:0',
+    'padding-top:env(safe-area-inset-top,0px)',
+    'padding-right:env(safe-area-inset-right,0px)',
+    'padding-bottom:env(safe-area-inset-bottom,0px)',
+    'padding-left:env(safe-area-inset-left,0px)',
+  ].join(';');
+  home.appendChild(safeProbe);
+
+  function safePx(text: string): number {
+    const value = Number.parseFloat(text);
+    return Number.isFinite(value) && value >= 0 ? value : 0;
+  }
+
+  function fitHome(): void {
+    if (home.hidden) return;
+    const rect = home.getBoundingClientRect();
+    const styles = getComputedStyle(safeProbe);
+    const safeTop = safePx(styles.paddingTop);
+    const safeBottom = safePx(styles.paddingBottom);
+    const safeLeft = safePx(styles.paddingLeft);
+    const safeRight = safePx(styles.paddingRight);
+    // iOS may expose a shorter visual viewport than the fixed layout viewport.
+    // Choose the smaller positive visible size for safe placement.
+    const visualWidth = window.visualViewport?.width ?? rect.width;
+    const visualHeight = window.visualViewport?.height ?? rect.height;
+    const vw = Math.max(1, Math.min(rect.width, visualWidth));
+    const vh = Math.max(1, Math.min(rect.height, visualHeight));
+    const usableWidth = Math.max(1, vw - safeLeft - safeRight - 2 * horizontalInset);
+    const usableHeight = Math.max(1, vh - safeTop - safeBottom - 2 * verticalInset);
+    const scale = Math.min(usableWidth / designWidth, usableHeight / designHeight);
+    const left = safeLeft + horizontalInset + (usableWidth - designWidth * scale) / 2;
+    const top = safeTop + verticalInset + (usableHeight - designHeight * scale) / 2;
+
+    group.style.left = `${left}px`;
+    group.style.top = `${top}px`;
+    group.style.transform = `scale(${scale})`;
+
+    D.log('debug', 'home.layout', 'figma-safe-fit', {
+      designWidth, designHeight,
+      contentScale: Number(scale.toFixed(4)),
+      contentX: Math.round(left), contentY: Math.round(top),
+      contentBottom: Math.round(top + designHeight * scale),
+      clientWidth: Math.round(rect.width), clientHeight: Math.round(rect.height),
+      visualWidth: Math.round(visualWidth), visualHeight: Math.round(visualHeight),
+      safeTop, safeBottom, safeLeft, safeRight,
+      scrollHeight: home.scrollHeight, scrollClientHeight: home.clientHeight,
     });
-  };
-  try { fitFigmaFrame(); }
-  catch (error) { D.log('warn', 'home', 'figma fit fallback', error); }
-  window.addEventListener('resize', () => { try { fitFigmaFrame(); } catch { /* CSS fallback */ } }, { passive: true });
-  window.visualViewport?.addEventListener('resize', () => { try { fitFigmaFrame(); } catch { /* CSS fallback */ } }, { passive: true });
+  }
+
+  function scheduleFit(): void {
+    if (layoutFrame) window.cancelAnimationFrame(layoutFrame);
+    layoutFrame = window.requestAnimationFrame(() => {
+      layoutFrame = 0;
+      try { fitHome(); } catch (error) { D.log('warn', 'home', 'figma fit failed', error); }
+    });
+  }
+  window.addEventListener('resize', scheduleFit, { passive: true });
+  window.visualViewport?.addEventListener('resize', scheduleFit, { passive: true });
+  window.addEventListener('pageshow', scheduleFit, { passive: true });
+  document.fonts.ready.then(scheduleFit, scheduleFit);
 
   function toast(message: string): void {
     note.textContent = message;
@@ -49,8 +98,7 @@ export function initHome(openDrawing: () => Promise<void>): void {
     developer.hidden = active;
     document.body.classList.toggle('sketchy-home-active', active);
     document.documentElement.classList.toggle('sketchy-home-active', active);
-    if (active) { try { fitFigmaFrame(); } catch { /* CSS fallback */ } }
-    if (active) home.scrollTop = 0;
+    if (active) { home.scrollTop = 0; scheduleFit(); }
   };
   setHome(true);
 
@@ -77,6 +125,8 @@ export function initHome(openDrawing: () => Promise<void>): void {
   // The Drawing screen lives outside the hidden developer container.
   document.addEventListener('sketchyar:drawing:opened', () => {
     home.hidden = true;
+    document.body.classList.remove('sketchy-home-active');
+    document.documentElement.classList.remove('sketchy-home-active');
   });
   document.addEventListener('sketchyar:drawing:closed', () => {
     if (developer.hidden) setHome(true);

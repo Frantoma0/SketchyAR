@@ -1,3 +1,33 @@
+# SketchyAR v0.4.8 — безопасен Figma Home без скрол
+
+**Основна промяна:** няма скрол на Homepage; хартиеният PNG е на root background,
+а реалната Figma група (351.43 × 745) се вписва в безопасната видима зона.
+Съхранени са всички модули от Дни 1–4, Camera Controller, жестове, Pyodide, OpenCV и диагностика.
+
+**Windows (от папката на репото):**
+
+```powershell
+cd app
+npm ci
+npm run typecheck
+npm run build
+cd ..
+python -m pytest python_engine -q
+git add .
+git commit -m "Day 4.8: fit Figma home inside iPhone safe viewport"
+git push origin main
+```
+
+Сравни версията `0.4.8` и commit в диагностичния екран (долна дясна икона).
+Първо отвори Home Screen PWA и провери, че целите четири полароидни рамки,
+„Офлайн Режим“ и иконата са видими без скрол. След това тествай „Нова рисунка“.
+
+Технически детайли и протокол: `docs/day4_8_layout.md`.
+
+---
+
+## Исторически инструкции от по-ранни версии (само за справка)
+
 # SketchyAR v0.4.7 — iPhone 17 fullscreen layout fix
 
 Запазени са всички функции от Ден 4.5. За новата корекция и тестовете виж [docs/day4_6_fullscreen_fix.md](docs/day4_6_fullscreen_fix.md).
