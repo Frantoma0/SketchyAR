@@ -22,6 +22,24 @@ export function initHome(openDrawing: () => Promise<void>): void {
   // Do not put ./ui/... in src/styles.css: relative URLs there resolve against src/.
   const wallpaperURL = new URL(`${import.meta.env.BASE_URL}ui/home-background.png`, document.baseURI).href;
   document.documentElement.style.setProperty('--sketchy-home-image', `url("${wallpaperURL}")`);
+
+  // The html element itself may be 0px high (the app consists of fixed views).
+  // Use an explicit rendered wallpaper height, rather than background-size: cover
+  // against that zero-height root. screen.height is used ONLY for the decorative
+  // wallpaper, never for layout or positioning the Figma controls.
+  function updateWallpaperSize(): void {
+    const height = Math.ceil(Math.max(
+      window.screen.height,
+      window.innerHeight,
+      window.visualViewport?.height ?? 0,
+      document.documentElement.clientHeight,
+    ));
+    document.documentElement.style.setProperty('--sketchy-wallpaper-height', `${height}px`);
+  }
+  updateWallpaperSize();
+  window.addEventListener('resize', updateWallpaperSize, { passive: true });
+  window.visualViewport?.addEventListener('resize', updateWallpaperSize, { passive: true });
+
   let messageTimer: number | undefined;
   let layoutFrame = 0;
 
@@ -87,6 +105,7 @@ export function initHome(openDrawing: () => Promise<void>): void {
       screenHeight: window.screen.height, innerHeight: window.innerHeight,
       rootHeight: Math.round(document.documentElement.getBoundingClientRect().height),
       statusBarMeta: document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-status-bar-style"]')?.content,
+      wallpaperHeight: getComputedStyle(document.documentElement).getPropertyValue('--sketchy-wallpaper-height').trim(),
 
     });
   }
