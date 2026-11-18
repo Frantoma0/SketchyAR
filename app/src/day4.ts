@@ -268,7 +268,7 @@ async function exit(): Promise<void> {
   if (!drawingOpen || entering) return;
   drawingOpen = false;
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#f6f5f2');
-  document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.setAttribute('content', 'default');
+  document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.setAttribute('content', 'black-translucent');
   cameraController.stop('drawing-exit');
   // “Нова рисунка” opens a fresh, temporary drawing. No project has been saved yet.
   if (userImageUrl) {

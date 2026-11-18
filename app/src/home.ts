@@ -11,6 +11,13 @@ export function initHome(openDrawing: () => Promise<void>): void {
   const developer = el<HTMLElement>('developer-screen');
   const note = el<HTMLElement>('home-message');
   const group = el<HTMLElement>('sketchy-home-group');
+  // Keep the same Figma layout in Safari; in the installed PWA, the status-bar
+  // meta requests edge-to-edge coverage. This is diagnostic only: do not force
+  // screen.height as a CSS layout height or shift the controls conditionally.
+  const standalone = (navigator as Navigator & { standalone?: boolean }).standalone === true ||
+    window.matchMedia('(display-mode: standalone)').matches;
+  document.documentElement.dataset.sketchyDisplay = standalone ? 'standalone' : 'browser';
+
   // Public asset URL resolves to /SketchyAR/ui/... on GitHub Pages and /ui/ on Vite dev.
   // Do not put ./ui/... in src/styles.css: relative URLs there resolve against src/.
   const wallpaperURL = new URL(`${import.meta.env.BASE_URL}ui/home-background.png`, document.baseURI).href;
@@ -76,6 +83,11 @@ export function initHome(openDrawing: () => Promise<void>): void {
       visualWidth: Math.round(visualWidth), visualHeight: Math.round(visualHeight),
       safeTop, safeBottom, safeLeft, safeRight,
       scrollHeight: home.scrollHeight, scrollClientHeight: home.clientHeight,
+      displayMode: standalone ? 'standalone' : 'browser',
+      screenHeight: window.screen.height, innerHeight: window.innerHeight,
+      rootHeight: Math.round(document.documentElement.getBoundingClientRect().height),
+      statusBarMeta: document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-status-bar-style"]')?.content,
+
     });
   }
 
