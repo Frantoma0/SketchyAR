@@ -38,6 +38,8 @@ export function initHome(openDrawing: () => Promise<void>): void {
   // no API for its height, so a fixed reserve keeps the last row clear of it.
   const SAFARI_BOTTOM_RESERVE = 96;
   const EDGE = 20;
+  const TOP_EDGE = 12;
+  const BOTTOM_EDGE = 4;
 
   const safeProbe = document.createElement('div');
   safeProbe.setAttribute('aria-hidden', 'true');
@@ -58,20 +60,19 @@ export function initHome(openDrawing: () => Promise<void>): void {
 
   function fitHome(): void {
     if (home.hidden) return;
+    document.documentElement.style.minHeight = `${window.screen.height}px`;
     const rect = home.getBoundingClientRect();
     const styles = getComputedStyle(safeProbe);
     const safeTop = safePx(styles.paddingTop);
     const safeBottom = safePx(styles.paddingBottom);
     const safeLeft = safePx(styles.paddingLeft);
     const safeRight = safePx(styles.paddingRight);
-    // iOS may expose a shorter visual viewport than the fixed layout viewport.
-    // Choose the smaller positive visible size for safe placement.
     const visualWidth = window.visualViewport?.width ?? rect.width;
     const visualHeight = window.visualViewport?.height ?? rect.height;
     const vw = Math.max(1, Math.min(rect.width, visualWidth));
     const vh = Math.max(1, Math.min(rect.height, visualHeight));
-    const topClear = safeTop + (standalone ? EDGE : 16);
-    const bottomClear = standalone ? safeBottom + EDGE : Math.max(safeBottom, SAFARI_BOTTOM_RESERVE);
+    const topClear = safeTop + (standalone ? TOP_EDGE : 16);
+    const bottomClear = standalone ? safeBottom + BOTTOM_EDGE : Math.max(safeBottom, SAFARI_BOTTOM_RESERVE);
     const availableH = Math.max(1, vh - topClear - bottomClear);
     const widthScale = Math.max(0.1, (vw - safeLeft - safeRight - 2 * hInset) / designWidth);
     const heightScale = Math.max(0.1, (availableH - gapCount * GAP) / designSections);
@@ -125,8 +126,7 @@ export function initHome(openDrawing: () => Promise<void>): void {
     developer.hidden = active;
     document.body.classList.toggle('sketchy-home-active', active);
     document.documentElement.classList.toggle('sketchy-home-active', active);
-    document.documentElement.style.minHeight =
-      active && standalone ? `${window.screen.height}px` : '';
+    document.documentElement.style.minHeight = active ? `${window.screen.height}px` : '';
     if (active) { home.scrollTop = 0; scheduleFit(); }
   };
   setHome(true);

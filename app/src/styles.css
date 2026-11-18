@@ -98,12 +98,19 @@ body.drawing-open { overscroll-behavior: none; }
    html.sketchy-home-active {
     min-height: 100%;
     min-height: 100lvh;
-    background: #f6f6f6 var(--sketchy-home-image, none) center top / cover no-repeat;
+    overflow: visible;
+    background-color: #f6f6f6;
+    background-image: var(--sketchy-home-image, none);
+    background-position: center center;
+    background-size: cover;
+    background-repeat: no-repeat;
   }
-  
-  /* Премахваме ::before от .sketchy-home, за да няма втори отрязан слой тапет */
   .sketchy-home::before {
     content: none;
+  }
+  body.sketchy-home-active {
+    background: transparent;
+    overflow: hidden !important;
   }
 body.sketchy-home-active { background: transparent; overflow: hidden !important; }
 .sketchy-home[hidden], #developer-screen[hidden], .home-message[hidden] { display: none !important; }
