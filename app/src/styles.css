@@ -92,20 +92,13 @@ body.drawing-open { overscroll-behavior: none; }
 @media (max-width: 380px) { .drawing-btn { padding: 7px 8px; font-size: .74rem; } .drawing-title { font-size: .75rem; } }
 @media (orientation: landscape) { .drawing-bottom-controls { max-width: 560px; margin: auto; } }
 
-/* Day 4.11 — iOS root-canvas wallpaper correction.
-   All visible app views are fixed-positioned, so the root element can have
-   a zero-height layout box. On WebKit, background-size: cover then sizes the
-   picture by the width only (the texture ends halfway down the screen).
-   The wallpaper size is now explicit and independent from html's layout box.
-   JS supplies --sketchy-wallpaper-height from screen/viewport metrics.
-   Use auto width to preserve the image aspect ratio: no stretched paper grain.
-   Do NOT size or scroll the Figma group here: it already fits correctly. */
-html.sketchy-home-active {
-  background-color: #faf9f7;
-  background-image: var(--sketchy-home-image, none);
-  background-position: center top;
-  background-repeat: no-repeat;
-  background-size: auto var(--sketchy-wallpaper-height, 100lvh);
+/* v0.4.12 — wallpaper is a layer of the fixed Home view (always the full viewport).
+   html keeps only a colour equal to the texture's average (#f6f6f6), so any strip that
+   iOS paints outside the web view does not show a seam. */
+html.sketchy-home-active { background-color: #f6f6f6; }
+.sketchy-home::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: var(--sketchy-home-image, none) center top / cover no-repeat;
 }
 body.sketchy-home-active { background: transparent; overflow: hidden !important; }
 .sketchy-home[hidden], #developer-screen[hidden], .home-message[hidden] { display: none !important; }
@@ -122,7 +115,8 @@ body.sketchy-home-active { background: transparent; overflow: hidden !important;
   position: absolute;
   left: max(10px, calc((100% - 351.43px) / 2));
   top: calc(env(safe-area-inset-top, 0px) + 8px);
-  width: 351.43px; height: 745px;
+  --g: 20px; /* gap between sections in design units; home.ts sets 20px / scale */
+  width: 351.43px; height: calc(643px + 5 * var(--g));
   transform: scale(.92); transform-origin: top left;
   contain: layout style;
   z-index: 1;
@@ -151,29 +145,28 @@ body.sketchy-home-active { background: transparent; overflow: hidden !important;
   width: 100%; height: 100%; box-sizing: border-box; padding: 0 12px;
   text-align: center; pointer-events: none;
 }
-/* Translated from Figma outer frame x=17, y=72 to content origin (0,0):
-   new 0–89 → gap20 → load 109–198 → gap20 → heading 218–259 →
-   gap20 → polaroids 279–652 → gap20 → footer 672–743. */
+/* Figma order (content origin 0,0), every gap = --g (20 CSS px after scaling):
+   new 0–89 · load 89–178 · heading 178–219 · polaroids 219–572 (2 rows of 176.5) · footer 71. */
 .home-new { left: 8px; top: 0; width: 333.64px; height: 89px; }
-.home-load { left: 13px; top: 109px; width: 333.64px; height: 89px; }
+.home-load { left: 13px; top: calc(89px + var(--g)); width: 333.64px; height: 89px; }
 .home-new-text, .home-load-text { font-size: 37.35px; }
 .home-old-heading {
-  z-index: 1; position: absolute; left: 8px; top: 218px;
+  z-index: 1; position: absolute; left: 8px; top: calc(178px + 2 * var(--g));
   height: 41px; display: flex; align-items: center;
   font-size: 37.35px;
 }
 .home-project-grid {
   z-index: 1; position: absolute;
-  left: 0; top: 279px; width: 351.43px; height: 373px;
+  left: 0; top: calc(219px + 3 * var(--g)); width: 351.43px; height: calc(353px + var(--g));
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(0, 1fr));
-  column-gap: 20px; row-gap: 20px;
+  grid-template-rows: repeat(2, 176.5px);
+  column-gap: 20px; row-gap: var(--g);
 }
 .home-project-tile { position: relative; min-width: 0; min-height: 0; pointer-events: none; }
 .home-project-tile img { display: block; width: 100%; height: 100%; object-fit: fill; }
-.home-offline { left: 11px; top: 672px; width: 264px; height: 71px; }
+.home-offline { left: 11px; top: calc(572px + 5 * var(--g)); width: 264px; height: 71px; }
 .home-offline-text { font-size: 33.79px; }
-.home-save { left: 282px; top: 672px; width: 66.79px; height: 68.93px; }
+.home-save { left: 282px; top: calc(572px + 5 * var(--g)); width: 66.79px; height: 68.93px; }
 .home-square-bg { position: absolute; width: 100%; height: 100%; object-fit: contain; }
 .home-floppy { position: relative; width: 51%; height: 58%; object-fit: contain; }
 .home-message {

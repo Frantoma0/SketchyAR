@@ -23,33 +23,21 @@ export function initHome(openDrawing: () => Promise<void>): void {
   const wallpaperURL = new URL(`${import.meta.env.BASE_URL}ui/home-background.png`, document.baseURI).href;
   document.documentElement.style.setProperty('--sketchy-home-image', `url("${wallpaperURL}")`);
 
-  // The html element itself may be 0px high (the app consists of fixed views).
-  // Use an explicit rendered wallpaper height, rather than background-size: cover
-  // against that zero-height root. screen.height is used ONLY for the decorative
-  // wallpaper, never for layout or positioning the Figma controls.
-  function updateWallpaperSize(): void {
-    const height = Math.ceil(Math.max(
-      window.screen.height,
-      window.innerHeight,
-      window.visualViewport?.height ?? 0,
-      document.documentElement.clientHeight,
-    ));
-    document.documentElement.style.setProperty('--sketchy-wallpaper-height', `${height}px`);
-  }
-  updateWallpaperSize();
-  window.addEventListener('resize', updateWallpaperSize, { passive: true });
-  window.visualViewport?.addEventListener('resize', updateWallpaperSize, { passive: true });
-
   let messageTimer: number | undefined;
   let layoutFrame = 0;
 
-  // Figma content bounds: x=17, y=72, width=351.43, height=745.
-  // Fit the CONTENT rather than stretching the 385×835 outer frame.
-  // Never use screen.height to size a web scroll container on iOS.
+  // Figma content: 351.43 wide; heights sum to 643 design px plus 5 gaps (new, load, heading,
+  // polaroid rows, footer). Every gap is exactly GAP CSS px, so sections are scaled and gaps are not.
   const designWidth = 351.43;
-  const designHeight = 745;
-  const horizontalInset = 10;
-  const verticalInset = 8;
+  const designSections = 643;
+  const gapCount = 5;
+  const GAP = 20; // CSS px between sections
+  const hInset = 10;
+  // Home Screen: no browser UI, so the block sits lower (20 px below the status bar, 20 px above the
+  // home indicator). Safari tab: iOS 26 draws a floating address bar over the bottom of the page; there is
+  // no API for its height, so a fixed reserve keeps the last row clear of it.
+  const SAFARI_BOTTOM_RESERVE = 96;
+  const EDGE = 20;
 
   const safeProbe = document.createElement('div');
   safeProbe.setAttribute('aria-hidden', 'true');
@@ -82,21 +70,27 @@ export function initHome(openDrawing: () => Promise<void>): void {
     const visualHeight = window.visualViewport?.height ?? rect.height;
     const vw = Math.max(1, Math.min(rect.width, visualWidth));
     const vh = Math.max(1, Math.min(rect.height, visualHeight));
-    const usableWidth = Math.max(1, vw - safeLeft - safeRight - 2 * horizontalInset);
-    const usableHeight = Math.max(1, vh - safeTop - safeBottom - 2 * verticalInset);
-    const scale = Math.min(usableWidth / designWidth, usableHeight / designHeight);
-    const left = safeLeft + horizontalInset + (usableWidth - designWidth * scale) / 2;
-    const top = safeTop + verticalInset + (usableHeight - designHeight * scale) / 2;
+    const topClear = safeTop + (standalone ? EDGE : 16);
+    const bottomClear = standalone ? safeBottom + EDGE : Math.max(safeBottom, SAFARI_BOTTOM_RESERVE);
+    const availableH = Math.max(1, vh - topClear - bottomClear);
+    const widthScale = Math.max(0.1, (vw - safeLeft - safeRight - 2 * hInset) / designWidth);
+    const heightScale = Math.max(0.1, (availableH - gapCount * GAP) / designSections);
+    const scale = Math.min(widthScale, heightScale);
+    const blockH = designSections * scale + gapCount * GAP;
+    const left = safeLeft + (vw - safeLeft - safeRight - designWidth * scale) / 2;
+    // Home Screen anchors to the bottom edge (lower); Safari anchors to the top (room for the link).
+    const top = topClear + (standalone ? availableH - blockH : 0);
 
+    group.style.setProperty('--g', `${(GAP / scale).toFixed(3)}px`);
     group.style.left = `${left}px`;
     group.style.top = `${top}px`;
     group.style.transform = `scale(${scale})`;
 
     D.log('debug', 'home.layout', 'figma-safe-fit', {
-      designWidth, designHeight,
+      designWidth, designSections, gapCss: GAP, topClear, bottomClear, availableH: Math.round(availableH), blockH: Math.round(blockH),
       contentScale: Number(scale.toFixed(4)),
       contentX: Math.round(left), contentY: Math.round(top),
-      contentBottom: Math.round(top + designHeight * scale),
+      contentBottom: Math.round(top + blockH),
       clientWidth: Math.round(rect.width), clientHeight: Math.round(rect.height),
       visualWidth: Math.round(visualWidth), visualHeight: Math.round(visualHeight),
       safeTop, safeBottom, safeLeft, safeRight,
@@ -105,8 +99,6 @@ export function initHome(openDrawing: () => Promise<void>): void {
       screenHeight: window.screen.height, innerHeight: window.innerHeight,
       rootHeight: Math.round(document.documentElement.getBoundingClientRect().height),
       statusBarMeta: document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-status-bar-style"]')?.content,
-      wallpaperHeight: getComputedStyle(document.documentElement).getPropertyValue('--sketchy-wallpaper-height').trim(),
-
     });
   }
 
