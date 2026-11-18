@@ -330,7 +330,7 @@ body.drawing-open { background: #090b0c !important; }
 .sketch-camera-slider-wrap { position:relative; height:43px; margin:0 0 2px; min-width:0; }
 /* Full-width Figma white tray; the graphite bar is revealed only up to the thumb. */
 .sketch-camera-slider-back { position:absolute; left:0; right:0; top:2px; width:100%; height:39px; object-fit:fill; pointer-events:none; }
-.sketch-camera-slider-track { position:absolute; left:10px; width:calc(100% - 20px); top:46%; height:15px; transform:translateY(-50%); overflow:hidden; border-radius:999px; }
+.sketch-camera-slider-track { position:absolute; left:10px; width:calc(100% - 20px); top:45%; height:15px; transform:translateY(-50%); overflow:hidden; border-radius:999px; }
 .sketch-camera-slider-rail { position:absolute; inset:0; width:100%; height:100%; object-fit:fill; pointer-events:none; -webkit-clip-path:inset(0 calc(100% - var(--opacity-percent,50%)) 0 0 round 999px); clip-path:inset(0 calc(100% - var(--opacity-percent,50%)) 0 0 round 999px); }
 .sketch-camera-slider-thumb { position:absolute; left:var(--opacity-percent,50%); top:50%; transform:translate(-50%, -50%); width:25px; height:26px; pointer-events:none; z-index:2; }
 #sketch-camera-opacity { appearance:none; -webkit-appearance:none; background:transparent; position:absolute; left:-12.5px; top:-14px; width:calc(100% + 25px); height:43px; margin:0; touch-action:pan-x; z-index:3; cursor:pointer; }
