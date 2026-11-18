@@ -100,15 +100,20 @@ html.sketchy-home-active { overflow: hidden; }
   position: fixed; z-index: 900; inset: 0; overflow-x: hidden; overflow-y: auto;
   background: #f6f5f2;
   padding: 0; border: 0; color: #222; overscroll-behavior: none;
-  height: 100dvh;
+  height: 100vh; height: 100dvh;
 }
-/* Exactly the 385 × 835 Figma coordinate system. home.ts scales this stage
-   uniformly for the real visual viewport; do NOT set a second CSS scale. */
+/* Keep the whole Figma layout in percentages of the actual screen.
+   home.ts sets precise pixel dimensions on iOS standalone when 100dvh is short.
+   Do NOT apply an additional transform-scale to the whole page. */
 .sketchy-home-canvas {
-  position: absolute; top: 0; left: 50%;
-  width: 385px; height: 835px; margin: 0;
-  transform: translateX(-50%) scale(1);
-  transform-origin: top center;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  transform: none;
+  transform-origin: top left;
+  --home-font-scale: 1;
 }
 .sketchy-home-bg {
   position: absolute; inset: 0; width: 100%; height: 100%;
@@ -137,10 +142,10 @@ html.sketchy-home-active { overflow: hidden; }
 }
 .home-new { left: 6.49%; top: 8.62%; width: 86.65%; height: 10.66%; }
 .home-load { left: 7.79%; top: 22.75%; width: 86.65%; height: 10.66%; }
-.home-new-text, .home-load-text { font-size: 37.35px; }
+.home-new-text, .home-load-text { font-size: calc(37.35px * var(--home-font-scale, 1)); }
 .home-old-heading {
   z-index: 1; position: absolute; left: 6.5%; top: 36.9%; width: auto; height: auto;
-  font-size: 37.35px;
+  font-size: calc(37.35px * var(--home-font-scale, 1));
 }
 .home-project-grid {
   z-index: 1; position: absolute; left: 4.42%; top: 42.04%; width: 91.3%; height: 44.67%;
@@ -149,9 +154,10 @@ html.sketchy-home-active { overflow: hidden; }
 }
 .home-project-tile { position: relative; min-width: 0; min-height: 0; pointer-events: none; }
 .home-project-tile img { display: block; width: 100%; height: 100%; object-fit: fill; }
-.home-offline { left: 7.28%; top: 89.34%; width: 68.57%; height: 8.50%; }
-.home-offline-text { font-size: 33.79px; }
-.home-save { left: 77.66%; top: 89.10%; width: 17.35%; height: 8.25%; }
+/* The Figma bottom gap is ~21px; lift buttons only if iOS needs more. */
+.home-offline { left: 7.28%; top: calc(89.34% - max(0px, env(safe-area-inset-bottom, 0px) - 20px)); width: 68.57%; height: 8.50%; }
+.home-offline-text { font-size: calc(33.79px * var(--home-font-scale, 1)); }
+.home-save { left: 77.66%; top: calc(89.10% - max(0px, env(safe-area-inset-bottom, 0px) - 20px)); width: 17.35%; height: 8.25%; }
 .home-square-bg { position: absolute; width: 100%; height: 100%; object-fit: contain; }
 .home-floppy { position: relative; width: 51%; height: 58%; object-fit: contain; }
 .home-message {
@@ -185,14 +191,16 @@ html.sketchy-home-active { overflow: hidden; }
  .drawing-user-image { max-height: 46dvh; }
 }
 @media (orientation: landscape) {
-  .sketchy-home-canvas { width: min(100vw, 440px); }
+  /* In landscape, keep the design centered without clipping controls. */
+  .sketchy-home { overflow-y: auto; }
+  .sketchy-home-canvas { min-height: 600px; }
 }
 
 
 
 /* Paper texture fills the entire viewport, including the part outside the 385×835 stage. */
 .sketchy-home-fullbg {
-  position: fixed; inset: 0; width: 100%; height: 100%;
+  position: absolute; inset: 0; width: 100%; height: 100%;
   object-fit: cover; pointer-events: none; user-select: none;
 }
 /* Real gestures act on the artwork, never the camera or page viewport. */
@@ -222,7 +230,7 @@ body.drawing-open { background: #090b0c !important; }
 #sketchy-home:not([hidden]) { display: block; }
 #startup-fallback { position: fixed; z-index: 10000; inset: 0; display: flex; flex-direction: column;
   justify-content: center; align-items: center; text-align: center; gap: 14px; padding: 30px;
-  background: #f8f7f3 url('./ui/home-background.png') center/cover no-repeat; color: #3b3938;
+  background: #f8f7f3; color: #3b3938;
   font-family: -apple-system, system-ui, sans-serif; }
 #startup-fallback a { display: inline-block; padding: 12px 18px; border: 1px solid #45413e;
   border-radius: 22px; color: inherit; text-decoration: none; background: #fff; }

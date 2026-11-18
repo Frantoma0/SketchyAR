@@ -13,28 +13,41 @@ export function initHome(openDrawing: () => Promise<void>): void {
   const stage = home.querySelector<HTMLElement>('.sketchy-home-canvas')!;
   let messageTimer: number | undefined;
 
-  // The Figma frame measures 385×835. iPhone 17 has its own CSS viewport;
-  // scale the COMPLETE design once, instead of scaling widths and fonts separately.
-  // Dynamic Island was already accommodated by the original Figma top spacing.
+  // Figma's 385×835 is a DESIGN coordinate system. Never subtract the
+  // bottom safe-area and then scale the whole page: that leaves a strip on iOS.
+  // iPhone 17 is typically 402×874 CSS pixels at DPR 3 (1206×2622 physical).
+  // In standalone mode, some WebKit builds expose a shorter visualViewport,
+  // even though the installed app owns the full CSS screen. Prefer screen.*
+  // for standalone only; ordinary Safari tabs must respect visible viewport.
   const fitFigmaFrame = (): void => {
-    const vw = window.visualViewport?.width ?? window.innerWidth;
-    const vh = window.visualViewport?.height ?? window.innerHeight;
-    // Keep the bottom Figma controls above the Home Indicator, even with
-    // viewport-fit=cover. The paper texture itself remains full-bleed.
-    const safeProbe = document.createElement('div');
-    safeProbe.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;padding-bottom:env(safe-area-inset-bottom,0px)';
-    document.body.appendChild(safeProbe);
-    const safeBottom = parseFloat(getComputedStyle(safeProbe).paddingBottom) || 0;
-    safeProbe.remove();
-    const usableHeight = Math.max(1, vh - safeBottom);
-    const scale = Math.min(vw / 385, usableHeight / 835);
-    const offsetY = Math.max(0, (usableHeight - 835 * scale) / 2);
-    stage.style.top = `${offsetY}px`;
-    stage.style.transform = `translateX(-50%) scale(${scale})`;
+    const standalone = window.matchMedia('(display-mode: standalone)').matches ||
+      (navigator as Navigator & { standalone?: boolean }).standalone === true;
+    const vw = Math.max(1, window.innerWidth, document.documentElement.clientWidth,
+      standalone ? window.screen.width : 0);
+    const vh = Math.max(1, window.innerHeight, document.documentElement.clientHeight,
+      window.visualViewport?.height ?? 0, standalone ? window.screen.height : 0);
+
+    // Both the paper image and the Figma-positioned elements occupy the FULL
+    // screen. The Figma geometry is % based, so the nearly identical aspect
+    // ratio of 385:835 and 402:874 needs no CSS transform at all.
+    home.style.width = `${vw}px`;
+    home.style.height = `${vh}px`;
+    stage.style.width = '100%';
+    stage.style.height = '100%';
+    stage.style.top = '0';
+    stage.style.left = '0';
+    stage.style.transform = 'none';
+    stage.style.setProperty('--home-font-scale', String(vw / 385));
+    D.log('debug', 'home.layout', 'fullscreen-fit', {
+      width: vw, height: vh, standalone,
+      innerHeight: window.innerHeight,
+      visualHeight: window.visualViewport?.height ?? null,
+      screenHeight: window.screen.height,
+    });
   };
-  // Home is visible immediately; resize measurements are progressive enhancements.
+  // Home remains visible even if the resize API cannot be queried.
   try { fitFigmaFrame(); }
-  catch (error) { D.log('warn', 'home', 'Figma scale fallback', error); }
+  catch (error) { D.log('warn', 'home', 'fullscreen fit fallback', error); }
   window.addEventListener('resize', () => { try { fitFigmaFrame(); } catch { /* CSS fallback */ } }, { passive: true });
   window.visualViewport?.addEventListener('resize', () => { try { fitFigmaFrame(); } catch { /* CSS fallback */ } }, { passive: true });
 
