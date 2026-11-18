@@ -13,41 +13,28 @@ export function initHome(openDrawing: () => Promise<void>): void {
   const stage = home.querySelector<HTMLElement>('.sketchy-home-canvas')!;
   let messageTimer: number | undefined;
 
-  // Figma's 385×835 is a DESIGN coordinate system. Never subtract the
-  // bottom safe-area and then scale the whole page: that leaves a strip on iOS.
-  // iPhone 17 is typically 402×874 CSS pixels at DPR 3 (1206×2622 physical).
-  // In standalone mode, some WebKit builds expose a shorter visualViewport,
-  // even though the installed app owns the full CSS screen. Prefer screen.*
-  // for standalone only; ordinary Safari tabs must respect visible viewport.
+  // Figma is a 385×835 DESIGN frame, not a viewport-height instruction.
+  // Its content has a fixed aspect ratio. If the visible iOS PWA viewport is
+  // shorter, Home scrolls, instead of shrinking and clipping the bottom row.
+  // Most importantly, do not force screen.height onto the scroll container:
+  // screen.height may include space that visualViewport currently cannot show.
   const fitFigmaFrame = (): void => {
-    const standalone = window.matchMedia('(display-mode: standalone)').matches ||
-      (navigator as Navigator & { standalone?: boolean }).standalone === true;
-    const vw = Math.max(1, window.innerWidth, document.documentElement.clientWidth,
-      standalone ? window.screen.width : 0);
-    const vh = Math.max(1, window.innerHeight, document.documentElement.clientHeight,
-      window.visualViewport?.height ?? 0, standalone ? window.screen.height : 0);
-
-    // Both the paper image and the Figma-positioned elements occupy the FULL
-    // screen. The Figma geometry is % based, so the nearly identical aspect
-    // ratio of 385:835 and 402:874 needs no CSS transform at all.
-    home.style.width = `${vw}px`;
-    home.style.height = `${vh}px`;
-    stage.style.width = '100%';
-    stage.style.height = '100%';
-    stage.style.top = '0';
-    stage.style.left = '0';
-    stage.style.transform = 'none';
-    stage.style.setProperty('--home-font-scale', String(vw / 385));
-    D.log('debug', 'home.layout', 'fullscreen-fit', {
-      width: vw, height: vh, standalone,
-      innerHeight: window.innerHeight,
+    const width = Math.max(1, stage.getBoundingClientRect().width);
+    const scale = width / 385;
+    stage.style.setProperty('--home-font-scale', String(scale));
+    stage.style.setProperty('--home-design-gap', `${20 * scale}px`);
+    D.log('debug', 'home.layout', 'figma-scroll-fit', {
+      stageWidth: Math.round(width),
+      stageHeight: Math.round(stage.getBoundingClientRect().height),
+      viewportHeight: window.innerHeight,
       visualHeight: window.visualViewport?.height ?? null,
-      screenHeight: window.screen.height,
+      scrollHeight: home.scrollHeight,
+      scrollClientHeight: home.clientHeight,
+      designGap: Math.round(20 * scale * 100) / 100,
     });
   };
-  // Home remains visible even if the resize API cannot be queried.
   try { fitFigmaFrame(); }
-  catch (error) { D.log('warn', 'home', 'fullscreen fit fallback', error); }
+  catch (error) { D.log('warn', 'home', 'figma fit fallback', error); }
   window.addEventListener('resize', () => { try { fitFigmaFrame(); } catch { /* CSS fallback */ } }, { passive: true });
   window.visualViewport?.addEventListener('resize', () => { try { fitFigmaFrame(); } catch { /* CSS fallback */ } }, { passive: true });
 
@@ -63,7 +50,7 @@ export function initHome(openDrawing: () => Promise<void>): void {
     document.body.classList.toggle('sketchy-home-active', active);
     document.documentElement.classList.toggle('sketchy-home-active', active);
     if (active) { try { fitFigmaFrame(); } catch { /* CSS fallback */ } }
-    if (active) window.scrollTo(0, 0);
+    if (active) home.scrollTop = 0;
   };
   setHome(true);
 

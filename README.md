@@ -1,4 +1,4 @@
-# SketchyAR v0.4.6 — iPhone 17 fullscreen layout fix
+# SketchyAR v0.4.7 — iPhone 17 fullscreen layout fix
 
 Запазени са всички функции от Ден 4.5. За новата корекция и тестовете виж [docs/day4_6_fullscreen_fix.md](docs/day4_6_fullscreen_fix.md).
 
@@ -66,7 +66,7 @@ git commit -m "Day 4: Figma home and independent artwork scale"
 git push origin main
 ```
 
-5. Изчакай GitHub Actions да завърши, отвори инсталирания SketchyAR и провери `v0.4.6` и новия commit от диагностичния екран (долу вдясно на Home).
+5. Изчакай GitHub Actions да завърши, отвори инсталирания SketchyAR и провери `v0.4.7` и новия commit от диагностичния екран (долу вдясно на Home).
 
 **Важно:** бутонът „Зареди проект“, четирите рамки и „Офлайн режим“ са визуално готови, но не запазват/зареждат данни; реалните функции предстоят в плана. Долният десен бутон засега отваря диагностиката. Пълните проверки са в `docs/day4_home_finalization.md`.
 
