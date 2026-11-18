@@ -317,10 +317,8 @@ body.drawing-open { background: #090b0c !important; }
 .sketch-camera-top button, .sketch-camera-actions button { background:none; border:0; padding:0; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
 .sketch-camera-top button img, .sketch-camera-actions button img { display:block; width:100%; height:100%; object-fit:fill; pointer-events:none; user-select:none; }
 .sketch-camera-top button:focus-visible, .sketch-camera-actions button:focus-visible { outline: 2px solid white; outline-offset:2px; border-radius:16px; }
-.sketch-camera-import { width:63px; height:51px; flex:none; }
-.sketch-camera-finish { position:relative; width:129px; height:51px; flex:none; display:grid; place-items:center; }
-.sketch-camera-finish > img { position:absolute; inset:0; }
-.sketch-camera-finish span { position:relative; color:#494640; font:700 25px/1 'Caveat',cursive; transform:translateY(-2px); white-space:nowrap; }
+.sketch-camera-back, .sketch-camera-change-image { width:63px; height:51px; flex:none; }
+/* Both Figma control images have the same 63×51 viewBox; preserve their exact proportions. */
 .drawing-screen .drawing-bottom-controls.sketch-camera-bottom {
   position:absolute; inset:auto max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 12px) max(16px, env(safe-area-inset-left, 0px));
   width:auto; max-width:420px; margin-inline:auto; padding:0;

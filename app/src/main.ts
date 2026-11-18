@@ -79,7 +79,7 @@ document.getElementById('app')!.innerHTML = `
     <h1>SketchyAR</h1>
     <button id="ver" class="ver" type="button" aria-label="Версия на приложението"></button>
   </header>
-  <p class="lead">Ден 4.17: Camera UI, избор на снимка преди камера, мрежа 3×3 и интерактивен графитен плъзгач. Тестовете от Дни 2–3 са запазени.</p>
+  <p class="lead">Ден 4.18: Figma Camera UI, стрелка към началната страница и нов бутон за смяна на снимката. Тестовете от Дни 2–3 са запазени.</p>
   <section><h2>Build</h2><dl id="build"></dl></section>
   <section><h2>Среда</h2><dl id="env"><dt>Зареждане</dt><dd>…</dd></dl></section>
   <section><h2>Възможности на устройството</h2><ul id="caps" class="caps"></ul></section>
@@ -109,12 +109,11 @@ document.getElementById('app')!.innerHTML = `
     </div>
     <!-- Camera UI: real interactive layers, not a flattened Camera_Screen.svg. -->
     <div class="drawing-top-controls sketch-camera-top">
-      <button class="sketch-camera-import" id="sketch-camera-import" type="button" aria-label="Избери изображение" title="Избери изображение">
+      <button class="sketch-camera-back" id="sketch-camera-back" type="button" aria-label="Назад към началната страница" title="Начална страница">
         <img src="./ui/camera/import.svg" alt="" />
       </button>
-      <button class="sketch-camera-finish" id="sketch-camera-finish" type="button" aria-label="Завършено — към началната страница">
-        <img src="./ui/camera/finish-pill.svg" alt="" />
-        <span>Завършено</span>
+      <button class="sketch-camera-change-image" id="sketch-camera-change-image" type="button" aria-label="Смени изображението от телефона" title="Избери друга снимка">
+        <img src="./ui/camera/change-image.svg" alt="" />
       </button>
     </div>
     <div class="drawing-bottom-controls sketch-camera-bottom">

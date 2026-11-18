@@ -1,4 +1,4 @@
-/** Day 4.17: Figma camera controls, gallery-first creation and 3x3 viewfinder.
+/** Day 4.18: Figma camera controls, gallery-first creation, new image button and Home navigation.
  * All camera lifecycle and gesture code remains separate from the decorative SVG assets.
  */
 import * as D from './diagnostics';
@@ -454,12 +454,14 @@ export function initDay4(): void {
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && drawingOpen) void exit();
   });
-  // SketchyAR 4.17: original Figma graphite controls with separate camera-aligned viewfinder.
-  el<HTMLButtonElement>('sketch-camera-import').addEventListener('click', () => {
-    el<HTMLButtonElement>('btn-day4-image').click();
+  // SketchyAR 4.18: left arrow returns Home; the new right icon changes the drawing.
+  el<HTMLButtonElement>('sketch-camera-back').addEventListener('click', () => {
+    void exit(); // Current temporary image is discarded when leaving Drawing.
   });
-  el<HTMLButtonElement>('sketch-camera-finish').addEventListener('click', () => {
-    void exit(); // Day 4 has no persistent project save. "Завършено" returns home.
+  el<HTMLButtonElement>('sketch-camera-change-image').addEventListener('click', () => {
+    // Keep the same user-gesture picker and image-loading path used by the former left button.
+    // Cancelling leaves the current image and camera untouched.
+    el<HTMLButtonElement>('btn-day4-image').click();
   });
   el<HTMLButtonElement>('sketch-camera-grid').addEventListener('click', () => {
     el<HTMLButtonElement>('btn-day4-grid').click();
