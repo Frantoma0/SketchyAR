@@ -4,7 +4,8 @@ import { probeEnv, type EnvSnapshot } from './env';
 import { debugWanted, enableDebug, toggleDebug } from './debug';
 import { initDay2 } from './day2';
 import { initDay3 } from './day3';
-import { initDay4 } from './day4';
+import { initDay4, openDrawing } from './day4';
+import { initHome } from './home';
 
 D.installGlobalHandlers();
 D.checkPreviousSession();
@@ -23,7 +24,38 @@ if (debugWanted()) {
 }
 
 document.getElementById('app')!.innerHTML = `
+<section id="sketchy-home" class="sketchy-home" aria-label="Начална страница на SketchyAR" hidden>
+  <div class="sketchy-home-canvas">
+    <img class="sketchy-home-bg" src="./ui/home-background.png" alt="" aria-hidden="true" />
+    <button id="home-new-project" class="home-pill home-new" type="button" aria-label="Нова рисунка">
+      <img class="home-pill-bg" src="./ui/pill-base-white.svg" alt="" />
+      <span class="home-pill-text home-new-text">Нова рисунка</span>
+    </button>
+    <button id="home-load-project" class="home-pill home-load" type="button" aria-label="Зареди проект — предстои">
+      <img class="home-pill-bg" src="./ui/pill-base-white.svg" alt="" />
+      <span class="home-pill-text home-load-text">Зареди проект</span>
+    </button>
+    <h2 class="home-old-heading">Стари проекти</h2>
+    <div class="home-project-grid" aria-label="Запазени проекти — все още няма">
+      <div class="home-project-tile" aria-label="Празно място за проект"><img src="./ui/polaroid.png" alt="" /></div>
+      <div class="home-project-tile" aria-label="Празно място за проект"><img src="./ui/polaroid.png" alt="" /></div>
+      <div class="home-project-tile" aria-label="Празно място за проект"><img src="./ui/polaroid.png" alt="" /></div>
+      <div class="home-project-tile" aria-label="Празно място за проект"><img src="./ui/polaroid.png" alt="" /></div>
+    </div>
+    <button id="home-offline" class="home-pill home-offline" type="button" aria-label="Офлайн режим — информация">
+      <img class="home-pill-bg" src="./ui/pill-base-white.svg" alt="" />
+      <span class="home-pill-text home-offline-text">Офлайн Режим</span>
+    </button>
+    <button id="home-save-icon" class="home-save" type="button" aria-label="Диагностика на приложението — временно на бутона за запазване" title="Диагностика (временно)">
+      <img class="home-square-bg" src="./ui/square-button-white.svg" alt="" />
+      <img class="home-floppy" src="./ui/floppy.png" alt="" />
+    </button>
+    <p id="home-message" class="home-message" role="status" aria-live="polite" hidden></p>
+  </div>
+</section>
+<div id="developer-screen" hidden>
 <main>
+  <button id="developer-back-home" class="act developer-back" type="button">← Начална страница</button>
   <header>
     <h1>SketchyAR</h1>
     <button id="ver" class="ver" type="button" aria-label="Версия на приложението"></button>
@@ -45,8 +77,11 @@ document.getElementById('app')!.innerHTML = `
   <div id="day4-screen" class="drawing-screen" role="dialog" aria-modal="true" aria-label="SketchyAR Drawing" hidden>
     <div class="drawing-video-stage">
       <video id="drawing-camera" autoplay muted playsinline aria-label="Камера за рисуване"></video>
-      <div id="drawing-grid" class="drawing-overlay-grid" aria-hidden="true">
-        <div class="drawing-guide-frame"></div>
+      <div id="drawing-artwork" class="drawing-artwork" aria-label="Независим слой за рисунка">
+        <div id="drawing-grid" class="drawing-overlay-grid" aria-hidden="true">
+          <div class="drawing-guide-frame"></div>
+        </div>
+        <img id="drawing-user-image" class="drawing-user-image" alt="Избрана рисунка върху камерата" hidden />
       </div>
     </div>
     <div class="drawing-top-controls">
@@ -57,12 +92,16 @@ document.getElementById('app')!.innerHTML = `
       <p id="drawing-camera-status" class="drawing-camera-status" role="status" aria-live="polite">Камерата се стартира…</p>
       <div class="drawing-controls-row">
         <button class="drawing-btn" id="btn-day4-retry" type="button">Опитай пак</button>
-        <button class="drawing-btn" id="btn-day4-fit" type="button">Кадър: запълни</button>
+        <button class="drawing-btn" id="btn-day4-image" type="button">Избери снимка</button>
+        <input id="drawing-image-file" type="file" accept="image/*" hidden />
+        <button class="drawing-btn" id="btn-day4-fit" type="button">Размер 100%</button>
         <button class="drawing-btn" id="btn-day4-grid" type="button">Скрий мрежата</button>
       </div>
-      <label class="drawing-slider-label" for="day4-opacity">Прозрачност на тестовия слой <strong id="day4-opacity-number">50%</strong></label>
+      <label class="drawing-slider-label" for="day4-scale">Размер само на изображението <strong id="day4-scale-number">100%</strong></label>
+      <input id="day4-scale" type="range" min="25" max="250" value="100" step="5" />
+      <label class="drawing-slider-label" for="day4-opacity">Прозрачност на изображението <strong id="day4-opacity-number">50%</strong></label>
       <input id="day4-opacity" type="range" min="0" max="100" value="50" step="1" />
-      <p class="drawing-note">Временен тестов слой — реална снимка, жестове и PNG контроли добавяме след Figma.</p>
+      <p class="drawing-note">Камерата остава на цял екран. Плъзгачите променят само мрежата или избраната снимка.</p>
     </div>
   </div>
   <section id="day2">
@@ -131,11 +170,17 @@ document.getElementById('app')!.innerHTML = `
     <p id="status" role="status"></p>
     <p class="hint">Проверка на crash marker: старт на тестова задача, затваряне на приложението от app switcher, ново отваряне. В събитията трябва да се появи unexpected_stop.</p>
   </section>
-</main>`;
+</main>
+</div>`;
 
+// Drawing must remain visible when the developer view is hidden behind Home.
+// It uses fixed positioning and must not inherit its parent's hidden state.
+const drawingScreen = document.getElementById('day4-screen');
+if (drawingScreen) document.getElementById('app')!.appendChild(drawingScreen);
 initDay2();
 initDay3();
 initDay4();
+initHome(openDrawing);
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
