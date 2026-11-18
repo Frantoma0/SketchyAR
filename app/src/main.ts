@@ -24,7 +24,7 @@ if (debugWanted()) {
 }
 
 document.getElementById('app')!.innerHTML = `
-<section id="sketchy-home" class="sketchy-home" aria-label="Начална страница на SketchyAR" hidden>
+<section id="sketchy-home" class="sketchy-home" aria-label="Начална страница на SketchyAR">
   <img class="sketchy-home-fullbg" src="./ui/home-background.png" alt="" aria-hidden="true" />
   <div class="sketchy-home-canvas">
     <img class="sketchy-home-bg" src="./ui/home-background.png" alt="" aria-hidden="true" />
@@ -76,7 +76,7 @@ document.getElementById('app')!.innerHTML = `
     <pre id="day4-capabilities" class="benchmark-result" aria-label="Контроли на камерата">Няма проверка.</pre>
   </section>
   <div id="day4-screen" class="drawing-screen" role="dialog" aria-modal="true" aria-label="SketchyAR Drawing" hidden>
-    <div class="drawing-video-stage">
+    <div id="drawing-video-stage" class="drawing-video-stage">
       <video id="drawing-camera" autoplay muted playsinline aria-label="Камера за рисуване"></video>
       <div id="drawing-artwork" class="drawing-artwork" aria-label="Независим слой за рисунка">
         <div id="drawing-grid" class="drawing-overlay-grid" aria-hidden="true">
@@ -179,10 +179,33 @@ document.getElementById('app')!.innerHTML = `
 // It uses fixed positioning and must not inherit its parent's hidden state.
 const drawingScreen = document.getElementById('day4-screen');
 if (drawingScreen) document.getElementById('app')!.appendChild(drawingScreen);
-initDay2();
-initDay3();
-initDay4();
-initHome(openDrawing);
+// Bring up the Home screen FIRST. A benchmark/camera initialization error must
+// never leave both views hidden and the user looking at an empty dark screen.
+let drawingReady = false;
+try {
+  initHome(async () => {
+    if (!drawingReady) {
+      D.log('error', 'startup', 'Drawing module is not ready');
+      window.alert('Drawing още не е готов. Отвори диагностиката от долния десен бутон.');
+      return;
+    }
+    try { await openDrawing(); }
+    catch (error) {
+      D.log('error', 'drawing', 'Opening Drawing failed', error);
+      window.alert('Камерата не можа да се отвори. Виж диагностиката.');
+    }
+  });
+} catch (error) {
+  D.log('error', 'startup', 'Home initialization failed', error);
+  // Home is visible in the initial markup even if optional fitting fails.
+}
+try { initDay2(); }
+catch (error) { D.log('error', 'startup', 'Day 2 diagnostic module failed', error); }
+try { initDay3(); }
+catch (error) { D.log('error', 'startup', 'Day 3 diagnostic module failed', error); }
+try { initDay4(); drawingReady = true; }
+catch (error) { D.log('error', 'startup', 'Day 4 drawing module failed', error); }
+document.getElementById('startup-fallback')?.remove();
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 

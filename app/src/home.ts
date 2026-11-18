@@ -32,9 +32,11 @@ export function initHome(openDrawing: () => Promise<void>): void {
     stage.style.top = `${offsetY}px`;
     stage.style.transform = `translateX(-50%) scale(${scale})`;
   };
-  fitFigmaFrame();
-  window.addEventListener('resize', fitFigmaFrame, { passive: true });
-  window.visualViewport?.addEventListener('resize', fitFigmaFrame, { passive: true });
+  // Home is visible immediately; resize measurements are progressive enhancements.
+  try { fitFigmaFrame(); }
+  catch (error) { D.log('warn', 'home', 'Figma scale fallback', error); }
+  window.addEventListener('resize', () => { try { fitFigmaFrame(); } catch { /* CSS fallback */ } }, { passive: true });
+  window.visualViewport?.addEventListener('resize', () => { try { fitFigmaFrame(); } catch { /* CSS fallback */ } }, { passive: true });
 
   function toast(message: string): void {
     note.textContent = message;
@@ -47,7 +49,7 @@ export function initHome(openDrawing: () => Promise<void>): void {
     developer.hidden = active;
     document.body.classList.toggle('sketchy-home-active', active);
     document.documentElement.classList.toggle('sketchy-home-active', active);
-    if (active) fitFigmaFrame();
+    if (active) { try { fitFigmaFrame(); } catch { /* CSS fallback */ } }
     if (active) window.scrollTo(0, 0);
   };
   setHome(true);

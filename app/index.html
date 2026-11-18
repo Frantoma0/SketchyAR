@@ -14,7 +14,39 @@
     <title>SketchyAR</title>
   </head>
   <body>
+    <div id="startup-fallback" aria-live="polite" style="position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:28px;background:#f8f7f3;color:#333;text-align:center;font-family:-apple-system,system-ui,sans-serif">
+      <strong style="font-size:24px">SketchyAR</strong>
+      <p id="startup-message">Зареждане…</p>
+      <a id="startup-retry" href="./" hidden style="color:#333;background:#fff;border:1px solid #777;border-radius:20px;padding:12px 20px;text-decoration:none">Презареди приложението</a>
+    </div>
     <div id="app"></div>
+    <script>
+      // Runs even when the bundled module fails to load: no more silent dark screens.
+      (function () {
+        var fallback = document.getElementById('startup-fallback');
+        var msg = document.getElementById('startup-message');
+        var retry = document.getElementById('startup-retry');
+        var failed = false;
+        function showFailure(reason) {
+          if (!fallback || !fallback.isConnected || failed) return;
+          failed = true;
+          msg.textContent = 'Неуспешно стартиране: ' + reason;
+          retry.hidden = false;
+          console.error('SketchyAR startup:', reason);
+        }
+        window.addEventListener('error', function (e) {
+          if (!document.querySelector('#sketchy-home'))
+            showFailure(e.message || 'липсващ скрипт или ресурс');
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+          if (!document.querySelector('#sketchy-home'))
+            showFailure(String(e.reason || 'неуспешна операция'));
+        });
+        window.setTimeout(function () {
+          if (fallback && fallback.isConnected) showFailure('приложението не завърши зареждането');
+        }, 9000);
+      })();
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
