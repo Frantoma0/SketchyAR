@@ -1,3 +1,37 @@
+# SketchyAR v0.4.13 — Ден 4: финални UI корекции
+
+**Основа:** каченият от потребителя `ar-drawing_fixed.zip` (v0.4.12). Запазен е неговият вече работещ хартиен фон; **не** са връщани предишни експериментални CSS версии.
+
+- Трите текста върху белите графитени бутони са повдигнати визуално с 5 Figma px, без да се местят рамките.
+- „Офлайн Режим“ отваря информативен прозорец: реални данни от Cache Storage и Storage Estimate, честен статус Core/TEED (още невалидирани), проверки и ръчно онлайн презареждане. Пълното кеширане е в Ден 19.
+- „Стари проекти“ запазва четири празни полароида и получава независим scroll при повече записи. Съхранението в IndexedDB предстои в Дни 13–14.
+- `home.ts` остава единственият източник на safe area за главната Figma група. Не е добавено двойно `padding`.
+- Камерата, Fixed Overlay, жестовете, Python benchmarks и диагностиката са запазени.
+
+## Windows — проверка и публикуване
+
+Разархивирай и копирай съдържанието на `ar-drawing/` в **съществуващото** си локално Git хранилище. **Не заменяй** `.git/`, не копирай `node_modules/`. От корена на репото:
+
+```powershell
+cd app
+npm ci
+npm run typecheck
+npm run build
+cd ..
+python -m pytest python_engine -q
+
+git status
+git add .
+git commit -m "Day 4.13: offline details and home finishing"
+git push origin main
+```
+
+Изчакай GitHub Actions и провери новия commit в диагностиката. Чеклист: [`docs/day4_final_0413.md`](docs/day4_final_0413.md).
+
+> Забележка: текущият Caveat се зарежда от Google Fonts. Локалното офлайн вграждане е отделна задача преди Ден 19.
+
+---
+
 # SketchyAR v0.4.9 — Root Wallpaper Experiment (without status-bar changes)
 
 **Scope:** Only one structural adjustment: paint the PNG texture as the root

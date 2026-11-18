@@ -3,6 +3,7 @@
  *  Never draw an artificial Dynamic Island or phone bezel on the actual iPhone.
  */
 import * as D from './diagnostics';
+import { initOfflineStatus } from './offline-status';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -138,10 +139,7 @@ export function initHome(openDrawing: () => Promise<void>): void {
     toast('Зареждането на запазени проекти ще бъде добавено с локалната база данни. Засега избери „Нова рисунка“.');
     D.log('info', 'home', 'load-project-not-yet-available');
   });
-  el<HTMLButtonElement>('home-offline').addEventListener('click', () => {
-    toast('Офлайн инсталацията се разработва за Ден 19. Дотогава приложението и Pyodide изискват интернет при стартиране.');
-    D.log('info', 'home', 'offline-information');
-  });
+  const closeOfflinePanel = initOfflineStatus();
   el<HTMLButtonElement>('home-save-icon').addEventListener('click', () => {
     setHome(false);
     D.log('info', 'home', 'open-developer-diagnostics');
@@ -152,6 +150,7 @@ export function initHome(openDrawing: () => Promise<void>): void {
   });
   // The Drawing screen lives outside the hidden developer container.
   document.addEventListener('sketchyar:drawing:opened', () => {
+    closeOfflinePanel();
     home.hidden = true;
     document.body.classList.remove('sketchy-home-active');
     document.documentElement.classList.remove('sketchy-home-active');

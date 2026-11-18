@@ -44,6 +44,7 @@ document.getElementById('app')!.innerHTML = `
     </div>
     <button id="home-offline" class="home-pill home-offline" type="button" aria-label="Офлайн режим — информация">
       <img class="home-pill-bg" src="./ui/pill-base-white.svg" alt="" />
+      <span id="home-offline-indicator" class="home-offline-indicator" aria-hidden="true"></span>
       <span class="home-pill-text home-offline-text">Офлайн Режим</span>
     </button>
     <button id="home-save-icon" class="home-save" type="button" aria-label="Диагностика на приложението — временно на бутона за запазване" title="Диагностика (временно)">
@@ -53,6 +54,24 @@ document.getElementById('app')!.innerHTML = `
   </div>
   <p id="home-message" class="home-message" role="status" aria-live="polite" hidden></p>
 </section>
+<div id="home-offline-dialog" class="offline-dialog-backdrop" role="presentation" hidden>
+  <div class="offline-dialog" role="dialog" aria-modal="true" aria-labelledby="offline-dialog-title" aria-describedby="offline-dialog-desc" tabindex="-1">
+    <button id="offline-dialog-close" class="offline-close" type="button" aria-label="Затвори информацията">×</button>
+    <h2 id="offline-dialog-title">Офлайн Режим</h2>
+    <p id="offline-dialog-desc">Локални ресурси и съхранение на SketchyAR.</p>
+    <div class="offline-status-row"><span>Core ресурси</span><strong id="offline-core-status">Проверява се…</strong></div>
+    <div class="offline-status-row"><span>Edge AI · TEED</span><strong id="offline-ai-status">Проверява се…</strong></div>
+    <div class="offline-status-row"><span>Cache Storage</span><strong id="offline-cache-status">Проверява се…</strong></div>
+    <div class="offline-status-row"><span>Локално пространство</span><strong id="offline-storage-status">Проверява се…</strong></div>
+    <div class="offline-status-row"><span>Постоянно съхранение</span><strong id="offline-persist-status">Проверява се…</strong></div>
+    <p id="offline-dialog-note" class="offline-dialog-note">Офлайн пакетите и проверката на хешовете ще бъдат реализирани на Ден 19.</p>
+    <p id="offline-dialog-action-status" class="offline-dialog-action-status" aria-live="polite"></p>
+    <div class="offline-dialog-actions">
+      <button id="offline-dialog-check" type="button">Провери отново</button>
+      <button id="offline-dialog-refresh" type="button">Обнови страницата</button>
+    </div>
+  </div>
+</div>
 <div id="developer-screen" hidden>
 <main>
   <button id="developer-back-home" class="act developer-back" type="button">← Начална страница</button>
