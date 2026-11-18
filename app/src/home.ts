@@ -37,7 +37,6 @@ export function initHome(openDrawing: () => Promise<void>): void {
   // home indicator). Safari tab: iOS 26 draws a floating address bar over the bottom of the page; there is
   // no API for its height, so a fixed reserve keeps the last row clear of it.
   const SAFARI_BOTTOM_RESERVE = 96;
-  const EDGE = 20;
   const TOP_EDGE = 12;
   const BOTTOM_EDGE = 4;
 
