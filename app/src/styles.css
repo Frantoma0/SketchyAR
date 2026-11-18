@@ -77,7 +77,6 @@ body.day3-fullscreen-open { overscroll-behavior: none; }
 .drawing-video-stage { position: absolute; inset: 0; overflow: hidden; background: #090b0c; }
 #drawing-camera { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; background: #090b0c; }
 .drawing-overlay-grid { position: absolute; inset: 0; pointer-events: none; opacity: .5; background-image: linear-gradient(to right, rgba(239,240,241,.3) 1px, transparent 1px), linear-gradient(to bottom, rgba(239,240,241,.3) 1px, transparent 1px); background-size: 12.5% 12.5%; }
-.drawing-guide-frame { position: absolute; inset: 19% 12%; border: 2px dashed rgba(249,231,179,.9); border-radius: 8px; }
 .drawing-top-controls { position: absolute; inset: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: calc(env(safe-area-inset-top, 0px) + 16px) calc(env(safe-area-inset-right, 0px) + 16px) 14px calc(env(safe-area-inset-left, 0px) + 16px); background: linear-gradient(rgba(0,0,0,.75), rgba(0,0,0,0)); }
 .drawing-title { font-size: .82rem; font-weight: 600; letter-spacing: .02em; text-shadow: 0 1px 4px #000; }
 .drawing-bottom-controls { position: absolute; inset: auto 0 0; display: flex; flex-direction: column; gap: 9px; padding: 32px calc(env(safe-area-inset-right, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 16px) calc(env(safe-area-inset-left, 0px) + 16px); background: linear-gradient(transparent, rgba(0,0,0,.88) 26%, rgba(0,0,0,.93)); }
@@ -256,12 +255,19 @@ body.sketchy-home-active { background: transparent; overflow: hidden !important;
   transform-origin: center center; pointer-events: none;
   will-change: transform;
 }
+/* Rule-of-thirds grid is a fixed camera guide, never a drawing transform. */
 .drawing-overlay-grid {
-  position: relative; inset: auto; flex: 0 0 100%; width: 100%; aspect-ratio: 3 / 4;
-  background-image: linear-gradient(to right, rgba(239,240,241,.8) 1px, transparent 1px), linear-gradient(to bottom, rgba(239,240,241,.8) 1px, transparent 1px);
-  background-size: 12.5% 12.5%; border: 1px solid rgba(245,245,245,.8); opacity: 1;
+  position: absolute; inset: 0; z-index: 3; width: 100%; height: 100%;
+  pointer-events: none; touch-action: none; opacity: 1;
+  background: none; background-image: none; background-size: auto; border: 0;
 }
-.drawing-guide-frame { inset: 8%; }
+.drawing-gridline { position: absolute; background: rgba(255,255,255,.42); box-shadow: 0 0 1px rgba(0,0,0,.56); pointer-events:none; }
+.drawing-gridline-v { top:0; bottom:0; width:1px; }
+.drawing-gridline-h { left:0; right:0; height:1px; }
+.drawing-gridline-v1 { left:33.333333%; }
+.drawing-gridline-v2 { left:66.666667%; }
+.drawing-gridline-h1 { top:33.333333%; }
+.drawing-gridline-h2 { top:66.666667%; }
 .drawing-user-image { display: block; max-width: 100%; max-height: 56dvh; height: auto; object-fit: contain; }
 .drawing-user-image[hidden] { display: none !important; }
 #day4-scale { width: 100%; accent-color: #e4e8ee; height: 28px; }
@@ -302,7 +308,7 @@ body.drawing-open { background: #090b0c !important; }
   border-radius: 22px; color: inherit; text-decoration: none; background: #fff; }
 #startup-fallback[hidden] { display: none !important; }
 
-/* Day 4.16 — Figma graphite camera UI, intentionally independent of homepage/wallpaper. */
+/* Day 4.17 — Figma graphite camera UI, gallery-first, full-length progress slider. */
 .drawing-screen .drawing-top-controls.sketch-camera-top {
   position: absolute; inset: 0 0 auto 0; display:flex; align-items:center;
   justify-content:space-between; background: none; z-index: 15;
@@ -323,11 +329,13 @@ body.drawing-open { background: #090b0c !important; }
 .sketch-camera-slider-label-row { display:flex; align-items:baseline; justify-content:space-between; gap:10px; padding-inline:6px; }
 .sketch-camera-slider-title { color:#faf9f7; font:700 27px/1.1 'Caveat',cursive; text-shadow:0 1px 4px rgba(0,0,0,.95),0 0 8px #000; }
 .sketch-camera-slider-value { color:#fff; font:700 19px/1.1 'Caveat',cursive; text-shadow:0 1px 4px black; }
-.sketch-camera-slider-wrap { position:relative; height:40px; margin:0 7px 2px; }
-.sketch-camera-slider-back { position:absolute; inset:7px 0 0 0; width:100%; height:30px; object-fit:fill; pointer-events:none; }
-.sketch-camera-slider-rail { position:absolute; inset:11px 0 0 0; width:100%; height:15px; pointer-events:none; object-fit:fill; }
-.sketch-camera-slider-thumb { position:absolute; left:var(--opacity-percent,50%); top:6px; transform:translateX(-50%); width:25px; height:26px; pointer-events:none; z-index:2; }
-#sketch-camera-opacity { appearance:none; -webkit-appearance:none; background:transparent; position:absolute; left:0; right:0; top:0; width:100%; height:40px; margin:0; touch-action:pan-x; z-index:3; cursor:pointer; }
+.sketch-camera-slider-wrap { position:relative; height:43px; margin:0 0 2px; min-width:0; }
+/* Full-width Figma white tray; the graphite bar is revealed only up to the thumb. */
+.sketch-camera-slider-back { position:absolute; left:0; right:0; top:2px; width:100%; height:39px; object-fit:fill; pointer-events:none; }
+.sketch-camera-slider-track { position:absolute; left:11px; right:11px; top:14px; height:15px; }
+.sketch-camera-slider-rail { position:absolute; inset:0; width:100%; height:100%; object-fit:fill; pointer-events:none; -webkit-clip-path:inset(0 calc(100% - var(--opacity-percent,50%)) 0 0); clip-path:inset(0 calc(100% - var(--opacity-percent,50%)) 0 0); }
+.sketch-camera-slider-thumb { position:absolute; left:var(--opacity-percent,50%); top:-6px; transform:translateX(-50%); width:25px; height:26px; pointer-events:none; z-index:2; }
+#sketch-camera-opacity { appearance:none; -webkit-appearance:none; background:transparent; position:absolute; left:-12.5px; top:-14px; width:calc(100% + 25px); height:43px; margin:0; touch-action:pan-x; z-index:3; cursor:pointer; }
 #sketch-camera-opacity::-webkit-slider-runnable-track { background:transparent; height:40px; }
 #sketch-camera-opacity::-webkit-slider-thumb { appearance:none; -webkit-appearance:none; width:30px; height:40px; background:transparent; border:0; }
 #sketch-camera-opacity::-moz-range-track { background:transparent; }
@@ -348,11 +356,11 @@ body.drawing-open { background: #090b0c !important; }
 }
 /* Let the grid be independently enabled without replacing an imported picture. */
 .drawing-artwork { isolation:isolate; aspect-ratio:3/4; display:flex; align-items:center; justify-content:center; }
-.drawing-overlay-grid:not([hidden]) { position:absolute; inset:0; z-index:2; width:100%; height:100%; opacity:.55; }
+.drawing-overlay-grid:not([hidden]) { position:absolute; inset:0; z-index:3; width:100%; height:100%; opacity:1; }
 .drawing-user-image:not([hidden]) { position:relative; z-index:1; }
 @media (max-height:720px) {
   .drawing-screen .drawing-top-controls.sketch-camera-top { padding-top:calc(env(safe-area-inset-top,0px) + 4px); }
   .drawing-screen .drawing-bottom-controls.sketch-camera-bottom { gap:3px; bottom:calc(env(safe-area-inset-bottom,0px) + 4px); }
   .sketch-camera-icon { max-height:60px; }
-  .sketch-camera-slider-wrap { height:34px; }
+  .sketch-camera-slider-wrap { height:39px; }
 }

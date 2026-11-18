@@ -1,4 +1,4 @@
-/** Day 4.16: Figma camera controls on top of a responsive fullscreen camera.
+/** Day 4.17: Figma camera controls, gallery-first creation and 3x3 viewfinder.
  * All camera lifecycle and gesture code remains separate from the decorative SVG assets.
  */
 import * as D from './diagnostics';
@@ -9,7 +9,7 @@ const el = <T extends HTMLElement>(id: string): T => document.getElementById(id)
 let drawingOpen = false;
 let entering = false;
 let priorOverflow = '';
-let showGrid = true;
+let showGrid = false;
 let artworkScale = 100;
 let artworkX = 0;
 let artworkY = 0;
@@ -18,6 +18,7 @@ let userImageUrl: string | null = null;
 let opacity = 50;
 let artworkLocked = false;
 let artworkMirrored = false;
+let pendingNewDrawing = false;
 
 /** iOS Home Screen sometimes reports a smaller dynamic viewport than the
  *  full physical viewport. Keep the camera behind the system safe areas too;
@@ -42,7 +43,7 @@ function reflect(): void {
   el<HTMLButtonElement>('btn-day4-exit').disabled = entering;
   el<HTMLButtonElement>('btn-day4-retry').hidden = cameraController.active || entering;
   el('drawing-grid').hidden = !showGrid;
-  el<HTMLButtonElement>('btn-day4-grid').textContent = userImageUrl ? 'Тестова мрежа' : showGrid ? 'Скрий мрежата' : 'Покажи мрежата';
+  el<HTMLButtonElement>('btn-day4-grid').textContent = showGrid ? 'Скрий мрежата 3×3' : 'Покажи мрежата 3×3';
   // Video remains fixed to cover. Only the artwork can change scale.
   el<HTMLButtonElement>('btn-day4-fit').textContent = 'Размер 100%';
   el('drawing-artwork').style.setProperty('--artwork-scale', String(artworkScale / 100));
@@ -58,7 +59,7 @@ function reflect(): void {
   el<HTMLInputElement>('day4-opacity').value = String(opacity);
   el<HTMLInputElement>('sketch-camera-opacity').value = String(opacity);
   el('sketch-camera-opacity-value').textContent = `${opacity}%`;
-  el('sketch-camera-opacity').parentElement?.style.setProperty('--opacity-percent', `${opacity}%`);
+  el<HTMLElement>('sketch-camera-opacity').closest<HTMLElement>('.sketch-camera-slider-wrap')?.style.setProperty('--opacity-percent', `${opacity}%`);
   el<HTMLButtonElement>('sketch-camera-lock').setAttribute('aria-pressed', String(artworkLocked));
   el<HTMLButtonElement>('sketch-camera-mirror').setAttribute('aria-pressed', String(artworkMirrored));
   el<HTMLButtonElement>('sketch-camera-grid').setAttribute('aria-pressed', String(showGrid));
@@ -293,7 +294,8 @@ async function exit(): Promise<void> {
     userImageUrl = null;
     el<HTMLImageElement>('drawing-user-image').removeAttribute('src');
   }
-  showGrid = true;
+  showGrid = false;
+  pendingNewDrawing = false;
   artworkLocked = false;
   artworkMirrored = false;
   artworkScale = 100;
@@ -310,6 +312,24 @@ async function exit(): Promise<void> {
   D.log('info', 'day4', 'drawing.close');
   document.dispatchEvent(new Event('sketchyar:drawing:closed'));
   reflect();
+}
+
+/** Called synchronously by the Homepage tap. The browser's native photo picker
+ * opens FIRST; the Drawing view and camera open only after a valid image is chosen.
+ * Cancelling the picker does not start a camera session or show the old demo grid.
+ */
+export function requestNewDrawing(): void {
+  if (drawingOpen || entering || isBusy()) return;
+  const input = el<HTMLInputElement>('drawing-image-file');
+  pendingNewDrawing = true;
+  input.value = ''; // selecting the same photo again must still trigger change
+  D.log('info', 'day4', 'drawing.picker.open', { source: 'home' });
+  try { input.click(); }
+  catch (error) {
+    pendingNewDrawing = false;
+    D.log('warn', 'day4', 'drawing.picker.failed', { message: String(error) });
+    window.alert('Неуспешно отваряне на галерията. Опитай отново.');
+  }
 }
 
 async function retry(): Promise<void> {
@@ -334,7 +354,7 @@ export function initDay4(): void {
   el('btn-day4-exit').addEventListener('click', () => void exit());
   el('btn-day4-retry').addEventListener('click', () => void retry());
   el('btn-day4-grid').addEventListener('click', () => {
-    // Grid is a view-only guide; never discard the user's loaded image.
+    // Camera-aligned 3x3 viewfinder, never part of the movable image or its opacity.
     showGrid = !showGrid;
     reflect();
   });
@@ -356,11 +376,20 @@ export function initDay4(): void {
     D.log('info', 'day4', 'artwork-scale', { scalePercent: artworkScale });
   });
   el<HTMLButtonElement>('btn-day4-image').addEventListener('click', () => {
-    el<HTMLInputElement>('drawing-image-file').click();
+    const input = el<HTMLInputElement>('drawing-image-file');
+    pendingNewDrawing = false;
+    input.value = '';
+    input.click();
+  });
+  el<HTMLInputElement>('drawing-image-file').addEventListener('cancel', () => {
+    pendingNewDrawing = false;
+    D.log('info', 'day4', 'drawing.picker.cancelled');
   });
   el<HTMLInputElement>('drawing-image-file').addEventListener('change', async (event) => {
     const input = event.currentTarget as HTMLInputElement;
     const file = input.files?.[0];
+    const isNewDrawing = pendingNewDrawing;
+    pendingNewDrawing = false;
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       setMessage('Избери файл с изображение.');
@@ -382,9 +411,14 @@ export function initDay4(): void {
       artworkX = 0;
       artworkY = 0;
       artworkAngle = 0;
-      showGrid = false;
+      if (isNewDrawing) {
+        showGrid = false; // rule-of-thirds starts off for each new drawing
+        artworkLocked = false;
+        artworkMirrored = false;
+      }
       reflect();
-      setMessage('Изображението е заредено. Размерът и прозрачността влияят само на него.');
+      if (isNewDrawing) await openDrawing();
+      setMessage('Изображението е заредено. Мрежата 3×3 управлява само визьора на камерата.');
       D.log('info', 'day4', 'drawing.image.loaded', {
         mimeType: file.type, sourceBytes: file.size, width: prepared.width,
         height: prepared.height, reducedTo2048: prepared.reduced,
@@ -394,6 +428,7 @@ export function initDay4(): void {
       if (previousUrl) img.src = previousUrl;
       else img.removeAttribute('src');
       setMessage(`Неуспешно зареждане на изображение: ${String(error)}`);
+      if (isNewDrawing) window.alert('Снимката не можа да бъде заредена. Избери друга снимка.');
       D.log('warn', 'day4', 'drawing.image.failed', { message: String(error) });
     } finally { input.value = ''; }
   });
@@ -419,7 +454,7 @@ export function initDay4(): void {
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && drawingOpen) void exit();
   });
-  // SketchyAR 4.16: original Figma graphite controls overlay the unchanged camera.
+  // SketchyAR 4.17: original Figma graphite controls with separate camera-aligned viewfinder.
   el<HTMLButtonElement>('sketch-camera-import').addEventListener('click', () => {
     el<HTMLButtonElement>('btn-day4-image').click();
   });

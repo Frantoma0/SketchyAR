@@ -4,7 +4,7 @@ import { probeEnv, type EnvSnapshot } from './env';
 import { debugWanted, enableDebug, toggleDebug } from './debug';
 import { initDay2 } from './day2';
 import { initDay3 } from './day3';
-import { initDay4, openDrawing } from './day4';
+import { initDay4, requestNewDrawing } from './day4';
 import { initHome } from './home';
 
 D.installGlobalHandlers();
@@ -79,13 +79,13 @@ document.getElementById('app')!.innerHTML = `
     <h1>SketchyAR</h1>
     <button id="ver" class="ver" type="button" aria-label="Версия на приложението"></button>
   </header>
-  <p class="lead">Ден 4.16: Figma Camera UI, Camera Controller и fullscreen Drawing. Тестовете от Дни 2–3 са запазени.</p>
+  <p class="lead">Ден 4.17: Camera UI, избор на снимка преди камера, мрежа 3×3 и интерактивен графитен плъзгач. Тестовете от Дни 2–3 са запазени.</p>
   <section><h2>Build</h2><dl id="build"></dl></section>
   <section><h2>Среда</h2><dl id="env"><dt>Зареждане</dt><dd>…</dd></dl></section>
   <section><h2>Възможности на устройството</h2><ul id="caps" class="caps"></ul></section>
   <section id="day4">
     <h2>Ден 4 — Drawing основа</h2>
-    <p class="hint">Нов fullscreen Drawing изглед с един Camera Controller, автоматична пауза при background и възстановяване при връщане. Управлява камерата независимо от Python. Използваме отделните SVG икони от Figma; тестовата мрежа остава помощна функция.</p>
+    <p class="hint">Камерата е отделна от рисунката. „Нова рисунка“ първо отваря избор на снимка; мрежата 3×3 служи само за подравняване на камерата.</p>
     <div class="actions">
       <button class="act" id="btn-day4-open" type="button">Отвори Drawing</button>
       <button class="act" id="btn-day4-capabilities" type="button">Провери камерата</button>
@@ -97,10 +97,14 @@ document.getElementById('app')!.innerHTML = `
     <div id="drawing-video-stage" class="drawing-video-stage">
       <video id="drawing-camera" autoplay muted playsinline aria-label="Камера за рисуване"></video>
       <div id="drawing-artwork" class="drawing-artwork" aria-label="Независим слой за рисунка">
-        <div id="drawing-grid" class="drawing-overlay-grid" aria-hidden="true">
-          <div class="drawing-guide-frame"></div>
-        </div>
         <img id="drawing-user-image" class="drawing-user-image" alt="Избрана рисунка върху камерата" hidden />
+      </div>
+      <!-- A fixed rule-of-thirds viewfinder: camera-aligned, never scaled, rotated or faded with the image. -->
+      <div id="drawing-grid" class="drawing-overlay-grid" aria-hidden="true" hidden>
+        <span class="drawing-gridline drawing-gridline-v drawing-gridline-v1"></span>
+        <span class="drawing-gridline drawing-gridline-v drawing-gridline-v2"></span>
+        <span class="drawing-gridline drawing-gridline-h drawing-gridline-h1"></span>
+        <span class="drawing-gridline drawing-gridline-h drawing-gridline-h2"></span>
       </div>
     </div>
     <!-- Camera UI: real interactive layers, not a flattened Camera_Screen.svg. -->
@@ -118,15 +122,18 @@ document.getElementById('app')!.innerHTML = `
         <label for="sketch-camera-opacity" class="sketch-camera-slider-title">Прозрачност</label>
         <output for="sketch-camera-opacity" id="sketch-camera-opacity-value" class="sketch-camera-slider-value">50%</output>
       </div>
-      <div class="sketch-camera-slider-wrap">
+      <div class="sketch-camera-slider-wrap" style="--opacity-percent:50%">
+        <!-- The white graphite frame is always fully visible. Only the dark fill is clipped. -->
         <img class="sketch-camera-slider-back" src="./ui/camera/slider-tray.svg" alt="" />
-        <img class="sketch-camera-slider-rail" src="./ui/camera/slider-graphite.svg" alt="" />
-        <img class="sketch-camera-slider-thumb" src="./ui/camera/slider-thumb.svg" alt="" />
-        <input id="sketch-camera-opacity" type="range" min="0" max="100" step="1" value="50" aria-label="Прозрачност на рисунката от 0 до 100 процента" />
+        <div class="sketch-camera-slider-track">
+          <img class="sketch-camera-slider-rail" src="./ui/camera/slider-graphite.svg" alt="" />
+          <img class="sketch-camera-slider-thumb" src="./ui/camera/slider-thumb.svg" alt="" />
+          <input id="sketch-camera-opacity" type="range" min="0" max="100" step="1" value="50" aria-label="Прозрачност на рисунката от 0 до 100 процента" />
+        </div>
       </div>
       <div class="sketch-camera-actions" role="group" aria-label="Управление на рисунката">
         <button id="sketch-camera-mirror" class="sketch-camera-icon" type="button" aria-label="Огледално обръщане" aria-pressed="false" title="Огледално обръщане"><img src="./ui/camera/mirror.svg" alt="" /></button>
-        <button id="sketch-camera-grid" class="sketch-camera-icon" type="button" aria-label="Мрежа" aria-pressed="true" title="Покажи или скрий мрежата"><img src="./ui/camera/grid.svg" alt="" /></button>
+        <button id="sketch-camera-grid" class="sketch-camera-icon" type="button" aria-label="Мрежа 3 на 3 върху цялата камера" aria-pressed="false" title="Мрежа 3×3: включи/изключи"><img src="./ui/camera/grid.svg" alt="" /></button>
         <button id="sketch-camera-reset" class="sketch-camera-icon" type="button" aria-label="Центрирай и възстанови мащаба" title="Центрирай"><img src="./ui/camera/reset.svg" alt="" /></button>
         <button id="sketch-camera-lock" class="sketch-camera-icon" type="button" aria-label="Заключи позицията на рисунката" aria-pressed="false" title="Заключи рисунката"><img src="./ui/camera/lock.svg" alt="" /></button>
       </div>
@@ -137,8 +144,7 @@ document.getElementById('app')!.innerHTML = `
     <div class="drawing-legacy-controls" aria-hidden="true">
       <button id="btn-day4-exit" type="button" tabindex="-1">Назад</button>
       <button id="btn-day4-image" type="button" tabindex="-1">Избери снимка</button>
-      <input id="drawing-image-file" type="file" accept="image/*" hidden />
-      <button id="btn-day4-fit" type="button" tabindex="-1">Размер 100%</button>
+            <button id="btn-day4-fit" type="button" tabindex="-1">Размер 100%</button>
       <button id="btn-day4-center" type="button" tabindex="-1">Центрирай</button>
       <button id="btn-day4-grid" type="button" tabindex="-1">Скрий мрежата</button>
       <label for="day4-scale">Размер <span id="day4-scale-number">100%</span></label>
@@ -215,7 +221,9 @@ document.getElementById('app')!.innerHTML = `
     <p class="hint">Проверка на crash marker: старт на тестова задача, затваряне на приложението от app switcher, ново отваряне. В събитията трябва да се появи unexpected_stop.</p>
   </section>
 </main>
-</div>`;
+</div>
+<!-- Keep the native picker outside hidden Home/Drawing containers: iOS must open it from a direct tap. -->
+<input id="drawing-image-file" type="file" accept="image/*" hidden />`;
 
 // Drawing must remain visible when the developer view is hidden behind Home.
 // It uses fixed positioning and must not inherit its parent's hidden state.
@@ -231,11 +239,8 @@ try {
       window.alert('Drawing още не е готов. Отвори диагностиката от долния десен бутон.');
       return;
     }
-    try { await openDrawing(); }
-    catch (error) {
-      D.log('error', 'drawing', 'Opening Drawing failed', error);
-      window.alert('Камерата не можа да се отвори. Виж диагностиката.');
-    }
+    // Must be called directly within this tap. iOS may block a deferred file picker.
+    requestNewDrawing();
   });
 } catch (error) {
   D.log('error', 'startup', 'Home initialization failed', error);
