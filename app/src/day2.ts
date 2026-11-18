@@ -1,58 +1,30 @@
 import * as D from './diagnostics';
 import { resetPythonWorker, runPythonCommand, type Command } from './python-client';
+import { cameraController } from './camera-controller';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
-let stream: MediaStream | null = null;
 let busy = false;
 export const isBusy = (): boolean => busy;
 
-export function cameraActive(): boolean {
-  return !!stream?.getVideoTracks().some((track) => track.readyState === 'live');
-}
-
-function setStatus(value: string): void {
-  el('day2-status').textContent = value;
-}
-
+export function cameraActive(): boolean { return cameraController.active; }
+function setStatus(value: string): void { el('day2-status').textContent = value; }
 export function setBusy(value: boolean): void {
   busy = value;
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-python]')) button.disabled = value;
-  const cameraButton = document.getElementById('btn-camera') as HTMLButtonElement | null;
-  if (cameraButton) cameraButton.disabled = value;
+  const button = document.getElementById('btn-camera') as HTMLButtonElement | null;
+  if (button) button.disabled = value;
 }
-
 export function cameraStop(): void {
-  for (const track of stream?.getTracks() ?? []) track.stop();
-  stream = null;
-  const video = el<HTMLVideoElement>('camera-preview');
-  video.pause();
-  video.srcObject = null;
+  cameraController.stop('day2-stop');
   el('btn-camera').textContent = 'Пусни камера';
   D.log('info', 'camera', 'stop');
 }
-
 export async function cameraStart(): Promise<void> {
-  if (!navigator.mediaDevices?.getUserMedia) throw new Error('Camera API не се поддържа');
-  // No forced autofocus/exposure constraints; Day 4 will inspect support on this iPhone.
-  const next = await navigator.mediaDevices.getUserMedia({
-    audio: false,
-    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
-  });
-  stream = next;
-  const video = el<HTMLVideoElement>('camera-preview');
-  video.srcObject = next;
-  video.playsInline = true;
-  video.muted = true;
-  try {
-    await video.play();
-    el('btn-camera').textContent = 'Спри камера';
-    const settings = next.getVideoTracks()[0]?.getSettings();
-    D.log('info', 'camera', 'start', { settings });
-    setStatus('Камерата работи. Можеш да стартираш Pyodide с включена камера.');
-  } catch (error) {
-    cameraStop();
-    throw error;
-  }
+  await cameraController.start(el<HTMLVideoElement>('camera-preview'), 'day2-start');
+  if (!cameraController.active) throw new Error('Камерата не е активна');
+  el('btn-camera').textContent = 'Спри камера';
+  D.log('info', 'camera', 'start', { settings: cameraController.snapshot.settings });
+  setStatus('Камерата работи. Можеш да стартираш Pyodide с включена камера.');
 }
 
 function median(nums: number[]): number {
@@ -158,7 +130,10 @@ export function initDay2(): void {
     resetPythonWorker();
     setStatus('Worker е освободен. Следващото инициализиране ще е cold start.');
   });
-  // Day-2 scope: no robust background/foreground camera restoration yet (Day 4).
-  addEventListener('pagehide', cameraStop);
+  // Day 4 controller owns pagehide / visibilitychange; do not clear the resume intent.
+  void cameraController.attach(video);
+  cameraController.subscribe((snapshot) => {
+    el('btn-camera').textContent = snapshot.active ? 'Спри камера' : 'Пусни камера';
+  });
   D.log('info', 'day2', 'camera + Pyodide spike UI готов');
 }

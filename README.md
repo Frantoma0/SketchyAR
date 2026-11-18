@@ -1,3 +1,38 @@
+# SketchyAR — Ден 4 (v0.4.0)
+
+Пакетът е **надграждане**, а не ново Git хранилище. Копирай съдържанието на `ar-drawing/` върху съществуващия си проект **без** да триеш `.git/`. Задължително запази свои непубликувани промени преди копиране.
+
+## Windows проверки и публикуване
+
+От root папката на проекта:
+
+```powershell
+cd app
+npm ci
+npm run typecheck
+npm run build
+cd ..
+python -m pytest python_engine -q
+git status
+git add .
+git commit -m "Day 4: Camera Controller and Drawing shell"
+git push origin main
+```
+
+След успешен GitHub Actions deploy отвори **Home Screen SketchyAR**, провери `v0.4.0` и актуалния commit. За подробен телефонен чеклист виж [`docs/day4.md`](docs/day4.md). Service Worker умишлено още няма.
+
+## Figma
+
+**Изпрати първия достатъчно завършен Drawing screen сега / преди Ден 5.** В този пакет контролите са временни; не се опитваме да познаваме стила на бъдещите PNG бутони. Резултатите от Figma ще бъдат приложени след проверката на работещата камера и lifecycle.
+
+## Обхват
+
+- Ден 4: `CameraController` + fullscreen Drawing без жестове и импорт на снимка.
+- Ден 5: Figma UI адаптация + отделен overlay за снимка + 0–100% opacity.
+- Ден 6: drag/pinch/rotate/Lock и EXIF.
+
+---
+
 # SketchyAR — Ден 3: Fullscreen + Stress
 
 **Вход:** съществуващият работещ SketchyAR v0.2.0 от Ден 2. **Резултат:** v0.3.0,

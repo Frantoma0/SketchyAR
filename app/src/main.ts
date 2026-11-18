@@ -4,6 +4,7 @@ import { probeEnv, type EnvSnapshot } from './env';
 import { debugWanted, enableDebug, toggleDebug } from './debug';
 import { initDay2 } from './day2';
 import { initDay3 } from './day3';
+import { initDay4 } from './day4';
 
 D.installGlobalHandlers();
 D.checkPreviousSession();
@@ -27,10 +28,43 @@ document.getElementById('app')!.innerHTML = `
     <h1>SketchyAR</h1>
     <button id="ver" class="ver" type="button" aria-label="Версия на приложението"></button>
   </header>
-  <p class="lead">Ден 3: камера на цял екран, тестов overlay и продължително Python натоварване.</p>
+  <p class="lead">Ден 4: Camera Controller и реална fullscreen основа на Drawing екрана. Тестовете от Дни 2–3 са запазени.</p>
   <section><h2>Build</h2><dl id="build"></dl></section>
   <section><h2>Среда</h2><dl id="env"><dt>Зареждане</dt><dd>…</dd></dl></section>
   <section><h2>Възможности на устройството</h2><ul id="caps" class="caps"></ul></section>
+  <section id="day4">
+    <h2>Ден 4 — Drawing основа</h2>
+    <p class="hint">Нов fullscreen Drawing изглед с един Camera Controller, автоматична пауза при background и възстановяване при връщане. Управлява камерата независимо от Python. Контролите и мрежата са временни до Figma имплементацията.</p>
+    <div class="actions">
+      <button class="act" id="btn-day4-open" type="button">Отвори Drawing</button>
+      <button class="act" id="btn-day4-capabilities" type="button">Провери камерата</button>
+    </div>
+    <p id="day4-status" role="status" aria-live="polite">Готово за тест на Ден 4.</p>
+    <pre id="day4-capabilities" class="benchmark-result" aria-label="Контроли на камерата">Няма проверка.</pre>
+  </section>
+  <div id="day4-screen" class="drawing-screen" role="dialog" aria-modal="true" aria-label="SketchyAR Drawing" hidden>
+    <div class="drawing-video-stage">
+      <video id="drawing-camera" autoplay muted playsinline aria-label="Камера за рисуване"></video>
+      <div id="drawing-grid" class="drawing-overlay-grid" aria-hidden="true">
+        <div class="drawing-guide-frame"></div>
+      </div>
+    </div>
+    <div class="drawing-top-controls">
+      <button class="drawing-btn" id="btn-day4-exit" type="button" aria-label="Изход от Drawing">← Назад</button>
+      <span class="drawing-title">SketchyAR · Drawing</span>
+    </div>
+    <div class="drawing-bottom-controls">
+      <p id="drawing-camera-status" class="drawing-camera-status" role="status" aria-live="polite">Камерата се стартира…</p>
+      <div class="drawing-controls-row">
+        <button class="drawing-btn" id="btn-day4-retry" type="button">Опитай пак</button>
+        <button class="drawing-btn" id="btn-day4-fit" type="button">Кадър: запълни</button>
+        <button class="drawing-btn" id="btn-day4-grid" type="button">Скрий мрежата</button>
+      </div>
+      <label class="drawing-slider-label" for="day4-opacity">Прозрачност на тестовия слой <strong id="day4-opacity-number">50%</strong></label>
+      <input id="day4-opacity" type="range" min="0" max="100" value="50" step="1" />
+      <p class="drawing-note">Временен тестов слой — реална снимка, жестове и PNG контроли добавяме след Figma.</p>
+    </div>
+  </div>
   <section id="day2">
     <h2>Ден 2 — Camera + Python Spike</h2>
     <p class="hint">Работи само след натискане на бутон. Първото зареждане изисква интернет; Pyodide още не е част от офлайн кеша.</p>
@@ -101,6 +135,7 @@ document.getElementById('app')!.innerHTML = `
 
 initDay2();
 initDay3();
+initDay4();
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
