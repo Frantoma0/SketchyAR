@@ -176,9 +176,9 @@ body.sketchy-home-active { background: transparent; overflow: hidden !important;
   grid-template-rows: none; grid-auto-rows: 176.5px;
   align-content: start; column-gap: 20px; row-gap: var(--g);
   overflow-x: hidden; overflow-y: auto;
-  overscroll-behavior: contain; touch-action: pan-y;
+  min-height: 0; overscroll-behavior-y: contain; touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  scrollbar-width: none; position: absolute;
 }
 .home-project-grid::-webkit-scrollbar { display: none; }
 .home-project-tile { position: relative; min-width: 0; min-height: 0; pointer-events: none; }
@@ -367,12 +367,21 @@ body.drawing-open { background: #090b0c !important; }
 .home-project-tile.home-project-saved {
   pointer-events: auto; cursor: pointer; position: relative; padding: 0; margin: 0;
   border: 0; border-radius: 0; background: transparent; min-width: 0;
-  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent; touch-action: pan-y;
 }
 .home-project-saved:focus-visible { outline: 2px solid #5c5149; outline-offset: 1px; }
+/* Exact photo cut-out in the supplied transparent polaroid.png. The original
+   frame remains on top. The window clips any photo and includes the whole square.
+   All values relative to the Figma polaroid element, not to the camera image. */
+.home-project-saved .home-project-photo-window {
+  position: absolute; left: 7.1%; top: 6.9%; width: 85.8%; height: 73.6%;
+  display: block; overflow: hidden; z-index: 0; background: #faf9f7;
+  pointer-events: none;
+}
 .home-project-saved .home-project-preview {
-  position: absolute; left: 6%; top: 5%; width: 88%; height: 74%;
-  object-fit: cover; background: #faf9f7; z-index: 0; border: 0;
+  position: absolute; inset: 0; display: block; width: 100%; height: 100%;
+  object-fit: cover; object-position: center center; border: 0;
+  pointer-events: none;
 }
 .home-project-saved .home-project-frame {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill;

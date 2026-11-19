@@ -63,7 +63,19 @@ function reflect(): void {
   el<HTMLInputElement>('sketch-camera-opacity').value = String(opacity);
   el('sketch-camera-opacity-value').textContent = `${opacity}%`;
   el<HTMLElement>('sketch-camera-opacity').closest<HTMLElement>('.sketch-camera-slider-wrap')?.style.setProperty('--opacity-percent', `${opacity}%`);
-  el<HTMLButtonElement>('sketch-camera-lock').setAttribute('aria-pressed', String(artworkLocked));
+  const lockButton = el<HTMLButtonElement>('sketch-camera-lock');
+  lockButton.setAttribute('aria-pressed', String(artworkLocked));
+  // Swap the two original graphite SVG exports. An unlocked drawing displays
+  // the open padlock (action: lock); a locked drawing shows the closed padlock
+  // (action: unlock). The state remains owned by artworkLocked, not the image.
+  const lockImage = lockButton.querySelector<HTMLImageElement>('img');
+  const iconName = artworkLocked ? 'locked.svg' : 'lock.svg';
+  if (lockImage && lockImage.dataset.icon !== iconName) {
+    lockImage.src = `${import.meta.env.BASE_URL}ui/camera/${iconName}`;
+    lockImage.dataset.icon = iconName;
+  }
+  lockButton.setAttribute('aria-label', artworkLocked ? 'Отключи позицията на рисунката' : 'Заключи позицията на рисунката');
+  lockButton.title = artworkLocked ? 'Отключи рисунката' : 'Заключи рисунката';
   el<HTMLButtonElement>('sketch-camera-mirror').setAttribute('aria-pressed', String(artworkMirrored));
   el<HTMLButtonElement>('sketch-camera-grid').setAttribute('aria-pressed', String(showGrid));
   el<HTMLButtonElement>('sketch-camera-reset').disabled = artworkLocked;

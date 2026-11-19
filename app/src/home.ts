@@ -4,7 +4,7 @@
  */
 import * as D from './diagnostics';
 import { initOfflineStatus } from './offline-status';
-import { listProjectThumbnails, openProjectDB, type ProjectThumbnail } from './storage/project-store';
+import { listProjectThumbnails, openProjectDB, upgradeLegacyThumbnails, type ProjectThumbnail } from './storage/project-store';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -124,6 +124,7 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
     messageTimer = window.setTimeout(() => { note.hidden = true; }, 4600);
   }
   let galleryGeneration = 0;
+  let migrationPromise: Promise<number> | null = null;
   let pictureURLs: string[] = [];
   let cachedCards: ProjectThumbnail[] = [];
   function placeholder(): HTMLElement {
@@ -139,6 +140,13 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
   async function refreshGallery(): Promise<void> {
     const generation = ++galleryGeneration;
     try {
+      migrationPromise ??= upgradeLegacyThumbnails().catch(error => {
+        D.log('warn', 'day5', 'thumbnail.migration.failed', { message: String(error) });
+        return 0;
+      });
+      const migrated = await migrationPromise;
+      if (migrated) D.log('info', 'day5', 'thumbnail.migrated', { count: migrated });
+      if (generation !== galleryGeneration) return;
       const cards = await listProjectThumbnails();
       if (generation !== galleryGeneration) return;
       cachedCards = cards;
@@ -151,13 +159,17 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
         tile.title = project.title;
         tile.setAttribute('aria-label', `Отвори ${project.title}`);
         if (thumbnail?.blob) {
+          const imageWindow = document.createElement('span');
+          imageWindow.className = 'home-project-photo-window';
+          imageWindow.setAttribute('aria-hidden', 'true');
           const image = document.createElement('img');
           const objectURL = URL.createObjectURL(thumbnail.blob);
           nextURLs.push(objectURL);
           image.src = objectURL;
           image.alt = '';
           image.className = 'home-project-preview';
-          tile.append(image);
+          imageWindow.append(image);
+          tile.append(imageWindow);
         }
         const frame = document.createElement('img');
         frame.className = 'home-project-frame';
@@ -168,7 +180,12 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
         fragment.append(tile);
       });
       for (let index = cards.length; index < 4; index++) fragment.append(placeholder());
+      const previousScroll = gallery.scrollTop;
       gallery.replaceChildren(fragment);
+      // The header and footer stay fixed; only the inner two-column gallery
+      // is scrollable after a fifth project appears.
+      gallery.dataset.scrollable = String(cards.length > 4);
+      gallery.scrollTop = Math.min(previousScroll, Math.max(0, gallery.scrollHeight - gallery.clientHeight));
       pictureURLs.forEach(URL.revokeObjectURL);
       pictureURLs = nextURLs;
       gallery.setAttribute('aria-label', `Стари проекти: ${cards.length}`);

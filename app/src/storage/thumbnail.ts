@@ -7,12 +7,16 @@ export async function makeThumbnail(image: HTMLImageElement): Promise<{ blob: Bl
   canvas.height = height;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas 2D не е наличен за миниатюра');
-  ctx.fillStyle = '#faf9f7';
-  ctx.fillRect(0, 0, width, height);
-  const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
-  const drawW = Math.max(1, Math.round(image.naturalWidth * scale));
-  const drawH = Math.max(1, Math.round(image.naturalHeight * scale));
-  ctx.drawImage(image, (width - drawW) / 2, (height - drawH) / 2, drawW, drawH);
+  // Cover the entire 320×320 polaroid window: crop the source centrally,
+  // never pad it with opaque white sidebars. The original source Blob is kept
+  // completely untouched in IndexedDB.
+  const sourceW = image.naturalWidth;
+  const sourceH = image.naturalHeight;
+  if (!sourceW || !sourceH) throw new Error('Невалидно изображение за миниатюра');
+  const cropSize = Math.min(sourceW, sourceH);
+  const cropX = (sourceW - cropSize) / 2;
+  const cropY = (sourceH - cropSize) / 2;
+  ctx.drawImage(image, cropX, cropY, cropSize, cropSize, 0, 0, width, height);
   const toBlob = (type: string, quality: number) => new Promise<Blob | null>(resolve => canvas.toBlob(resolve, type, quality));
   try {
     const blob = (await toBlob('image/webp', .78)) ?? (await toBlob('image/jpeg', .84));

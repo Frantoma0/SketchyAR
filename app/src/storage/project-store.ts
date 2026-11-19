@@ -3,6 +3,7 @@
  *  Important: make all IDB requests in one synchronous task; await only after tx starts.
  */
 import { isGuidePlanV1, type GuidePlanV1 } from '../domain/guide';
+import { makeThumbnail } from './thumbnail';
 
 export const PROJECT_DB_NAME = 'sketchyar-projects';
 export const PROJECT_DB_VERSION = 1;
@@ -111,7 +112,8 @@ export function openProjectDB(): Promise<IDBDatabase> {
 function previewAsset(blob: Blob, id: string, projectId: string, sourceAssetId: string,
                       width: number, height: number, timestamp: string): AssetRecord {
   return { id, projectId, role: 'thumbnail', blob, mimeType: blob.type || 'image/jpeg',
-    byteSize: blob.size, width, height, createdAt: timestamp, sourceAssetId };
+    byteSize: blob.size, width, height, createdAt: timestamp, sourceAssetId,
+    params: { thumbnailStyle: 'cover-v2' } };
 }
 function sourceAsset(file: Blob, id: string, projectId: string, width: number, height: number,
                      timestamp: string): AssetRecord {
@@ -198,6 +200,53 @@ export async function listProjectThumbnails(): Promise<ProjectThumbnail[]> {
   const cards = await Promise.all(pending);
   await done;
   return cards;
+}
+
+/** Upgrade pre-Day-5.1 contain/letterboxed thumbnails to cropped square previews.
+ * Only thumbnail blobs are rewritten. Never alter full-resolution originals or presets.
+ * Migration is idempotent, sequential to keep iPhone WebKit memory use low, and
+ * leaves old previews intact if an image cannot be decoded.
+ */
+export async function upgradeLegacyThumbnails(): Promise<number> {
+  const db = await openProjectDB();
+  const projects = await req<ProjectRecord[]>(db.transaction('projects', 'readonly')
+    .objectStore('projects').getAll());
+  let updated = 0;
+  for (const project of projects) {
+    const thumbs = await req<AssetRecord[]>(db.transaction('assets', 'readonly')
+      .objectStore('assets').index('byProjectRole')
+      .getAll(IDBKeyRange.only([project.id, 'thumbnail'])));
+    const thumbnail = thumbs.find(asset => asset.sourceAssetId === project.activeAssetId);
+    if (!thumbnail || thumbnail.params?.thumbnailStyle === 'cover-v2') continue;
+    const source = await req<AssetRecord | undefined>(db.transaction('assets', 'readonly')
+      .objectStore('assets').get(project.activeAssetId));
+    if (!source || source.role !== 'source' || !source.blob) continue;
+    const url = URL.createObjectURL(source.blob);
+    const image = new Image();
+    try {
+      image.src = url;
+      await image.decode();
+      const result = await makeThumbnail(image);
+      const next: AssetRecord = {
+        ...thumbnail, blob: result.blob, mimeType: result.blob.type,
+        byteSize: result.blob.size, width: result.width, height: result.height,
+        params: { ...(thumbnail.params ?? {}), thumbnailStyle: 'cover-v2' },
+      };
+      const tx = db.transaction('assets', 'readwrite');
+      const done = txDone(tx);
+      tx.objectStore('assets').put(next);
+      await done;
+      updated++;
+    } catch (error) {
+      // Keep the existing thumbnail on a decode/storage error.
+      // The project remains available; another load can retry this migration.
+      console.warn('[SketchyAR] thumbnail upgrade skipped', project.id, error);
+    } finally {
+      image.removeAttribute('src');
+      URL.revokeObjectURL(url);
+    }
+  }
+  return updated;
 }
 
 export async function assertProjectIntegrity(projectId: string): Promise<void> {
