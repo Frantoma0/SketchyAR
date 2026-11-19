@@ -1,0 +1,4 @@
+:root {color-scheme:light; font-family:system-ui,-apple-system,sans-serif; background:#faf8f3;color:#35312f}
+body {margin:0;padding:24px 18px 44px} main{max-width:540px;margin:auto;padding-top:env(safe-area-inset-top,0px)}
+h1{font-size:1.45rem} p{line-height:1.5} button{display:block;margin:10px 0;width:100%;padding:13px;border:1px solid #777;border-radius:12px;background:white;color:#333;font:inherit} button:disabled{opacity:.5}
+pre{font:12px/1.5 ui-monospace,monospace;overflow-wrap:anywhere;white-space:pre-wrap;background:#eee9e1;padding:12px;border-radius:10px} a{color:#493a2e}

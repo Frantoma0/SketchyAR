@@ -371,3 +371,16 @@ python scripts/day10_compare_cv2.py
 ```
 
 The diagnostic screen in version `0.10.0` provides **Day 10: 512 px** and **Day 10: 1024 px**; export its JSON and compare against the Windows results with `scripts/day10_compare_device.py`. See [docs/day10.md](docs/day10.md) for the acceptance protocol and limitations. The previews and private input photos remain in ignored `experiments/outputs/`.
+
+## Day 11 — NumPy Otsu, binary morphology и изолиран Service Worker
+
+В `python_engine/ar_drawing/day11_morphology.py` има собствен Otsu (256 bins), бинарни `erode/dilate/open/close` и сравнимо `benchmark_day11`. Използвай:
+
+```powershell
+python -m pytest python_engine -q
+python scripts/day11_preview.py
+python scripts/day11_benchmark.py --sizes 512 1024 --runs 5
+python scripts/day11_compare_cv2.py    # optional reference only
+```
+
+iPhone диагностиката предлага тестове за 512/1024 px и отделен тестов SW shell линк. **Service Worker не е регистриран в основното PWA**; shell spike се намира на `/SketchyAR/sw-spike/` и работи само след ръчна регистрация. Виж подробно [docs/day11.md](docs/day11.md).

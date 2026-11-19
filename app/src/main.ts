@@ -12,6 +12,7 @@ import { initDay7Diagnostics } from './day7-diagnostics';
 import { initDay8Diagnostics } from './day8-diagnostics';
 import { initDay9Diagnostics } from './day9-diagnostics';
 import { initDay10Diagnostics } from './day10-diagnostics';
+import { initDay11Diagnostics } from './day11-diagnostics';
 
 D.installGlobalHandlers();
 D.checkPreviousSession();
@@ -113,7 +114,7 @@ document.getElementById('app')!.innerHTML = `
     <h1>SketchyAR</h1>
     <button id="ver" class="ver" type="button" aria-label="Версия на приложението"></button>
   </header>
-  <p class="lead">Ден 10: NumPy тонални нива (3–5), Sobel линии и XDoG сравнения. Camera UI и локалните проекти са непроменени.</p>
+  <p class="lead">Ден 11: Otsu + NumPy морфология и изолиран Service Worker shell експеримент. Camera UI и локалните проекти са непроменени.</p>
   <section><h2>Build</h2><dl id="build"></dl></section>
   <section><h2>Среда</h2><dl id="env"><dt>Зареждане</dt><dd>…</dd></dl></section>
   <section><h2>Възможности на устройството</h2><ul id="caps" class="caps"></ul></section>
@@ -145,6 +146,16 @@ document.getElementById('app')!.innerHTML = `
       <button class="act" id="btn-day10-1024" type="button">Тествай Day 10 · 1024 px</button>
     </div>
     <pre id="day10-benchmark-result" class="benchmark-result" role="status">Още няма проверка.</pre>
+    <h2>Ден 11 — Otsu и морфология (NumPy)</h2>
+    <p class="hint">Автоматичен Otsu праг и бинарни erosion, dilation, opening и closing. Тестът използва еднаква синтетична снимка на Windows и iPhone. Няма OpenCV, няма промяна на съхранението и камерата.</p>
+    <div class="actions">
+      <button class="act" id="btn-day11-512" type="button">Тествай Day 11 · 512 px</button>
+      <button class="act" id="btn-day11-1024" type="button">Тествай Day 11 · 1024 px</button>
+    </div>
+    <pre id="day11-benchmark-result" class="benchmark-result" role="status">Още няма проверка.</pre>
+    <h2>Ден 11 — Service Worker експеримент</h2>
+    <p class="hint">ОТДЕЛНА тестова страница с ограничен scope <code>sw-spike/</code>. Не управлява основния SketchyAR, камерата или Python ресурсите. Не доказва Offline Ready.</p>
+    <a class="act" id="day11-sw-spike-link" href="./sw-spike/" style="display:inline-flex;align-items:center;text-decoration:none">Отвори изолирания SW тест</a>
   </section>
   <section id="day4">
     <h2>Ден 4 — Drawing основа</h2>
@@ -332,6 +343,8 @@ try { initDay9Diagnostics(); }
 catch (error) { D.log('error', 'startup', 'Day 9 diagnostics failed', error); }
 try { initDay10Diagnostics(); }
 catch (error) { D.log('error', 'startup', 'Day 10 diagnostics failed', error); }
+try { initDay11Diagnostics(); }
+catch (error) { D.log('error', 'startup', 'Day 11 diagnostics failed', error); }
 document.getElementById('startup-fallback')?.remove();
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;

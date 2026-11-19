@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="bg">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <link rel="stylesheet" href="./spike.css" />
+  <title>SketchyAR Day 11 — изолиран SW експеримент</title>
+</head>
+<body>
+<main>
+  <h1>SketchyAR · Service Worker тест</h1>
+  <p>Този експеримент кешира <strong>само файловете в <code>sw-spike/</code></strong>. Основният SketchyAR остава без Service Worker до планирания интеграционен етап.</p>
+  <p id="result" role="status" aria-live="polite">Няма регистриран тест.</p>
+  <button id="register" type="button">1. Регистрирай тестов SW (онлайн)</button>
+  <button id="verify" type="button">2. Провери кеша</button>
+  <button id="remove" type="button">Изтрий тестовия кеш и регистрация</button>
+  <p>След първата регистрация презареди тестовата страница веднъж онлайн. После включи Airplane Mode, презареди пак <strong>същата страница</strong> и натисни „Провери кеша“. Страницата трябва да се зареди от Cache Storage.</p>
+  <pre id="debug" aria-live="polite"></pre>
+  <a href="../">Върни се в SketchyAR</a>
+</main>
+<script>
+  'use strict';
+  const statusEl = document.getElementById('result');
+  const debugEl = document.getElementById('debug');
+  const scopeUrl = new URL('./', location.href);
+  const workerURL = new URL('sw.js', scopeUrl);
+  const cachePrefix = 'sketchyar-sw-spike-';
+  const keys = ['index.html', 'spike.css', 'fixture.txt'];
+  const show = (message, extra) => {
+    statusEl.textContent = message;
+    debugEl.textContent = JSON.stringify({
+      onlineHint: navigator.onLine,
+      controlled: !!navigator.serviceWorker?.controller,
+      scope: scopeUrl.href,
+      ...extra,
+    }, null, 2);
+  };
+  if (!('serviceWorker' in navigator) || !('caches' in window)) {
+    document.querySelectorAll('button').forEach(b => b.disabled = true);
+    show('Това устройство не поддържа Service Worker или Cache Storage');
+  } else {
+    document.getElementById('register').addEventListener('click', async () => {
+      try {
+        if (['localhost', '127.0.0.1'].includes(location.hostname)) {
+          show('Разработката остава без Service Worker. Използвай GitHub Pages production URL.');
+          return;
+        }
+        const reg = await navigator.serviceWorker.register(workerURL.href, {scope: scopeUrl.href});
+        await navigator.serviceWorker.ready;
+        show('Тестовият SW е регистриран. Презареди тази страница онлайн.', {registeredScope: reg.scope});
+      } catch (e) { show('FAIL: ' + String(e)); }
+    });
+    document.getElementById('verify').addEventListener('click', async () => {
+      try {
+        const names = (await caches.keys()).filter(x => x.startsWith(cachePrefix));
+        const available = [];
+        for (const name of names) {
+          const cache = await caches.open(name);
+          for (const key of keys) {
+            const response = await cache.match(new URL(key, scopeUrl));
+            available.push({cache: name, file: key, present: !!response, bytes: response ? (await response.clone().arrayBuffer()).byteLength : 0});
+          }
+        }
+        const pass = names.length === 1 && available.length === keys.length && available.every(x=>x.present);
+        show(pass ? 'PASS: 3/3 малки shell ресурса са кеширани' : 'FAIL: липсващ тестов кеш/файл', {names, available});
+      } catch (e) { show('FAIL: ' + String(e)); }
+    });
+    document.getElementById('remove').addEventListener('click', async () => {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration(scopeUrl.href);
+        if (reg && reg.scope === scopeUrl.href) await reg.unregister();
+        const names = (await caches.keys()).filter(x => x.startsWith(cachePrefix));
+        await Promise.all(names.map(name => caches.delete(name)));
+        show('Тестовите кешове и регистрацията са изтрити. Презареди страницата.');
+      } catch (e) { show('FAIL: ' + String(e)); }
+    });
+  }
+</script>
+</body>
+</html>

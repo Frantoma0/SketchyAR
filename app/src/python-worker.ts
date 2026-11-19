@@ -5,6 +5,7 @@
 import proxySource from '../../python_engine/ar_drawing/spike_proxy.py?raw';
 import sketchEngineSource from '../../python_engine/ar_drawing/sketch_engine.py?raw';
 import day10TonesSource from '../../python_engine/ar_drawing/day10_tones.py?raw';
+import day11Source from '../../python_engine/ar_drawing/day11_morphology.py?raw';
 
 const PYODIDE_VERSION = '314.0.8';
 // Worker script is in src/ during development and assets/ after Vite build.
@@ -45,7 +46,7 @@ interface PyodideRuntime {
   globals: { set: (name: string, value: unknown) => void };
   version: string;
 }
-type WorkerCommand = 'init' | 'numpy' | 'opencv' | 'opencv10' | 'day9' | 'day10-512' | 'day10-1024';
+type WorkerCommand = 'init' | 'numpy' | 'opencv' | 'opencv10' | 'day9' | 'day10-512' | 'day10-1024' | 'day11-512' | 'day11-1024';
 type Incoming = { id: string; command: WorkerCommand };
 type Progress = { id: string; kind: 'progress'; stage: string; ms: number };
 type Done = { id: string; kind: 'done'; command: WorkerCommand; result: Record<string, unknown> };
@@ -60,6 +61,7 @@ let startupReport: Record<string, unknown> | null = null;
 let opencvReady = false;
 let day9Ready = false;
 let day10Ready = false;
+let day11Ready = false;
 
 function progress(id: string, stage: string, ms: number): void {
   workerScope.postMessage({ id, kind: 'progress', stage, ms: Math.round(ms) } satisfies Progress);
@@ -154,6 +156,28 @@ function day10Benchmark(pyodide: PyodideRuntime, size: 512 | 1024): Record<strin
   return parseJSON(pyodide, `import json\njson.dumps(_sketchyar_day10.benchmark_day10(size=${size}, runs=3, seed=173))`);
 }
 
+function day11Benchmark(pyodide: PyodideRuntime, size: 512 | 1024): Record<string, unknown> {
+  ensureDay9Module(pyodide);
+  if (!day11Ready) {
+    // Reuse the existing NumPy runtime and Day 9 grayscale conversion.
+    pyodide.globals.set('_sketchyar_day11_source', day11Source);
+    pyodide.runPython([
+      'import sys, types',
+      'if "ar_drawing" not in sys.modules:',
+      '    _day11_package = types.ModuleType("ar_drawing")',
+      '    _day11_package.__path__ = []',
+      '    sys.modules["ar_drawing"] = _day11_package',
+      'sys.modules["ar_drawing.sketch_engine"] = _sketchyar_day9',
+      '_sketchyar_day11 = types.ModuleType("ar_drawing.day11_morphology")',
+      '_sketchyar_day11.__package__ = "ar_drawing"',
+      'sys.modules["ar_drawing.day11_morphology"] = _sketchyar_day11',
+      'exec(_sketchyar_day11_source, _sketchyar_day11.__dict__)',
+    ].join('\n'));
+    day11Ready = true;
+  }
+  return parseJSON(pyodide, `import json\njson.dumps(_sketchyar_day11.benchmark_day11(size=${size}, runs=3, seed=173))`);
+}
+
 async function openCVBenchmark(pyodide: PyodideRuntime, runs: number, id: string): Promise<Record<string, unknown>> {
   if (!opencvReady) {
     const inventory = await getInventory();
@@ -181,6 +205,8 @@ workerScope.onmessage = async (event: MessageEvent<Incoming>) => {
     else if (command === 'day9') result = day9Benchmark(pyodide);
     else if (command === 'day10-512') result = day10Benchmark(pyodide, 512);
     else if (command === 'day10-1024') result = day10Benchmark(pyodide, 1024);
+    else if (command === 'day11-512') result = day11Benchmark(pyodide, 512);
+    else if (command === 'day11-1024') result = day11Benchmark(pyodide, 1024);
     else if (command === 'opencv') result = await openCVBenchmark(pyodide, 5, id);
     else if (command === 'opencv10') result = await openCVBenchmark(pyodide, 10, id);
     else throw new Error(`Непозната команда: ${command}`);
