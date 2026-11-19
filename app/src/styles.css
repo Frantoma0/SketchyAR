@@ -362,3 +362,19 @@ body.drawing-open { background: #090b0c !important; }
   .sketch-camera-icon { max-height:60px; }
   .sketch-camera-slider-wrap { height:39px; }
 }
+
+/* Day 5: clickable persisted gallery previews, keeping the graphite polaroid SVG/PNG frame. */
+.home-project-tile.home-project-saved {
+  pointer-events: auto; cursor: pointer; position: relative; padding: 0; margin: 0;
+  border: 0; border-radius: 0; background: transparent; min-width: 0;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.home-project-saved:focus-visible { outline: 2px solid #5c5149; outline-offset: 1px; }
+.home-project-saved .home-project-preview {
+  position: absolute; left: 6%; top: 5%; width: 88%; height: 74%;
+  object-fit: cover; background: #faf9f7; z-index: 0; border: 0;
+}
+.home-project-saved .home-project-frame {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill;
+  pointer-events: none; z-index: 1;
+}

@@ -1,0 +1,44 @@
+{
+  "format": "sketchyar-backup",
+  "schemaVersion": 1,
+  "appVersion": "0.5.0",
+  "createdAt": "2026-11-19T00:00:00Z",
+  "projects": [{
+    "id": "project-001",
+    "title": "Примерен проект",
+    "createdAt": "2026-11-19T00:00:00Z",
+    "updatedAt": "2026-11-19T00:00:00Z",
+    "activeAssetId": "source-001",
+    "guide": {
+      "version": 1,
+      "sourceAssetId": "source-001",
+      "mode": "raster-proposed",
+      "currentStep": 0,
+      "reveal": "cumulative",
+      "steps": [
+        {"id":"s1","assetId":"step-001","title":"Стъпка 1","order":0,"accepted":false},
+        {"id":"s2","assetId":"step-002","title":"Стъпка 2","order":1,"accepted":false},
+        {"id":"s3","assetId":"step-003","title":"Стъпка 3","order":2,"accepted":false},
+        {"id":"s4","assetId":"step-004","title":"Стъпка 4","order":3,"accepted":false},
+        {"id":"s5","assetId":"step-005","title":"Стъпка 5","order":4,"accepted":false}
+      ],
+      "generator": {"name":"raster-step-planner","version":"1","params":{}}
+    }
+  }],
+  "assets": [{
+    "id":"source-001", "projectId":"project-001", "role":"source",
+    "path":"assets/source-001.jpg", "sha256":"<64-char-hex-sha256>",
+    "byteSize":0,"mimeType":"image/jpeg", "width":0,"height":0,
+    "createdAt":"2026-11-19T00:00:00Z"
+  }, {
+    "id":"step-001", "projectId":"project-001", "role":"guide-step",
+    "sourceAssetId":"source-001", "params":{"threshold":0.9},
+    "pipelineVersion":"raster-step-planner-v1", "modelId":null,
+    "path":"assets/step-001.png", "sha256":"<64-char-hex-sha256>",
+    "byteSize":0,"mimeType":"image/png", "width":0,"height":0,
+    "createdAt":"2026-11-19T00:00:00Z"
+  }],
+  "presets": [],
+  "settings": [],
+  "integrity": {"algorithm":"SHA-256"}
+}

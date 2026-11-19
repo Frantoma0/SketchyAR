@@ -4,14 +4,16 @@
  */
 import * as D from './diagnostics';
 import { initOfflineStatus } from './offline-status';
+import { listProjectThumbnails, openProjectDB, type ProjectThumbnail } from './storage/project-store';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
-export function initHome(openDrawing: () => Promise<void>): void {
+export function initHome(openDrawing: () => Promise<void>, openSaved: (id: string) => Promise<void>): void {
   const home = el<HTMLElement>('sketchy-home');
   const developer = el<HTMLElement>('developer-screen');
   const note = el<HTMLElement>('home-message');
   const group = el<HTMLElement>('sketchy-home-group');
+  const gallery = home.querySelector<HTMLElement>('.home-project-grid')!;
   // Keep the same Figma layout in Safari; in the installed PWA, the status-bar
   // meta requests edge-to-edge coverage. This is diagnostic only: do not force
   // screen.height as a CSS layout height or shift the controls conditionally.
@@ -121,13 +123,73 @@ export function initHome(openDrawing: () => Promise<void>): void {
     window.clearTimeout(messageTimer);
     messageTimer = window.setTimeout(() => { note.hidden = true; }, 4600);
   }
+  let galleryGeneration = 0;
+  let pictureURLs: string[] = [];
+  let cachedCards: ProjectThumbnail[] = [];
+  function placeholder(): HTMLElement {
+    const tile = document.createElement('div');
+    tile.className = 'home-project-tile';
+    tile.setAttribute('aria-hidden', 'true');
+    const frame = document.createElement('img');
+    frame.src = `${import.meta.env.BASE_URL}ui/polaroid.png`;
+    frame.alt = '';
+    tile.appendChild(frame);
+    return tile;
+  }
+  async function refreshGallery(): Promise<void> {
+    const generation = ++galleryGeneration;
+    try {
+      const cards = await listProjectThumbnails();
+      if (generation !== galleryGeneration) return;
+      cachedCards = cards;
+      const nextURLs: string[] = [];
+      const fragment = document.createDocumentFragment();
+      cards.forEach(({ project, thumbnail }) => {
+        const tile = document.createElement('button');
+        tile.type = 'button';
+        tile.className = 'home-project-tile home-project-saved';
+        tile.title = project.title;
+        tile.setAttribute('aria-label', `Отвори ${project.title}`);
+        if (thumbnail?.blob) {
+          const image = document.createElement('img');
+          const objectURL = URL.createObjectURL(thumbnail.blob);
+          nextURLs.push(objectURL);
+          image.src = objectURL;
+          image.alt = '';
+          image.className = 'home-project-preview';
+          tile.append(image);
+        }
+        const frame = document.createElement('img');
+        frame.className = 'home-project-frame';
+        frame.src = `${import.meta.env.BASE_URL}ui/polaroid.png`;
+        frame.alt = '';
+        tile.append(frame);
+        tile.addEventListener('click', () => void openSaved(project.id));
+        fragment.append(tile);
+      });
+      for (let index = cards.length; index < 4; index++) fragment.append(placeholder());
+      gallery.replaceChildren(fragment);
+      pictureURLs.forEach(URL.revokeObjectURL);
+      pictureURLs = nextURLs;
+      gallery.setAttribute('aria-label', `Стари проекти: ${cards.length}`);
+      D.log('info', 'day5', 'project.gallery.loaded', { count: cards.length });
+    } catch (error) {
+      D.log('warn', 'day5', 'project.gallery.failed', { message: String(error) });
+      toast('Локалните проекти временно не могат да бъдат прочетени. Виж диагностиката.');
+    }
+  }
+  document.addEventListener('sketchyar:projects:changed', () => void refreshGallery());
+  void openProjectDB().then(() => refreshGallery()).catch(error => {
+    D.log('warn', 'day5', 'storage.unavailable', { message: String(error) });
+    toast('Неуспешно отваряне на локалното хранилище.');
+  });
   const setHome = (active: boolean): void => {
     home.hidden = !active;
     developer.hidden = active;
     document.body.classList.toggle('sketchy-home-active', active);
     document.documentElement.classList.toggle('sketchy-home-active', active);
     document.documentElement.style.minHeight = active ? `${window.screen.height}px` : '';
-    if (active) { home.scrollTop = 0; scheduleFit(); }
+    if (active) { home.scrollTop = 0; scheduleFit(); void refreshGallery(); }
   };
   setHome(true);
 
@@ -136,8 +198,14 @@ export function initHome(openDrawing: () => Promise<void>): void {
     void openDrawing();
   });
   el<HTMLButtonElement>('home-load-project').addEventListener('click', () => {
-    toast('Зареждането на запазени проекти ще бъде добавено с локалната база данни. Засега избери „Нова рисунка“.');
-    D.log('info', 'home', 'load-project-not-yet-available');
+    if (cachedCards.length === 0) {
+      toast('Все още нямаш запазени рисунки. Избери „Нова рисунка“.');
+      return;
+    }
+    if (cachedCards.length === 1) { void openSaved(cachedCards[0].project.id); return; }
+    gallery.scrollTop = 0;
+    gallery.querySelector<HTMLButtonElement>('.home-project-saved')?.focus();
+    toast('Избери полароид, за да отвориш съответния проект.');
   });
   const closeOfflinePanel = initOfflineStatus();
   el<HTMLButtonElement>('home-save-icon').addEventListener('click', () => {

@@ -4,8 +4,9 @@ import { probeEnv, type EnvSnapshot } from './env';
 import { debugWanted, enableDebug, toggleDebug } from './debug';
 import { initDay2 } from './day2';
 import { initDay3 } from './day3';
-import { initDay4, requestNewDrawing } from './day4';
+import { initDay4, requestNewDrawing, openSavedDrawing } from './day4';
 import { initHome } from './home';
+import { initDay5Diagnostics } from './day5-diagnostics';
 
 D.installGlobalHandlers();
 D.checkPreviousSession();
@@ -31,12 +32,12 @@ document.getElementById('app')!.innerHTML = `
       <img class="home-pill-bg" src="./ui/pill-base-white.svg" alt="" />
       <span class="home-pill-text home-new-text">Нова рисунка</span>
     </button>
-    <button id="home-load-project" class="home-pill home-load" type="button" aria-label="Зареди проект — предстои">
+    <button id="home-load-project" class="home-pill home-load" type="button" aria-label="Зареди запазен проект">
       <img class="home-pill-bg" src="./ui/pill-base-white.svg" alt="" />
       <span class="home-pill-text home-load-text">Зареди проект</span>
     </button>
     <h2 class="home-old-heading">Стари проекти</h2>
-    <div class="home-project-grid" aria-label="Запазени проекти — все още няма">
+    <div class="home-project-grid" aria-label="Стари проекти">
       <div class="home-project-tile" aria-label="Празно място за проект"><img src="./ui/polaroid.png" alt="" /></div>
       <div class="home-project-tile" aria-label="Празно място за проект"><img src="./ui/polaroid.png" alt="" /></div>
       <div class="home-project-tile" aria-label="Празно място за проект"><img src="./ui/polaroid.png" alt="" /></div>
@@ -79,10 +80,16 @@ document.getElementById('app')!.innerHTML = `
     <h1>SketchyAR</h1>
     <button id="ver" class="ver" type="button" aria-label="Версия на приложението"></button>
   </header>
-  <p class="lead">Ден 4.18: Figma Camera UI, стрелка към началната страница и нов бутон за смяна на снимката. Тестовете от Дни 2–3 са запазени.</p>
+  <p class="lead">Ден 5: IndexedDB проекти, оригинални Blob снимки и миниатюри. Camera UI и диагностиката от Ден 4 са запазени.</p>
   <section><h2>Build</h2><dl id="build"></dl></section>
   <section><h2>Среда</h2><dl id="env"><dt>Зареждане</dt><dd>…</dd></dl></section>
   <section><h2>Възможности на устройството</h2><ul id="caps" class="caps"></ul></section>
+  <section id="day5">
+    <h2>Ден 5 — Локални проекти / IndexedDB</h2>
+    <p class="hint">Провери последния записан оригинален Blob. При първото натискане се запазва SHA-256 baseline; след force-close повторната проверка трябва да е match. Снимки над 8 MB тествай само на реалния iPhone.</p>
+    <button class="act" id="btn-day5-verify" type="button">Провери локалните проекти</button>
+    <pre id="day5-result" class="benchmark-result">Още няма проверка.</pre>
+  </section>
   <section id="day4">
     <h2>Ден 4 — Drawing основа</h2>
     <p class="hint">Камерата е отделна от рисунката. „Нова рисунка“ първо отваря избор на снимка; мрежата 3×3 служи само за подравняване на камерата.</p>
@@ -240,6 +247,12 @@ try {
     }
     // Must be called directly within this tap. iOS may block a deferred file picker.
     requestNewDrawing();
+  }, async (id: string) => {
+    if (!drawingReady) {
+      window.alert('Drawing още не е готов. Провери диагностиката.');
+      return;
+    }
+    await openSavedDrawing(id);
   });
 } catch (error) {
   D.log('error', 'startup', 'Home initialization failed', error);
@@ -251,6 +264,8 @@ try { initDay3(); }
 catch (error) { D.log('error', 'startup', 'Day 3 diagnostic module failed', error); }
 try { initDay4(); drawingReady = true; }
 catch (error) { D.log('error', 'startup', 'Day 4 drawing module failed', error); }
+try { initDay5Diagnostics(); }
+catch (error) { D.log('error', 'startup', 'Day 5 diagnostics failed', error); }
 document.getElementById('startup-fallback')?.remove();
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;

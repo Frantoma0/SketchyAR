@@ -4,6 +4,8 @@
 import * as D from './diagnostics';
 import { cameraController, type CameraSnapshot } from './camera-controller';
 import { isBusy } from './day2';
+import { createImageProject, replaceProjectSource, getProjectImage, assertProjectIntegrity } from './storage/project-store';
+import { makeThumbnail } from './storage/thumbnail';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 let drawingOpen = false;
@@ -19,6 +21,7 @@ let opacity = 50;
 let artworkLocked = false;
 let artworkMirrored = false;
 let pendingNewDrawing = false;
+let activeProjectId: string | null = null;
 
 /** iOS Home Screen sometimes reports a smaller dynamic viewport than the
  *  full physical viewport. Keep the camera behind the system safe areas too;
@@ -100,14 +103,14 @@ function safeAreaSnapshot(): Record<string, unknown> {
 /** Keep temporary previews reasonably small. This is not the final Day 5 import pipeline.
  *  Canvas re-encoding preserves alpha. The source bitmap is released promptly.
  */
-async function preparePreview(file: File): Promise<{ url: string; width: number; height: number; reduced: boolean }> {
+async function preparePreview(file: Blob): Promise<{ url: string; width: number; height: number; sourceWidth: number; sourceHeight: number; reduced: boolean }> {
   if (file.size > 40 * 1024 * 1024) throw new Error('Файлът е твърде голям за тестовия импорт (макс. 40 MB).');
   const bitmap = await createImageBitmap(file);
   try {
     const longest = Math.max(bitmap.width, bitmap.height);
     if (!longest) throw new Error('Празно изображение');
     if (longest <= 2048) {
-      return { url: URL.createObjectURL(file), width: bitmap.width, height: bitmap.height, reduced: false };
+      return { url: URL.createObjectURL(file), width: bitmap.width, height: bitmap.height, sourceWidth: bitmap.width, sourceHeight: bitmap.height, reduced: false };
     }
     const factor = 2048 / longest;
     const width = Math.max(1, Math.round(bitmap.width * factor));
@@ -122,7 +125,7 @@ async function preparePreview(file: File): Promise<{ url: string; width: number;
       canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Неуспешно мащабиране')), 'image/png');
     });
     canvas.width = 0; canvas.height = 0;
-    return { url: URL.createObjectURL(result), width, height, reduced: true };
+    return { url: URL.createObjectURL(result), width, height, sourceWidth: bitmap.width, sourceHeight: bitmap.height, reduced: true };
   } finally {
     bitmap.close();
   }
@@ -288,7 +291,7 @@ async function exit(): Promise<void> {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#f6f5f2');
   document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.setAttribute('content', 'black-translucent');
   cameraController.stop('drawing-exit');
-  // “Нова рисунка” opens a fresh, temporary drawing. No project has been saved yet.
+  // Day 5: the image and its original Blob remain stored; only this temporary preview is released.
   if (userImageUrl) {
     URL.revokeObjectURL(userImageUrl);
     userImageUrl = null;
@@ -296,6 +299,7 @@ async function exit(): Promise<void> {
   }
   showGrid = false;
   pendingNewDrawing = false;
+  activeProjectId = null;
   artworkLocked = false;
   artworkMirrored = false;
   artworkScale = 100;
@@ -312,6 +316,43 @@ async function exit(): Promise<void> {
   D.log('info', 'day4', 'drawing.close');
   document.dispatchEvent(new Event('sketchyar:drawing:closed'));
   reflect();
+}
+
+/** Day 5: reopen an existing source Blob after a true reload/force-close.
+ *  Current transform changes are not yet persisted: that is the Day 6 task.
+ */
+export async function openSavedDrawing(projectId: string): Promise<void> {
+  if (entering || drawingOpen || isBusy()) return;
+  const img = el<HTMLImageElement>('drawing-user-image');
+  let url: string | null = null;
+  try {
+    await assertProjectIntegrity(projectId);
+    const { project, source, preset } = await getProjectImage(projectId);
+    const prepared = await preparePreview(source.blob);
+    url = prepared.url;
+    img.src = url;
+    await img.decode();
+    const oldUrl = userImageUrl;
+    userImageUrl = url;
+    url = null;
+    if (oldUrl) URL.revokeObjectURL(oldUrl);
+    activeProjectId = project.id;
+    artworkScale = (preset?.scale ?? 1) * 100;
+    artworkX = preset?.x ?? 0;
+    artworkY = preset?.y ?? 0;
+    artworkAngle = preset?.rotationDeg ?? 0;
+    opacity = preset?.opacityPercent ?? 50;
+    artworkMirrored = preset?.mirroredOverlay ?? false;
+    artworkLocked = preset?.locked ?? false;
+    showGrid = preset?.gridEnabled ?? false;
+    reflect();
+    await openDrawing();
+    D.log('info', 'day5', 'project.reopened', { projectId, sourceBytes: source.byteSize });
+  } catch (error) {
+    if (url) URL.revokeObjectURL(url);
+    D.log('error', 'day5', 'project.reopen.failed', { projectId, message: String(error) });
+    window.alert(`Проектът не можа да бъде отворен: ${String(error)}`);
+  }
 }
 
 /** Called synchronously by the Homepage tap. The browser's native photo picker
@@ -404,9 +445,23 @@ export function initDay4(): void {
       nextUrl = prepared.url;
       img.src = nextUrl;
       await img.decode();
+      // Commit the original Blob + tiny preview in one IndexedDB transaction.
+      // If storage fails, preserve the previous image and don't create an orphan project.
+      const thumbnail = await makeThumbnail(img);
+      let savedProjectId = activeProjectId;
+      if (isNewDrawing || !savedProjectId) {
+        const project = await createImageProject(file, { width: prepared.sourceWidth, height: prepared.sourceHeight }, thumbnail);
+        savedProjectId = project.id;
+        D.log('info', 'day5', 'project.created', { projectId: project.id, sourceBytes: file.size });
+      } else {
+        await replaceProjectSource(savedProjectId, file, { width: prepared.sourceWidth, height: prepared.sourceHeight }, thumbnail);
+        D.log('info', 'day5', 'project.source.replaced', { projectId: savedProjectId, sourceBytes: file.size });
+      }
+      activeProjectId = savedProjectId;
       userImageUrl = nextUrl;
       nextUrl = null;
       if (previousUrl) URL.revokeObjectURL(previousUrl);
+      document.dispatchEvent(new Event('sketchyar:projects:changed'));
       artworkScale = 100;
       artworkX = 0;
       artworkY = 0;
@@ -420,15 +475,16 @@ export function initDay4(): void {
       if (isNewDrawing) await openDrawing();
       setMessage('Изображението е заредено. Мрежата 3×3 управлява само визьора на камерата.');
       D.log('info', 'day4', 'drawing.image.loaded', {
-        mimeType: file.type, sourceBytes: file.size, width: prepared.width,
-        height: prepared.height, reducedTo2048: prepared.reduced,
+        mimeType: file.type, sourceBytes: file.size, width: prepared.sourceWidth,
+        height: prepared.sourceHeight, reducedTo2048: prepared.reduced,
       });
     } catch (error) {
       if (nextUrl) URL.revokeObjectURL(nextUrl);
       if (previousUrl) img.src = previousUrl;
       else img.removeAttribute('src');
-      setMessage(`Неуспешно зареждане на изображение: ${String(error)}`);
-      if (isNewDrawing) window.alert('Снимката не можа да бъде заредена. Избери друга снимка.');
+      setMessage(`Неуспешно зареждане/записване на изображение: ${String(error)}`);
+      el('sketch-camera-status').textContent = `Снимката не можа да бъде записана: ${String(error)}`;
+      if (isNewDrawing) window.alert('Снимката не можа да бъде заредена или записана. Провери свободното място и опитай отново.');
       D.log('warn', 'day4', 'drawing.image.failed', { message: String(error) });
     } finally { input.value = ''; }
   });
@@ -454,7 +510,7 @@ export function initDay4(): void {
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && drawingOpen) void exit();
   });
-  // SketchyAR 4.18: left arrow returns Home; the new right icon changes the drawing.
+  // Day 5: Back closes the camera but leaves the source safely stored in IndexedDB.
   el<HTMLButtonElement>('sketch-camera-back').addEventListener('click', () => {
     void exit(); // Current temporary image is discarded when leaving Drawing.
   });
