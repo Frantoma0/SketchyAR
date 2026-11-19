@@ -1,4 +1,4 @@
-> **Day 5 storage preview (v0.5.0):** новият IndexedDB слой и галерия са в `docs/day5.md`.
+> **Day 6 Project Resume (v0.6.0):** autosave и възстановяване на рисунка — `docs/day6.md`. Ден 5 галерия/IndexedDB: `docs/day5.md`.
 > Този ZIP не съдържа `.git` или `node_modules`; ползвай като source overlay върху съществуващото хранилище.
 > **Не изтривай Home Screen приложението или неговите локални данни**, преди да има проверен backup/restore от Ден 14.
 

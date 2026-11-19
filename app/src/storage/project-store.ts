@@ -52,7 +52,70 @@ export interface OverlayPreset {
   locked: boolean;
   gridEnabled: boolean;
   gridCount: number;
+  /** Day 6: optional for backward compatibility with older pixel-based presets. */
+  coordinateSpace?: 'normalized-v1';
+  sceneWidth?: number;
+  sceneHeight?: number;
 }
+/** The camera transform in normalized scene coordinates (not CSS pixels). */
+export type OverlaySnapshot = Pick<OverlayPreset, 'x' | 'y' | 'scale' | 'rotationDeg' |
+  'opacityPercent' | 'mirroredOverlay' | 'locked' | 'gridEnabled'> & {
+  sceneWidth: number;
+  sceneHeight: number;
+};
+
+/** Atomic Day 6 save. Verify the expected current source inside the write transaction
+ * to stop an old gesture from overwriting a newer photo's preset.
+ * Keep one stable preset row per asset instead of appending on every slider event.
+ */
+export async function saveProjectOverlay(
+  projectId: string, expectedAssetId: string, snapshot: OverlaySnapshot,
+): Promise<OverlayPreset> {
+  for (const value of [snapshot.x, snapshot.y, snapshot.scale, snapshot.rotationDeg,
+    snapshot.opacityPercent, snapshot.sceneWidth, snapshot.sceneHeight]) {
+    if (!Number.isFinite(value)) throw new Error('Невалидни координати за запис');
+  }
+  if (snapshot.sceneWidth <= 0 || snapshot.sceneHeight <= 0 || snapshot.scale < 0.25 ||
+      snapshot.scale > 2.5 || snapshot.opacityPercent < 0 || snapshot.opacityPercent > 100)
+    throw new Error('Стойности извън допустимите граници');
+  const db = await openProjectDB();
+  const tx = db.transaction(['projects', 'overlay_presets'], 'readwrite');
+  const finished = txDone(tx);
+  const projects = tx.objectStore('projects');
+  const presets = tx.objectStore('overlay_presets');
+  let updated: OverlayPreset | null = null;
+  let validationError: Error | null = null;
+  const request = projects.get(projectId) as IDBRequest<ProjectRecord | undefined>;
+  request.onsuccess = () => {
+    const project = request.result;
+    if (!project || project.activeAssetId !== expectedAssetId) {
+      validationError = new Error('Снимката е сменена; остарелият запис е отказан.');
+      tx.abort();
+      return;
+    }
+    const candidates = presets.index('assetId').getAll(expectedAssetId) as IDBRequest<OverlayPreset[]>;
+    candidates.onsuccess = () => {
+      const existing = candidates.result.find(p => p.projectId === projectId);
+      const timestamp = now();
+      updated = {
+        ...(existing ?? defaultPreset(projectId, expectedAssetId, timestamp)),
+        ...snapshot,
+        projectId,
+        assetId: expectedAssetId,
+        coordinateSpace: 'normalized-v1',
+        gridCount: 3,
+        updatedAt: timestamp,
+      };
+      presets.put(updated);
+      projects.put({ ...project, updatedAt: timestamp });
+    };
+  };
+  try { await finished; }
+  catch (error) { if (validationError) throw validationError; throw error; }
+  if (!updated) throw new Error('Preset не беше записан');
+  return updated;
+}
+
 export interface AppSetting {
   key: string;
   value: unknown;

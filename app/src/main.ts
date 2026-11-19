@@ -7,6 +7,7 @@ import { initDay3 } from './day3';
 import { initDay4, requestNewDrawing, openSavedDrawing } from './day4';
 import { initHome } from './home';
 import { initDay5Diagnostics } from './day5-diagnostics';
+import { initDay6Diagnostics } from './day6-diagnostics';
 
 D.installGlobalHandlers();
 D.checkPreviousSession();
@@ -89,6 +90,10 @@ document.getElementById('app')!.innerHTML = `
     <p class="hint">Провери последния записан оригинален Blob. При първото натискане се запазва SHA-256 baseline; след force-close повторната проверка трябва да е match. Снимки над 8 MB тествай само на реалния iPhone.</p>
     <button class="act" id="btn-day5-verify" type="button">Провери локалните проекти</button>
     <pre id="day5-result" class="benchmark-result">Още няма проверка.</pre>
+    <h2>Ден 6 — Проверка на възстановените настройки</h2>
+    <p class="hint">Прочита оригиналните overlay presets. Не изменя проектите.</p>
+    <button class="act" id="btn-day6-verify" type="button">Покажи запазените настройки</button>
+    <pre id="day6-result" class="benchmark-result">Още няма проверка.</pre>
   </section>
   <section id="day4">
     <h2>Ден 4 — Drawing основа</h2>
@@ -266,6 +271,8 @@ try { initDay4(); drawingReady = true; }
 catch (error) { D.log('error', 'startup', 'Day 4 drawing module failed', error); }
 try { initDay5Diagnostics(); }
 catch (error) { D.log('error', 'startup', 'Day 5 diagnostics failed', error); }
+try { initDay6Diagnostics(); }
+catch (error) { D.log('error', 'startup', 'Day 6 diagnostics failed', error); }
 document.getElementById('startup-fallback')?.remove();
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;

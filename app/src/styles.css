@@ -333,12 +333,12 @@ body.drawing-open { background: #090b0c !important; }
 .sketch-camera-slider-track { position:absolute; left:10px; width:calc(100% - 20px); top:45%; height:15px; transform:translateY(-50%); overflow:hidden; border-radius:999px; }
 .sketch-camera-slider-rail { position:absolute; inset:0; width:100%; height:100%; object-fit:fill; pointer-events:none; -webkit-clip-path:inset(0 calc(100% - var(--opacity-percent,50%)) 0 0 round 999px); clip-path:inset(0 calc(100% - var(--opacity-percent,50%)) 0 0 round 999px); }
 .sketch-camera-slider-thumb { position:absolute; left:var(--opacity-percent,50%); top:50%; transform:translate(-50%, -50%); width:25px; height:26px; pointer-events:none; z-index:2; }
-#sketch-camera-opacity { appearance:none; -webkit-appearance:none; background:transparent; position:absolute; left:-12.5px; top:-14px; width:calc(100% + 25px); height:43px; margin:0; touch-action:pan-x; z-index:3; cursor:pointer; outline: none; box-shadow: none; -webkit-tap-highlight-color: transparent;}
-#sketch-camera-opacity:focus,
-#sketch-camera-opacity:focus-visible { outline: none; box-shadow: none;}
-#sketch-camera-opacity::-webkit-slider-thumb { outline: none; box-shadow: none; -webkit-tap-highlight-color: transparent;}
+#sketch-camera-opacity { appearance:none; -webkit-appearance:none; background:transparent; position:absolute; left:-12.5px; top:-14px; width:calc(100% + 25px); height:43px; margin:0; touch-action:pan-x; z-index:3; cursor:pointer; }
+/* Day 5 final iPhone polish: remove native range focus rectangle only. */
+#sketch-camera-opacity { outline: none; box-shadow: none; -webkit-tap-highlight-color: transparent; }
+#sketch-camera-opacity:focus, #sketch-camera-opacity:focus-visible { outline: none; box-shadow: none; }
 #sketch-camera-opacity::-webkit-slider-runnable-track { background:transparent; height:40px; }
-#sketch-camera-opacity::-webkit-slider-thumb { appearance:none; -webkit-appearance:none; width:30px; height:40px; background:transparent; border:0; }
+#sketch-camera-opacity::-webkit-slider-thumb { appearance:none; -webkit-appearance:none; width:30px; height:40px; background:transparent; border:0; outline:none; box-shadow:none; }
 #sketch-camera-opacity::-moz-range-track { background:transparent; }
 #sketch-camera-opacity::-moz-range-thumb { width:30px; height:40px; border:0; background:transparent; }
 .sketch-camera-actions { display:flex; align-items:center; justify-content:space-between; gap:4px; width:100%; }

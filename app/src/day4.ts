@@ -4,7 +4,7 @@
 import * as D from './diagnostics';
 import { cameraController, type CameraSnapshot } from './camera-controller';
 import { isBusy } from './day2';
-import { createImageProject, replaceProjectSource, getProjectImage, assertProjectIntegrity } from './storage/project-store';
+import { createImageProject, replaceProjectSource, getProjectImage, assertProjectIntegrity, saveProjectOverlay, type OverlayPreset, type OverlaySnapshot } from './storage/project-store';
 import { makeThumbnail } from './storage/thumbnail';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -22,6 +22,111 @@ let artworkLocked = false;
 let artworkMirrored = false;
 let pendingNewDrawing = false;
 let activeProjectId: string | null = null;
+let activeAssetId: string | null = null;
+
+/** Day 6: debounce continuous gestures, serialize IndexedDB transactions, and
+ * flush at explicit user checkpoints. No new object store or network service.
+ */
+type QueuedPreset = { projectId: string; assetId: string; snapshot: OverlaySnapshot; fingerprint: string };
+const SAVE_DELAY_MS = 350;
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingSave: QueuedPreset | null = null;
+let saveChain: Promise<void> = Promise.resolve();
+let latestCommittedFingerprint: string | null = null;
+let sceneSize: { width: number; height: number } | null = null;
+
+function cameraSceneSize(): { width: number; height: number } {
+  const rect = el<HTMLElement>('drawing-video-stage').getBoundingClientRect();
+  return {
+    width: Math.max(1, rect.width || window.innerWidth),
+    height: Math.max(1, rect.height || window.innerHeight),
+  };
+}
+function snapshotOverlay(): OverlaySnapshot {
+  const size = cameraSceneSize();
+  return {
+    x: artworkX / size.width,
+    y: artworkY / size.height,
+    scale: artworkScale / 100,
+    rotationDeg: artworkAngle,
+    opacityPercent: opacity,
+    mirroredOverlay: artworkMirrored,
+    locked: artworkLocked,
+    gridEnabled: showGrid,
+    sceneWidth: size.width,
+    sceneHeight: size.height,
+  };
+}
+function schedulePresetSave(): void {
+  if (!activeProjectId || !activeAssetId || !drawingOpen) return;
+  const snapshot = snapshotOverlay();
+  const next: QueuedPreset = {
+    projectId: activeProjectId, assetId: activeAssetId, snapshot,
+    fingerprint: JSON.stringify([activeProjectId, activeAssetId, snapshot.x, snapshot.y,
+      snapshot.scale, snapshot.rotationDeg, snapshot.opacityPercent,
+      snapshot.mirroredOverlay, snapshot.locked, snapshot.gridEnabled]),
+  };
+  if (next.fingerprint === latestCommittedFingerprint && !pendingSave) return;
+  pendingSave = next;
+  if (saveTimer !== null) window.clearTimeout(saveTimer);
+  saveTimer = window.setTimeout(() => { void flushPresetSave().catch(() => {}); }, SAVE_DELAY_MS);
+}
+function flushPresetSave(): Promise<void> {
+  if (saveTimer !== null) { window.clearTimeout(saveTimer); saveTimer = null; }
+  const toWrite = pendingSave;
+  pendingSave = null;
+  if (!toWrite) return saveChain;
+  // Every write waits for the previous one. A snapshot never overtakes a later one.
+  saveChain = saveChain.catch(() => {}).then(async () => {
+    try {
+      await saveProjectOverlay(toWrite.projectId, toWrite.assetId, toWrite.snapshot);
+      latestCommittedFingerprint = toWrite.fingerprint;
+      D.log('info', 'day6', 'preset.saved', {
+        projectId: toWrite.projectId, assetId: toWrite.assetId,
+        xNormalized: Number(toWrite.snapshot.x.toFixed(4)),
+        yNormalized: Number(toWrite.snapshot.y.toFixed(4)),
+        opacity: toWrite.snapshot.opacityPercent, locked: toWrite.snapshot.locked,
+      });
+      // Home refreshes its gallery on re-entry; avoid re-rendering all cards per drag.
+    } catch (error) {
+      // Keep the failed snapshot available for a manual retry/next lifecycle checkpoint.
+      if (!pendingSave) pendingSave = toWrite;
+      D.log('error', 'day6', 'preset.save.failed', { message: String(error), projectId: toWrite.projectId });
+      if (drawingOpen) el('sketch-camera-status').textContent = 'Неуспешен автоматичен запис — провери хранилището.';
+      throw error;
+    }
+  });
+  return saveChain;
+}
+/** Normalize position to scene dimensions without moving the image when the
+ * PWA viewport changes. Older Day 5 presets remain in CSS pixels. */
+function restorePreset(preset: OverlayPreset | undefined): void {
+  const size = cameraSceneSize();
+  artworkX = (preset?.x ?? 0) * (preset?.coordinateSpace === 'normalized-v1' ? size.width : 1);
+  artworkY = (preset?.y ?? 0) * (preset?.coordinateSpace === 'normalized-v1' ? size.height : 1);
+  artworkScale = (preset?.scale ?? 1) * 100;
+  artworkAngle = preset?.rotationDeg ?? 0;
+  opacity = preset?.opacityPercent ?? 50;
+  artworkMirrored = preset?.mirroredOverlay ?? false;
+  artworkLocked = preset?.locked ?? false;
+  showGrid = preset?.gridEnabled ?? false;
+  sceneSize = size;
+  pendingSave = null;
+  latestCommittedFingerprint = null;
+  reflect();
+}
+function syncScenePosition(): void {
+  if (!drawingOpen) return;
+  const size = cameraSceneSize();
+  if (sceneSize && (sceneSize.width !== size.width || sceneSize.height !== size.height)) {
+    artworkX *= size.width / sceneSize.width;
+    artworkY *= size.height / sceneSize.height;
+    reflect();
+    schedulePresetSave();
+  }
+  sceneSize = size;
+}
+
 
 /** iOS Home Screen sometimes reports a smaller dynamic viewport than the
  *  full physical viewport. Keep the camera behind the system safe areas too;
@@ -225,6 +330,7 @@ function updateArtworkGesture(): void {
     artworkAngle = pinchOrigin.rotation + delta * 180 / Math.PI;
   }
   reflect();
+  schedulePresetSave();
 }
 function initArtworkGestures(): void {
   const stage = el<HTMLElement>('drawing-video-stage');
@@ -252,6 +358,7 @@ function initArtworkGestures(): void {
     fingers.delete(event.pointerId);
     rebaseFingers(); // one remaining finger continues without a sudden jump
     if (fingers.size === 0) {
+      void flushPresetSave().catch(() => {});
       D.log('info', 'day4', 'artwork.gesture', {
         x: Math.round(artworkX), y: Math.round(artworkY),
         scale: Math.round(artworkScale), rotation: Math.round(artworkAngle),
@@ -281,6 +388,7 @@ export async function openDrawing(): Promise<void> {
   document.body.classList.add('drawing-open');
   document.documentElement.classList.add('drawing-open');
   document.body.style.overflow = 'hidden';
+  sceneSize = cameraSceneSize();
   reflect();
   D.log('info', 'day4', 'drawing.open', { safeArea: safeAreaSnapshot() });
   try {
@@ -299,6 +407,10 @@ export async function openDrawing(): Promise<void> {
 
 async function exit(): Promise<void> {
   if (!drawingOpen || entering) return;
+  // Explicit Back/Save: persist outstanding gestures BEFORE clearing active IDs.
+  // iOS can suspend a backgrounded tab; do not depend on pagehide alone.
+  let saveError: unknown = null;
+  try { await flushPresetSave(); } catch (error) { saveError = error; }
   drawingOpen = false;
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#f6f5f2');
   document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.setAttribute('content', 'black-translucent');
@@ -312,6 +424,12 @@ async function exit(): Promise<void> {
   showGrid = false;
   pendingNewDrawing = false;
   activeProjectId = null;
+  activeAssetId = null;
+  pendingSave = null;
+  latestCommittedFingerprint = null;
+  sceneSize = null;
+  // A failed save was reported at Back; do not block the next independent project.
+  saveChain = saveChain.catch(() => {});
   artworkLocked = false;
   artworkMirrored = false;
   artworkScale = 100;
@@ -328,11 +446,10 @@ async function exit(): Promise<void> {
   D.log('info', 'day4', 'drawing.close');
   document.dispatchEvent(new Event('sketchyar:drawing:closed'));
   reflect();
+  if (saveError) window.alert('Последните промени не можаха да се запазят. Провери локалното хранилище, преди да продължиш.');
 }
 
-/** Day 5: reopen an existing source Blob after a true reload/force-close.
- *  Current transform changes are not yet persisted: that is the Day 6 task.
- */
+/** Day 6: reopen an original Blob with its saved overlay preset. */
 export async function openSavedDrawing(projectId: string): Promise<void> {
   if (entering || drawingOpen || isBusy()) return;
   const img = el<HTMLImageElement>('drawing-user-image');
@@ -349,17 +466,15 @@ export async function openSavedDrawing(projectId: string): Promise<void> {
     url = null;
     if (oldUrl) URL.revokeObjectURL(oldUrl);
     activeProjectId = project.id;
-    artworkScale = (preset?.scale ?? 1) * 100;
-    artworkX = preset?.x ?? 0;
-    artworkY = preset?.y ?? 0;
-    artworkAngle = preset?.rotationDeg ?? 0;
-    opacity = preset?.opacityPercent ?? 50;
-    artworkMirrored = preset?.mirroredOverlay ?? false;
-    artworkLocked = preset?.locked ?? false;
-    showGrid = preset?.gridEnabled ?? false;
-    reflect();
-    await openDrawing();
-    D.log('info', 'day5', 'project.reopened', { projectId, sourceBytes: source.byteSize });
+    activeAssetId = source.id;
+    // Avoid displaying the image in a temporary position while opening the camera.
+    img.style.visibility = 'hidden';
+    try { await openDrawing(); restorePreset(preset); }
+    finally { img.style.visibility = ''; }
+    D.log('info', 'day6', 'project.restored', {
+      projectId, sourceBytes: source.byteSize, presetSpace: preset?.coordinateSpace ?? 'css-px',
+      locked: artworkLocked, opacity, scale: artworkScale,
+    });
   } catch (error) {
     if (url) URL.revokeObjectURL(url);
     D.log('error', 'day5', 'project.reopen.failed', { projectId, message: String(error) });
@@ -401,8 +516,10 @@ async function retry(): Promise<void> {
 
 export function initDay4(): void {
   initArtworkGestures();
-  window.addEventListener('resize', () => { if (drawingOpen) syncDrawingViewport(); }, { passive: true });
-  window.visualViewport?.addEventListener('resize', () => { if (drawingOpen) syncDrawingViewport(); }, { passive: true });
+  window.addEventListener('resize', () => { if (drawingOpen) { syncDrawingViewport(); syncScenePosition(); } }, { passive: true });
+  window.visualViewport?.addEventListener('resize', () => { if (drawingOpen) { syncDrawingViewport(); syncScenePosition(); } }, { passive: true });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) void flushPresetSave().catch(() => {}); });
+  window.addEventListener('pagehide', () => { void flushPresetSave().catch(() => {}); });
   el('btn-day4-open').addEventListener('click', () => void openDrawing());
   el('btn-day4-exit').addEventListener('click', () => void exit());
   el('btn-day4-retry').addEventListener('click', () => void retry());
@@ -410,23 +527,28 @@ export function initDay4(): void {
     // Camera-aligned 3x3 viewfinder, never part of the movable image or its opacity.
     showGrid = !showGrid;
     reflect();
+    schedulePresetSave();
   });
   el('btn-day4-center').addEventListener('click', () => {
     artworkScale = 100; artworkX = 0; artworkY = 0; artworkAngle = 0;
     reflect();
+    schedulePresetSave();
     D.log('info', 'day4', 'artwork.centered');
   });
   el('btn-day4-fit').addEventListener('click', () => {
     artworkScale = 100;
     reflect();
+    schedulePresetSave();
     D.log('info', 'day4', 'artwork-scale-reset', { scalePercent: artworkScale });
   });
   el<HTMLInputElement>('day4-scale').addEventListener('input', (event) => {
     artworkScale = Math.max(25, Math.min(250, Number((event.currentTarget as HTMLInputElement).value)));
     reflect();
+    schedulePresetSave();
   });
   el<HTMLInputElement>('day4-scale').addEventListener('change', () => {
     D.log('info', 'day4', 'artwork-scale', { scalePercent: artworkScale });
+    void flushPresetSave().catch(() => {});
   });
   el<HTMLButtonElement>('btn-day4-image').addEventListener('click', () => {
     const input = el<HTMLInputElement>('drawing-image-file');
@@ -460,16 +582,24 @@ export function initDay4(): void {
       // Commit the original Blob + tiny preview in one IndexedDB transaction.
       // If storage fails, preserve the previous image and don't create an orphan project.
       const thumbnail = await makeThumbnail(img);
+      // Complete pending writes on the old image before changing its active asset.
+      await flushPresetSave();
       let savedProjectId = activeProjectId;
+      let savedSourceId: string | null = null;
       if (isNewDrawing || !savedProjectId) {
         const project = await createImageProject(file, { width: prepared.sourceWidth, height: prepared.sourceHeight }, thumbnail);
         savedProjectId = project.id;
+        savedSourceId = project.activeAssetId;
         D.log('info', 'day5', 'project.created', { projectId: project.id, sourceBytes: file.size });
       } else {
-        await replaceProjectSource(savedProjectId, file, { width: prepared.sourceWidth, height: prepared.sourceHeight }, thumbnail);
+        const project = await replaceProjectSource(savedProjectId, file, { width: prepared.sourceWidth, height: prepared.sourceHeight }, thumbnail);
+        savedSourceId = project.activeAssetId;
         D.log('info', 'day5', 'project.source.replaced', { projectId: savedProjectId, sourceBytes: file.size });
       }
       activeProjectId = savedProjectId;
+      activeAssetId = savedSourceId;
+      latestCommittedFingerprint = null;
+      pendingSave = null;
       userImageUrl = nextUrl;
       nextUrl = null;
       if (previousUrl) URL.revokeObjectURL(previousUrl);
@@ -478,13 +608,16 @@ export function initDay4(): void {
       artworkX = 0;
       artworkY = 0;
       artworkAngle = 0;
-      if (isNewDrawing) {
-        showGrid = false; // rule-of-thirds starts off for each new drawing
-        artworkLocked = false;
-        artworkMirrored = false;
-      }
+      opacity = 50;
+      // New source = new transform and unlocked position, even when replacing a photo.
+      showGrid = false;
+      artworkLocked = false;
+      artworkMirrored = false;
       reflect();
       if (isNewDrawing) await openDrawing();
+      sceneSize = cameraSceneSize();
+      schedulePresetSave();
+      void flushPresetSave().catch(() => {});
       setMessage('Изображението е заредено. Мрежата 3×3 управлява само визьора на камерата.');
       D.log('info', 'day4', 'drawing.image.loaded', {
         mimeType: file.type, sourceBytes: file.size, width: prepared.sourceWidth,
@@ -503,9 +636,11 @@ export function initDay4(): void {
   el<HTMLInputElement>('day4-opacity').addEventListener('input', (event) => {
     opacity = Math.max(0, Math.min(100, Number((event.currentTarget as HTMLInputElement).value)));
     reflect();
+    schedulePresetSave();
   });
   el<HTMLInputElement>('day4-opacity').addEventListener('change', () => {
     D.log('info', 'day4', 'test-overlay-opacity', { opacity });
+    void flushPresetSave().catch(() => {});
   });
   el('btn-day4-capabilities').addEventListener('click', () => {
     const snapshot = cameraController.snapshot;
@@ -541,20 +676,26 @@ export function initDay4(): void {
     if (artworkLocked) return;
     artworkMirrored = !artworkMirrored;
     reflect();
+    schedulePresetSave();
+    void flushPresetSave().catch(() => {});
     D.log('info', 'day4', 'artwork.mirror', { mirrored: artworkMirrored });
   });
   el<HTMLButtonElement>('sketch-camera-lock').addEventListener('click', () => {
     artworkLocked = !artworkLocked;
     clearFingers();
     reflect();
+    schedulePresetSave();
+    void flushPresetSave().catch(() => {});
     D.log('info', 'day4', 'artwork.lock', { locked: artworkLocked });
   });
   el<HTMLInputElement>('sketch-camera-opacity').addEventListener('input', (event) => {
     opacity = clamp(Number((event.currentTarget as HTMLInputElement).value), 0, 100);
     reflect();
+    schedulePresetSave();
   });
   el<HTMLInputElement>('sketch-camera-opacity').addEventListener('change', () => {
     D.log('info', 'day4', 'artwork.opacity', { opacity });
+    void flushPresetSave().catch(() => {});
   });
   cameraController.subscribe(statusFromController);
   reflect();
