@@ -357,3 +357,17 @@ Preview PNGs (three original synthetic fixtures + four XDoG styles per fixture) 
 After deployment v0.9.0, the **developer diagnostics** screen has a **Ден 9 — Провери Python Sketch Engine** button. It lazily loads the same Python module in the existing Pyodide Worker and benchmarks a 512×512 image with `float32` and three runs. Compare its `checksum` against the **same Day 9** benchmark on Windows. XDoG is not yet connected to live Drawing or converted to transparent PNG — that work is deliberately deferred to the processing bridge.
 
 Full details and acceptance procedure: [`docs/day9.md`](docs/day9.md).
+
+## Day 10 — Tones 3–5 and controlled Sobel/XDoG comparison
+
+New independent NumPy module: `python_engine/ar_drawing/day10_tones.py`. The Day 9 Gaussian/Sobel/XDoG remains unchanged as a reference baseline; there is no extra browser runtime dependency and no change to Camera or IndexedDB.
+
+```powershell
+python -m pytest python_engine -q
+python scripts/day10_preview.py
+python scripts/day10_benchmark.py --sizes 512 1024 --runs 5
+# Optional if cv2 is installed on Windows:
+python scripts/day10_compare_cv2.py
+```
+
+The diagnostic screen in version `0.10.0` provides **Day 10: 512 px** and **Day 10: 1024 px**; export its JSON and compare against the Windows results with `scripts/day10_compare_device.py`. See [docs/day10.md](docs/day10.md) for the acceptance protocol and limitations. The previews and private input photos remain in ignored `experiments/outputs/`.

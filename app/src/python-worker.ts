@@ -4,6 +4,7 @@
  */
 import proxySource from '../../python_engine/ar_drawing/spike_proxy.py?raw';
 import sketchEngineSource from '../../python_engine/ar_drawing/sketch_engine.py?raw';
+import day10TonesSource from '../../python_engine/ar_drawing/day10_tones.py?raw';
 
 const PYODIDE_VERSION = '314.0.8';
 // Worker script is in src/ during development and assets/ after Vite build.
@@ -44,7 +45,7 @@ interface PyodideRuntime {
   globals: { set: (name: string, value: unknown) => void };
   version: string;
 }
-type WorkerCommand = 'init' | 'numpy' | 'opencv' | 'opencv10' | 'day9';
+type WorkerCommand = 'init' | 'numpy' | 'opencv' | 'opencv10' | 'day9' | 'day10-512' | 'day10-1024';
 type Incoming = { id: string; command: WorkerCommand };
 type Progress = { id: string; kind: 'progress'; stage: string; ms: number };
 type Done = { id: string; kind: 'done'; command: WorkerCommand; result: Record<string, unknown> };
@@ -58,6 +59,7 @@ let runtimePromise: Promise<PyodideRuntime> | null = null;
 let startupReport: Record<string, unknown> | null = null;
 let opencvReady = false;
 let day9Ready = false;
+let day10Ready = false;
 
 function progress(id: string, stage: string, ms: number): void {
   workerScope.postMessage({ id, kind: 'progress', stage, ms: Math.round(ms) } satisfies Progress);
@@ -116,14 +118,40 @@ function numpyBenchmark(pyodide: PyodideRuntime): Record<string, unknown> {
   return parseJSON(pyodide, 'import json\njson.dumps(_sketchyar_proxy.benchmark(size=1024, runs=5, seed=173))');
 }
 
+function ensureDay9Module(pyodide: PyodideRuntime): void {
+  // Day 9 is deliberately retained unchanged as the performance baseline.
+  if (day9Ready) return;
+  pyodide.globals.set('_sketchyar_day9_source', sketchEngineSource);
+  pyodide.runPython("import types\n_sketchyar_day9 = types.ModuleType('sketchyar_day9')\nexec(_sketchyar_day9_source, _sketchyar_day9.__dict__)");
+  day9Ready = true;
+}
+
 function day9Benchmark(pyodide: PyodideRuntime): Record<string, unknown> {
-  // Lazy-load exact shared Python source only for the Day 9 button. No extra wheel.
-  if (!day9Ready) {
-    pyodide.globals.set('_sketchyar_day9_source', sketchEngineSource);
-    pyodide.runPython("import types\n_sketchyar_day9 = types.ModuleType('sketchyar_day9')\nexec(_sketchyar_day9_source, _sketchyar_day9.__dict__)");
-    day9Ready = true;
-  }
+  ensureDay9Module(pyodide);
   return parseJSON(pyodide, 'import json\njson.dumps(_sketchyar_day9.benchmark(size=512, runs=3, seed=173))');
+}
+
+function day10Benchmark(pyodide: PyodideRuntime, size: 512 | 1024): Record<string, unknown> {
+  ensureDay9Module(pyodide);
+  if (!day10Ready) {
+    // Relative import in Day 10 resolves to the Day 9 module already loaded.
+    // No additional Python wheels or CDN requests are needed.
+    pyodide.globals.set('_sketchyar_day10_source', day10TonesSource);
+    pyodide.runPython([
+      'import sys, types',
+      '_sketchyar_package = types.ModuleType("ar_drawing")',
+      '_sketchyar_package.__path__ = []',
+      'sys.modules["ar_drawing"] = _sketchyar_package',
+      'sys.modules["ar_drawing.sketch_engine"] = _sketchyar_day9',
+      '_sketchyar_day10 = types.ModuleType("ar_drawing.day10_tones")',
+      '_sketchyar_day10.__package__ = "ar_drawing"',
+      'sys.modules["ar_drawing.day10_tones"] = _sketchyar_day10',
+      'exec(_sketchyar_day10_source, _sketchyar_day10.__dict__)',
+    ].join('\n'));
+    day10Ready = true;
+  }
+  // Same deterministic module and input on Windows and iPhone.
+  return parseJSON(pyodide, `import json\njson.dumps(_sketchyar_day10.benchmark_day10(size=${size}, runs=3, seed=173))`);
 }
 
 async function openCVBenchmark(pyodide: PyodideRuntime, runs: number, id: string): Promise<Record<string, unknown>> {
@@ -151,6 +179,8 @@ workerScope.onmessage = async (event: MessageEvent<Incoming>) => {
     if (command === 'init') result = { ...(startupReport ?? {}), reused: performance.now() - started < 100 };
     else if (command === 'numpy') result = numpyBenchmark(pyodide);
     else if (command === 'day9') result = day9Benchmark(pyodide);
+    else if (command === 'day10-512') result = day10Benchmark(pyodide, 512);
+    else if (command === 'day10-1024') result = day10Benchmark(pyodide, 1024);
     else if (command === 'opencv') result = await openCVBenchmark(pyodide, 5, id);
     else if (command === 'opencv10') result = await openCVBenchmark(pyodide, 10, id);
     else throw new Error(`Непозната команда: ${command}`);
