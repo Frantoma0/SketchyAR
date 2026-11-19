@@ -7,3 +7,8 @@ __pycache__/
 *.egg-info/
 .DS_Store
 experiments/outputs/
+
+# Day 8: generated third-party binaries are acquired only during build.
+app/public/pyodide/
+app/src/fonts/*.woff2
+app/public/licenses/Caveat-OFL.txt

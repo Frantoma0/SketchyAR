@@ -9,6 +9,7 @@ import { initHome } from './home';
 import { initDay5Diagnostics } from './day5-diagnostics';
 import { initDay6Diagnostics } from './day6-diagnostics';
 import { initDay7Diagnostics } from './day7-diagnostics';
+import { initDay8Diagnostics } from './day8-diagnostics';
 
 D.installGlobalHandlers();
 D.checkPreviousSession();
@@ -110,7 +111,7 @@ document.getElementById('app')!.innerHTML = `
     <h1>SketchyAR</h1>
     <button id="ver" class="ver" type="button" aria-label="Версия на приложението"></button>
   </header>
-  <p class="lead">Ден 7: локални проекти, автоматично възстановяване, управление и проверки за целостта. Camera UI остава непроменен.</p>
+  <p class="lead">Ден 8: самохостван Pyodide/NumPy и Caveat; Python benchmark. Проектите и Camera UI остават непроменени.</p>
   <section><h2>Build</h2><dl id="build"></dl></section>
   <section><h2>Среда</h2><dl id="env"><dt>Зареждане</dt><dd>…</dd></dl></section>
   <section><h2>Възможности на устройството</h2><ul id="caps" class="caps"></ul></section>
@@ -127,6 +128,10 @@ document.getElementById('app')!.innerHTML = `
     <p class="hint">Проверява всички записи за осиротели assets, presets и хешове след преименуване/изтриване. Не променя базата.</p>
     <button class="act" id="btn-day7-audit" type="button">Провери връзките в базата</button>
     <pre id="day7-result" class="benchmark-result">Още няма проверка.</pre>
+    <h2>Ден 8 — Локални зависимости</h2>
+    <p class="hint">Проверява дали Pyodide/NumPy файловете са от същия сайт (HEAD) и дали Caveat Bold е зареден. Това още НЕ проверява Service Worker офлайн кеш.</p>
+    <button class="act" id="btn-day8-assets" type="button">Провери self-hosted ресурси</button>
+    <pre id="day8-assets-result" class="benchmark-result">Още няма проверка.</pre>
   </section>
   <section id="day4">
     <h2>Ден 4 — Drawing основа</h2>
@@ -205,7 +210,7 @@ document.getElementById('app')!.innerHTML = `
     <div class="actions"><button class="act" id="btn-camera" type="button">Пусни камера</button></div>
     <p class="hint">Изпълни последователно: инициализация → NumPy proxy → OpenCV Canny → 10× Canny. Остави камерата включена за комбинираните тестове. Измерванията ще се запишат в JSON.</p>
     <div class="actions">
-      <button class="act" id="btn-init" data-python type="button">1. Стартирай Pyodide</button>
+      <button class="act" id="btn-init" data-python type="button">1. Локален Pyodide</button>
       <button class="act" id="btn-numpy" data-python type="button">2. NumPy 5×</button>
       <button class="act" id="btn-opencv" data-python type="button">3. cv2.Canny 5×</button>
       <button class="act" id="btn-opencv10" data-python type="button">4. cv2.Canny 10×</button>
@@ -308,6 +313,8 @@ try { initDay6Diagnostics(); }
 catch (error) { D.log('error', 'startup', 'Day 6 diagnostics failed', error); }
 try { initDay7Diagnostics(); }
 catch (error) { D.log('error', 'startup', 'Day 7 diagnostics failed', error); }
+try { initDay8Diagnostics(); }
+catch (error) { D.log('error', 'startup', 'Day 8 diagnostics failed', error); }
 document.getElementById('startup-fallback')?.remove();
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;

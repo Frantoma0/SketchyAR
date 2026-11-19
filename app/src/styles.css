@@ -1,4 +1,12 @@
-@import url("https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap");
+/* Day 8: the original Caveat Bold, converted locally to WOFF2 by the vendor script.
+   No runtime Google Fonts request; retains the full Bulgarian Cyrillic glyph set. */
+@font-face {
+  font-family: 'Caveat';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/Caveat-Bold.woff2') format('woff2');
+}
 
 :root {
   color-scheme: light dark;

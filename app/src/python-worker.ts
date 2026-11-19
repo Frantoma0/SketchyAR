@@ -1,10 +1,41 @@
-/** SketchyAR Day 2: Pyodide in a module Worker. No code runs until the UI requests it.
- *  This spike intentionally uses the upstream CDN. Offline vendoring is planned for Day 19.
+/** SketchyAR Day 8: same-origin Pyodide in a module Worker. No remote runtime fetches.
+ *  Build-time preparation (scripts/vendor_day8.py) supplies pinned files and wheel dependencies.
+ *  A Service Worker and verified offline cache remain Day 19 work.
  */
 import proxySource from '../../python_engine/ar_drawing/spike_proxy.py?raw';
 
 const PYODIDE_VERSION = '314.0.8';
-const PYODIDE_BASE = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`;
+// Worker script is in src/ during development and assets/ after Vite build.
+// The parent directory is the app base in BOTH cases, including GitHub Pages subpaths.
+const PYODIDE_BASE = new URL(`../pyodide/v${PYODIDE_VERSION}/`, self.location.href).href;
+if (new URL(PYODIDE_BASE).origin !== self.location.origin) {
+  throw new Error('Pyodide must be same-origin');
+}
+
+type VendorInventory = {
+  pyodideVersion: string;
+  packages: string[];
+  opencvVendored: boolean;
+  files: Record<string, { bytes: number; sha256: string }>;
+};
+let inventoryPromise: Promise<VendorInventory> | null = null;
+async function getInventory(): Promise<VendorInventory> {
+  if (!inventoryPromise) {
+    inventoryPromise = (async () => {
+      const response = await fetch(new URL('inventory.json', PYODIDE_BASE), { cache: 'no-store' });
+      if (!response.ok) throw new Error(
+        `Липсва локален Pyodide runtime (${response.status}). Изпълни python scripts/vendor_day8.py преди build.`
+      );
+      const manifest = await response.json() as VendorInventory;
+      if (manifest.pyodideVersion !== PYODIDE_VERSION || !manifest.packages.includes('numpy')) {
+        throw new Error('Локалните Python пакети не съвпадат с фиксираната версия');
+      }
+      return manifest;
+    })().catch((err: unknown) => { inventoryPromise = null; throw err; });
+  }
+  return inventoryPromise;
+}
+
 
 interface PyodideRuntime {
   loadPackage: (name: string) => Promise<unknown>;
@@ -34,7 +65,8 @@ async function ensureRuntime(id: string): Promise<PyodideRuntime> {
   if (!runtimePromise) {
     runtimePromise = (async () => {
       const started = performance.now();
-      // Vite must not rewrite this version-pinned, cross-origin dynamic module import.
+      const inventory = await getInventory();
+      // Runtime import is deliberately same-origin; Vite must not bundle Pyodide itself.
       const loader = (await import(/* @vite-ignore */ `${PYODIDE_BASE}pyodide.mjs`)) as {
         loadPyodide: (opts: { indexURL: string }) => Promise<PyodideRuntime>;
       };
@@ -53,6 +85,12 @@ async function ensureRuntime(id: string): Promise<PyodideRuntime> {
         numpyLoadMs: Math.round(numpyMs),
         totalInitMs: Math.round(performance.now() - started),
         source: 'python_engine/ar_drawing/spike_proxy.py',
+        resourceOrigin: new URL(PYODIDE_BASE).origin,
+        pyodideBasePath: new URL(PYODIDE_BASE).pathname,
+        selfHosted: true,
+        vendoredFileCount: Object.keys(inventory.files).length,
+        vendoredBytes: Object.values(inventory.files).reduce((total, file) => total + file.bytes, 0),
+        opencvVendored: inventory.opencvVendored,
       };
       return pyodide;
     })().catch((error: unknown) => {
@@ -78,6 +116,10 @@ function numpyBenchmark(pyodide: PyodideRuntime): Record<string, unknown> {
 
 async function openCVBenchmark(pyodide: PyodideRuntime, runs: number, id: string): Promise<Record<string, unknown>> {
   if (!opencvReady) {
+    const inventory = await getInventory();
+    if (!inventory.opencvVendored) {
+      throw new Error('OpenCV е опционален и не е включен. За benchmark: python scripts/vendor_day8.py --with-opencv, после нов build.');
+    }
     const t0 = performance.now();
     await pyodide.loadPackage('opencv-python');
     opencvReady = true;

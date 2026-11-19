@@ -20,3 +20,12 @@
 
 - Исторически в iOS 26 standalone са наблюдавани viewport разлики от около 62 CSS px между `screen.height` и достъпната област. Това **не** е универсално правило/константа за hardcode.
 - Началният екран използва актуалния работещ `home.ts` safe-fit и фон от качената версия. **Да не се променят Safe Areas или background** без две снимки (Safari + Home Screen) и регресионен тест на Drawing.
+
+
+## Day 8 — runtime assets belong to our own origin (2026-11-19)
+
+- Freeze Python browser runtime at Pyodide `314.0.8`; vendor its loader, WASM, stdlib, lock and NumPy wheel closure at build time from the matching release, with lock SHA-256 validation.
+- Keep optional OpenCV benchmark out of the default P0 runtime and make it explicitly opt-in at vendor time; a missing OpenCV wheel must never trigger an unintended CDN fallback.
+- Preserve Caveat Bold Cyrillic and license; convert a pinned upstream TTF to self-hosted WOFF2 during build; preserve typography positions/sizes and never use Google Fonts at runtime.
+- No Service Worker precache until the planned staged SW work. Presence of files on the server is **not** `CORE OFFLINE READY`.
+- Day 8 has two independently reported benchmark environments: CPython on Windows and Pyodide in a Web Worker on iPhone. Both run the same `spike_proxy.py` algorithm; do not pool their timings.

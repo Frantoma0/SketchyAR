@@ -82,7 +82,7 @@ async function run(command: Command): Promise<void> {
   const jobId = D.beginJob(`day2-${command}`);
   const t0 = performance.now();
   const stopFrameMonitor = startFrameMonitor();
-  setStatus(`Работи ${command}... При първото зареждане на Pyodide е нужен интернет.`);
+  setStatus(`Работи ${command}... Pyodide и NumPy се зареждат от собствения SketchyAR адрес.`);
   try {
     const data = await runPythonCommand(command);
     const elapsed = Math.round(performance.now() - t0);

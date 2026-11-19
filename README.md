@@ -319,3 +319,25 @@ git push origin main
 ## Ден 7 — Project management (v0.7.0)
 
 След успешно тествания Ден 6 на iPhone, върху всяка запазена полароидна рамка има малък бутон `···`: преименуване или изтриване с потвърждение. Докосването на самата снимка продължава да отваря проекта. За проверка отвори **Диагностика → Ден 7 → Провери връзките в базата**. Очакваният резултат е `acceptance: PASS` и празни списъци за осиротели записи. Виж [`docs/day7.md`](docs/day7.md) за пълния приемателен тест. Изтриването е необратимо: все още няма ZIP backup/restore.
+
+
+## Day 8 — Python runtime + Caveat без runtime CDN
+
+Преди `npm run dev`/`npm run build` изпълни от корена на проекта:
+
+```powershell
+python -m pip install "fonttools[woff]==4.63.0"
+python scripts/vendor_day8.py
+python scripts/vendor_day8.py --check
+cd app
+npm ci
+npm run build
+cd ..
+python scripts/day8_benchmark.py --sizes 512 1024 --runs 5
+```
+
+Скриптът сваля Pyodide **314.0.8**, NumPy и зависимостите от фиксиран Pyodide release **само при подготовката**, като ги записва под `app/public/pyodide/v314.0.8/`. Caveat Bold се извлича от фиксиран upstream commit и се преобразува локално в WOFF2 с пълна кирилица. Генерираните бинарни файлове са игнорирани от Git; GitHub Actions ги изгражда отново при deploy. **Този етап не създава Service Worker и не гарантира cold offline launch.**
+
+При нужда от стария незадължителен OpenCV benchmark: `python scripts/vendor_day8.py --with-opencv`.
+
+В диагностиката натисни „Ден 8 — Проверка на локалните ресурси“ и експортирай JSON. Виж пълния протокол в [docs/day8.md](docs/day8.md).
