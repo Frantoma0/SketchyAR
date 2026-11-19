@@ -3,6 +3,7 @@
  *  A Service Worker and verified offline cache remain Day 19 work.
  */
 import proxySource from '../../python_engine/ar_drawing/spike_proxy.py?raw';
+import sketchEngineSource from '../../python_engine/ar_drawing/sketch_engine.py?raw';
 
 const PYODIDE_VERSION = '314.0.8';
 // Worker script is in src/ during development and assets/ after Vite build.
@@ -43,7 +44,7 @@ interface PyodideRuntime {
   globals: { set: (name: string, value: unknown) => void };
   version: string;
 }
-type WorkerCommand = 'init' | 'numpy' | 'opencv' | 'opencv10';
+type WorkerCommand = 'init' | 'numpy' | 'opencv' | 'opencv10' | 'day9';
 type Incoming = { id: string; command: WorkerCommand };
 type Progress = { id: string; kind: 'progress'; stage: string; ms: number };
 type Done = { id: string; kind: 'done'; command: WorkerCommand; result: Record<string, unknown> };
@@ -56,6 +57,7 @@ const workerScope = self as unknown as {
 let runtimePromise: Promise<PyodideRuntime> | null = null;
 let startupReport: Record<string, unknown> | null = null;
 let opencvReady = false;
+let day9Ready = false;
 
 function progress(id: string, stage: string, ms: number): void {
   workerScope.postMessage({ id, kind: 'progress', stage, ms: Math.round(ms) } satisfies Progress);
@@ -114,6 +116,16 @@ function numpyBenchmark(pyodide: PyodideRuntime): Record<string, unknown> {
   return parseJSON(pyodide, 'import json\njson.dumps(_sketchyar_proxy.benchmark(size=1024, runs=5, seed=173))');
 }
 
+function day9Benchmark(pyodide: PyodideRuntime): Record<string, unknown> {
+  // Lazy-load exact shared Python source only for the Day 9 button. No extra wheel.
+  if (!day9Ready) {
+    pyodide.globals.set('_sketchyar_day9_source', sketchEngineSource);
+    pyodide.runPython("import types\n_sketchyar_day9 = types.ModuleType('sketchyar_day9')\nexec(_sketchyar_day9_source, _sketchyar_day9.__dict__)");
+    day9Ready = true;
+  }
+  return parseJSON(pyodide, 'import json\njson.dumps(_sketchyar_day9.benchmark(size=512, runs=3, seed=173))');
+}
+
 async function openCVBenchmark(pyodide: PyodideRuntime, runs: number, id: string): Promise<Record<string, unknown>> {
   if (!opencvReady) {
     const inventory = await getInventory();
@@ -138,6 +150,7 @@ workerScope.onmessage = async (event: MessageEvent<Incoming>) => {
     let result: Record<string, unknown>;
     if (command === 'init') result = { ...(startupReport ?? {}), reused: performance.now() - started < 100 };
     else if (command === 'numpy') result = numpyBenchmark(pyodide);
+    else if (command === 'day9') result = day9Benchmark(pyodide);
     else if (command === 'opencv') result = await openCVBenchmark(pyodide, 5, id);
     else if (command === 'opencv10') result = await openCVBenchmark(pyodide, 10, id);
     else throw new Error(`Непозната команда: ${command}`);

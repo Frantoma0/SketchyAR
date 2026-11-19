@@ -341,3 +341,19 @@ python scripts/day8_benchmark.py --sizes 512 1024 --runs 5
 При нужда от стария незадължителен OpenCV benchmark: `python scripts/vendor_day8.py --with-opencv`.
 
 В диагностиката натисни „Ден 8 — Проверка на локалните ресурси“ и експортирай JSON. Виж пълния протокол в [docs/day8.md](docs/day8.md).
+
+## Day 9 — Python Sketch Engine (NumPy)
+
+`python_engine/ar_drawing/sketch_engine.py` adds a shared pure-NumPy `float32` Gaussian, Sobel and four XDoG presets. No change to the Camera UI or IndexedDB.
+
+```powershell
+python -m pytest python_engine -q
+python scripts/day9_preview.py
+python scripts/day9_benchmark.py --sizes 512 1024 --runs 5
+```
+
+Preview PNGs (three original synthetic fixtures + four XDoG styles per fixture) and benchmarks are written under the **Git-ignored** `experiments/outputs/`. To try a personal photo locally, use `python scripts/day9_preview.py --input "C:\\path\\to\\photo.jpg"` and keep the outputs off GitHub.
+
+After deployment v0.9.0, the **developer diagnostics** screen has a **Ден 9 — Провери Python Sketch Engine** button. It lazily loads the same Python module in the existing Pyodide Worker and benchmarks a 512×512 image with `float32` and three runs. Compare its `checksum` against the **same Day 9** benchmark on Windows. XDoG is not yet connected to live Drawing or converted to transparent PNG — that work is deliberately deferred to the processing bridge.
+
+Full details and acceptance procedure: [`docs/day9.md`](docs/day9.md).

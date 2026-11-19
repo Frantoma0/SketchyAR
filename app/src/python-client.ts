@@ -1,7 +1,7 @@
 /** Typed request/response bridge. One logical task at a time (managed by UI). */
 import { newRequestId, log } from './diagnostics';
 
-export type Command = 'init' | 'numpy' | 'opencv' | 'opencv10';
+export type Command = 'init' | 'numpy' | 'opencv' | 'opencv10' | 'day9';
 type Message =
   | { id: string; kind: 'progress'; stage: string; ms: number }
   | { id: string; kind: 'done'; result: Record<string, unknown> }

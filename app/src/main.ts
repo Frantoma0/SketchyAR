@@ -10,6 +10,7 @@ import { initDay5Diagnostics } from './day5-diagnostics';
 import { initDay6Diagnostics } from './day6-diagnostics';
 import { initDay7Diagnostics } from './day7-diagnostics';
 import { initDay8Diagnostics } from './day8-diagnostics';
+import { initDay9Diagnostics } from './day9-diagnostics';
 
 D.installGlobalHandlers();
 D.checkPreviousSession();
@@ -111,7 +112,7 @@ document.getElementById('app')!.innerHTML = `
     <h1>SketchyAR</h1>
     <button id="ver" class="ver" type="button" aria-label="Версия на приложението"></button>
   </header>
-  <p class="lead">Ден 8: самохостван Pyodide/NumPy и Caveat; Python benchmark. Проектите и Camera UI остават непроменени.</p>
+  <p class="lead">Ден 9: собствен NumPy Gaussian, Sobel и XDoG. Camera UI и локалните проекти са непроменени.</p>
   <section><h2>Build</h2><dl id="build"></dl></section>
   <section><h2>Среда</h2><dl id="env"><dt>Зареждане</dt><dd>…</dd></dl></section>
   <section><h2>Възможности на устройството</h2><ul id="caps" class="caps"></ul></section>
@@ -132,6 +133,10 @@ document.getElementById('app')!.innerHTML = `
     <p class="hint">Проверява дали Pyodide/NumPy файловете са от същия сайт (HEAD) и дали Caveat Bold е зареден. Това още НЕ проверява Service Worker офлайн кеш.</p>
     <button class="act" id="btn-day8-assets" type="button">Провери self-hosted ресурси</button>
     <pre id="day8-assets-result" class="benchmark-result">Още няма проверка.</pre>
+    <h2>Ден 9 — Python Sketch Engine</h2>
+    <p class="hint">Изпълнява <strong>същия Python модул</strong> като на Windows в Pyodide Worker: Gaussian, Sobel и XDoG върху детерминистичен вход 512×512, float32, 3 измервания. Не променя запазените проекти и не използва камерата.</p>
+    <button class="act" id="btn-day9-benchmark" type="button">Провери Python Sketch Engine</button>
+    <pre id="day9-benchmark-result" class="benchmark-result" role="status">Още няма проверка.</pre>
   </section>
   <section id="day4">
     <h2>Ден 4 — Drawing основа</h2>
@@ -315,6 +320,8 @@ try { initDay7Diagnostics(); }
 catch (error) { D.log('error', 'startup', 'Day 7 diagnostics failed', error); }
 try { initDay8Diagnostics(); }
 catch (error) { D.log('error', 'startup', 'Day 8 diagnostics failed', error); }
+try { initDay9Diagnostics(); }
+catch (error) { D.log('error', 'startup', 'Day 9 diagnostics failed', error); }
 document.getElementById('startup-fallback')?.remove();
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
