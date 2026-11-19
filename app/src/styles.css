@@ -389,3 +389,88 @@ body.drawing-open { background: #090b0c !important; }
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill;
   pointer-events: none; z-index: 1;
 }
+
+
+/* Day 7: subtle graphite project controls. Polaroid art and safe-area sizing are unchanged. */
+.home-project-saved .home-project-open {
+  position:absolute; inset:0; width:100%; height:100%; padding:0; margin:0;
+  border:0; background:transparent; cursor:pointer; touch-action:pan-y;
+  -webkit-tap-highlight-color:transparent;
+}
+.home-project-open:focus-visible, .home-project-menu-trigger:focus-visible {
+  outline:2px solid #645c54; outline-offset:-1px;
+}
+.home-project-caption {
+  position:absolute; z-index:2; left:10%; right:29%; bottom:5.9%;
+  color:#544e48; font:700 17px/1 'Caveat',cursive;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  pointer-events:none; text-shadow:0 1px 0 #fff;
+}
+.home-project-menu-trigger {
+  position:absolute; z-index:3; right:5%; bottom:1%;
+  width:35px; height:35px; padding:0 0 10px; border:0; border-radius:10px;
+  background:transparent; color:#514c48; font:700 27px/1 var(--font);
+  display:grid; place-items:center; cursor:pointer;
+  touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+}
+.home-project-menu-trigger:active { background:rgba(85,79,74,.13); }
+/* Day 7.1: user-supplied graphite bin in the top-right photo corner.
+   44px touch target; the visible 27px icon stays inside the photo and avoids
+   the frame border. This is a sibling of the open-project button. */
+.home-project-delete-trigger {
+  position:absolute; z-index:4; top:4%; right:4%;
+  width:44px; height:44px; margin:0; padding:0;
+  display:grid; place-items:center; border:0;
+  border-radius:12px; background:transparent;
+  cursor:pointer; touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+.home-project-delete-trigger img {
+  display:block; width:29px; height:29px;
+  object-fit:contain; pointer-events:none; user-select:none;
+  -webkit-user-drag:none;
+}
+.home-project-delete-trigger:focus-visible {
+  outline:2px solid #645c54; outline-offset:-2px;
+}
+.home-project-delete-trigger:active img { transform:scale(.96); }
+.project-dialog-backdrop[hidden], .project-dialog [hidden] { display:none !important; }
+.project-dialog-backdrop {
+  position:fixed; inset:0; z-index:1700; padding: max(18px, env(safe-area-inset-top,0px))
+    max(18px, env(safe-area-inset-right,0px)) max(18px, env(safe-area-inset-bottom,0px))
+    max(18px, env(safe-area-inset-left,0px));
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(25,22,21,.60); overscroll-behavior:contain;
+}
+.project-dialog {
+  position:relative; width:min(100%,390px); max-height:100%; overflow-y:auto;
+  background:#fbfaf7; color:#403a35; border:2px solid #635d58; border-radius:22px;
+  padding:22px 17px 18px; box-shadow:inset 0 3px 0 #fff, 0 15px 30px rgba(0,0,0,.28);
+  -webkit-overflow-scrolling:touch;
+}
+.project-dialog h2 { margin:0 42px 4px 0; font:700 34px/1.1 'Caveat',cursive; }
+.project-dialog p { margin:4px 0 14px; font:14px/1.4 var(--font); overflow-wrap:anywhere; }
+.project-dialog-close {
+  position:absolute; right:10px; top:6px; width:44px; height:44px;
+  border:0; border-radius:12px; background:transparent; color:#4f4945;
+  font:32px/1 var(--font); cursor:pointer;
+}
+.project-dialog-buttons { display:flex; flex-direction:column; gap:10px; margin-top:12px; }
+.project-dialog-buttons button {
+  min-height:44px; border:1.5px solid #655e58; border-radius:15px;
+  background:#fff; color:#443f3b; font:600 15px/1.2 var(--font);
+  padding:8px 12px; cursor:pointer; touch-action:manipulation;
+}
+.project-dialog-buttons button:disabled { opacity:.5; cursor:wait; }
+.project-dialog-buttons .project-dialog-danger-link,
+.project-dialog-buttons .project-dialog-danger { border-color:#974b45; color:#8c2d29; }
+.project-dialog-inline { flex-direction:row; }
+.project-dialog-inline button { flex:1; }
+#project-rename-form label { display:block; font-size:13px; font-weight:600; margin-bottom:8px; }
+#project-rename-input {
+  width:100%; min-height:44px; border:1.5px solid #77706a; border-radius:12px;
+  padding:10px; font:16px var(--font); color:#302c29; background:#fff;
+}
+.project-dialog .project-dialog-warning { font-size:13px; color:#6b3c38; }
+.project-dialog .project-dialog-error { color:#a32925; font-weight:600; }
+@media (max-width:355px) { .project-dialog-inline { flex-direction:column; } }

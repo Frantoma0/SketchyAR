@@ -8,6 +8,7 @@ import { initDay4, requestNewDrawing, openSavedDrawing } from './day4';
 import { initHome } from './home';
 import { initDay5Diagnostics } from './day5-diagnostics';
 import { initDay6Diagnostics } from './day6-diagnostics';
+import { initDay7Diagnostics } from './day7-diagnostics';
 
 D.installGlobalHandlers();
 D.checkPreviousSession();
@@ -74,6 +75,34 @@ document.getElementById('app')!.innerHTML = `
     </div>
   </div>
 </div>
+<!-- Day 7: separate action sheet; never nest buttons inside the polaroid's open button. -->
+<div id="home-project-dialog" class="project-dialog-backdrop" role="presentation" hidden>
+  <div class="project-dialog" role="dialog" aria-modal="true" aria-labelledby="project-dialog-title" aria-describedby="project-dialog-description" tabindex="-1">
+    <button id="project-dialog-close" class="project-dialog-close" type="button" aria-label="Затвори">×</button>
+    <h2 id="project-dialog-title">Проект</h2>
+    <p id="project-dialog-description"></p>
+    <p id="project-dialog-error" class="project-dialog-error" role="alert" hidden></p>
+    <div id="project-dialog-menu" class="project-dialog-buttons">
+      <button id="project-action-rename" type="button">Преименувай</button>
+      <button id="project-action-delete" type="button" class="project-dialog-danger-link">Изтрий проекта</button>
+    </div>
+    <form id="project-rename-form" hidden>
+      <label for="project-rename-input">Име на рисунката</label>
+      <input id="project-rename-input" type="text" maxlength="100" autocomplete="off" required />
+      <div class="project-dialog-buttons project-dialog-inline">
+        <button id="project-rename-cancel" type="button">Отказ</button>
+        <button id="project-rename-save" type="submit">Запази</button>
+      </div>
+    </form>
+    <div id="project-delete-confirm" hidden>
+      <p class="project-dialog-warning">Ще бъдат изтрити оригиналните снимки, миниатюрите и всички запазени настройки на този проект. Действието не може да се отмени.</p>
+      <div class="project-dialog-buttons project-dialog-inline">
+        <button id="project-delete-cancel" type="button">Отказ</button>
+        <button id="project-delete-yes" type="button" class="project-dialog-danger">Изтрий окончателно</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div id="developer-screen" hidden>
 <main>
   <button id="developer-back-home" class="act developer-back" type="button">← Начална страница</button>
@@ -81,7 +110,7 @@ document.getElementById('app')!.innerHTML = `
     <h1>SketchyAR</h1>
     <button id="ver" class="ver" type="button" aria-label="Версия на приложението"></button>
   </header>
-  <p class="lead">Ден 5: IndexedDB проекти, оригинални Blob снимки и миниатюри. Camera UI и диагностиката от Ден 4 са запазени.</p>
+  <p class="lead">Ден 7: локални проекти, автоматично възстановяване, управление и проверки за целостта. Camera UI остава непроменен.</p>
   <section><h2>Build</h2><dl id="build"></dl></section>
   <section><h2>Среда</h2><dl id="env"><dt>Зареждане</dt><dd>…</dd></dl></section>
   <section><h2>Възможности на устройството</h2><ul id="caps" class="caps"></ul></section>
@@ -94,6 +123,10 @@ document.getElementById('app')!.innerHTML = `
     <p class="hint">Прочита оригиналните overlay presets. Не изменя проектите.</p>
     <button class="act" id="btn-day6-verify" type="button">Покажи запазените настройки</button>
     <pre id="day6-result" class="benchmark-result">Още няма проверка.</pre>
+    <h2>Ден 7 — Цялост на локалните данни</h2>
+    <p class="hint">Проверява всички записи за осиротели assets, presets и хешове след преименуване/изтриване. Не променя базата.</p>
+    <button class="act" id="btn-day7-audit" type="button">Провери връзките в базата</button>
+    <pre id="day7-result" class="benchmark-result">Още няма проверка.</pre>
   </section>
   <section id="day4">
     <h2>Ден 4 — Drawing основа</h2>
@@ -273,6 +306,8 @@ try { initDay5Diagnostics(); }
 catch (error) { D.log('error', 'startup', 'Day 5 diagnostics failed', error); }
 try { initDay6Diagnostics(); }
 catch (error) { D.log('error', 'startup', 'Day 6 diagnostics failed', error); }
+try { initDay7Diagnostics(); }
+catch (error) { D.log('error', 'startup', 'Day 7 diagnostics failed', error); }
 document.getElementById('startup-fallback')?.remove();
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;

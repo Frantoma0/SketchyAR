@@ -4,7 +4,7 @@
  */
 import * as D from './diagnostics';
 import { initOfflineStatus } from './offline-status';
-import { listProjectThumbnails, openProjectDB, upgradeLegacyThumbnails, type ProjectThumbnail } from './storage/project-store';
+import { listProjectThumbnails, openProjectDB, upgradeLegacyThumbnails, renameImageProject, deleteImageProject, type ProjectThumbnail } from './storage/project-store';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -14,6 +14,113 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
   const note = el<HTMLElement>('home-message');
   const group = el<HTMLElement>('sketchy-home-group');
   const gallery = home.querySelector<HTMLElement>('.home-project-grid')!;
+  const dialogBackdrop = el<HTMLElement>('home-project-dialog');
+  const dialog = dialogBackdrop.querySelector<HTMLElement>('.project-dialog')!;
+  const dialogTitle = el<HTMLElement>('project-dialog-title');
+  const dialogDescription = el<HTMLElement>('project-dialog-description');
+  const dialogError = el<HTMLElement>('project-dialog-error');
+  const actionsView = el<HTMLElement>('project-dialog-menu');
+  const renameForm = el<HTMLFormElement>('project-rename-form');
+  const renameInput = el<HTMLInputElement>('project-rename-input');
+  const deleteView = el<HTMLElement>('project-delete-confirm');
+  const closeButton = el<HTMLButtonElement>('project-dialog-close');
+  const deleteButton = el<HTMLButtonElement>('project-delete-yes');
+  const renameSave = el<HTMLButtonElement>('project-rename-save');
+  let selected: ProjectThumbnail['project'] | null = null;
+  let returnFocus: HTMLElement | null = null;
+  let busy = false;
+  let menuMode: 'menu' | 'rename' | 'delete' = 'menu';
+  let deleteOpenedDirectly = false;
+  function setDialogMode(mode: typeof menuMode): void {
+    menuMode = mode;
+    actionsView.hidden = mode !== 'menu';
+    renameForm.hidden = mode !== 'rename';
+    deleteView.hidden = mode !== 'delete';
+    dialogError.hidden = true;
+    dialogError.textContent = '';
+    dialogTitle.textContent = mode === 'rename' ? 'Преименуване' :
+      mode === 'delete' ? 'Изтриване на проект' : 'Управление на проект';
+    dialogDescription.textContent = selected?.title ?? '';
+    if (mode === 'rename') { renameInput.value = selected?.title ?? ''; renameInput.focus(); }
+    else if (mode === 'delete') deleteButton.focus();
+    else el<HTMLButtonElement>('project-action-rename').focus();
+  }
+  function closeProjectDialog(): void {
+    if (busy) return;
+    dialogBackdrop.hidden = true;
+    selected = null;
+    const previousFocus = returnFocus;
+    returnFocus = null;
+    if (previousFocus?.isConnected) previousFocus.focus();
+  }
+  function showProjectDialog(project: ProjectThumbnail['project'], trigger: HTMLElement, mode: 'menu' | 'delete' = 'menu'): void {
+    selected = project;
+    returnFocus = trigger;
+    deleteOpenedDirectly = mode === 'delete';
+    dialogBackdrop.hidden = false;
+    setDialogMode(mode);
+  }
+  closeButton.addEventListener('click', closeProjectDialog);
+  dialogBackdrop.addEventListener('click', (event) => {
+    if (event.target === dialogBackdrop) closeProjectDialog();
+  });
+  dialog.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') { event.preventDefault(); closeProjectDialog(); }
+    if (event.key !== 'Tab') return;
+    const focusables = [...dialog.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled])')]
+      .filter(node => !node.closest('[hidden]') && node.getClientRects().length > 0);
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  });
+  el<HTMLButtonElement>('project-action-rename').addEventListener('click', () => setDialogMode('rename'));
+  el<HTMLButtonElement>('project-action-delete').addEventListener('click', () => setDialogMode('delete'));
+  el<HTMLButtonElement>('project-rename-cancel').addEventListener('click', () => setDialogMode('menu'));
+  el<HTMLButtonElement>('project-delete-cancel').addEventListener('click', () => {
+    if (deleteOpenedDirectly) closeProjectDialog();
+    else setDialogMode('menu');
+  });
+  renameForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!selected || busy) return;
+    busy = true;
+    renameSave.disabled = true;
+    closeButton.disabled = true;
+    try {
+      const project = await renameImageProject(selected.id, renameInput.value);
+      D.log('info', 'day7', 'project.renamed', { projectId: project.id });
+      busy = false;
+      closeProjectDialog();
+      document.dispatchEvent(new Event('sketchyar:projects:changed'));
+      toast('Проектът е преименуван.');
+    } catch (error) {
+      dialogError.textContent = String(error);
+      dialogError.hidden = false;
+      D.log('error', 'day7', 'project.rename.failed', { message: String(error) });
+    } finally { busy = false; renameSave.disabled = false; closeButton.disabled = false; }
+  });
+  deleteButton.addEventListener('click', async () => {
+    if (!selected || busy) return;
+    busy = true;
+    deleteButton.disabled = true;
+    closeButton.disabled = true;
+    const projectId = selected.id;
+    try {
+      const stats = await deleteImageProject(projectId);
+      D.log('info', 'day7', 'project.deleted', { projectId, ...stats });
+      busy = false;
+      closeProjectDialog();
+      document.dispatchEvent(new Event('sketchyar:projects:changed'));
+      toast('Проектът и свързаните му данни са изтрити.');
+    } catch (error) {
+      dialogError.textContent = String(error);
+      dialogError.hidden = false;
+      D.log('error', 'day7', 'project.delete.failed', { projectId, message: String(error) });
+    } finally { busy = false; deleteButton.disabled = false; closeButton.disabled = false; }
+  });
+
   // Keep the same Figma layout in Safari; in the installed PWA, the status-bar
   // meta requests edge-to-edge coverage. This is diagnostic only: do not force
   // screen.height as a CSS layout height or shift the controls conditionally.
@@ -153,11 +260,13 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
       const nextURLs: string[] = [];
       const fragment = document.createDocumentFragment();
       cards.forEach(({ project, thumbnail }) => {
-        const tile = document.createElement('button');
-        tile.type = 'button';
+        const tile = document.createElement('div');
         tile.className = 'home-project-tile home-project-saved';
-        tile.title = project.title;
-        tile.setAttribute('aria-label', `Отвори ${project.title}`);
+        const open = document.createElement('button');
+        open.type = 'button';
+        open.className = 'home-project-open';
+        open.title = project.title;
+        open.setAttribute('aria-label', `Отвори ${project.title}`);
         if (thumbnail?.blob) {
           const imageWindow = document.createElement('span');
           imageWindow.className = 'home-project-photo-window';
@@ -169,14 +278,39 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
           image.alt = '';
           image.className = 'home-project-preview';
           imageWindow.append(image);
-          tile.append(imageWindow);
+          open.append(imageWindow);
         }
         const frame = document.createElement('img');
         frame.className = 'home-project-frame';
         frame.src = `${import.meta.env.BASE_URL}ui/polaroid.png`;
         frame.alt = '';
-        tile.append(frame);
-        tile.addEventListener('click', () => void openSaved(project.id));
+        open.append(frame);
+        open.addEventListener('click', () => void openSaved(project.id));
+        const caption = document.createElement('span');
+        caption.className = 'home-project-caption';
+        caption.textContent = project.title;
+        caption.setAttribute('aria-hidden', 'true');
+        const menu = document.createElement('button');
+        menu.type = 'button';
+        menu.className = 'home-project-menu-trigger';
+        menu.textContent = '···';
+        menu.title = `Преименуване на ${project.title}`;
+        menu.setAttribute('aria-label', `Управление на ${project.title}, включително преименуване`);
+        menu.addEventListener('click', () => showProjectDialog(project, menu));
+        // Separate sibling button (not nested in the open-project button).
+        // Confirm before deleting; original file, thumbnail and preset are removed atomically.
+        const trash = document.createElement('button');
+        trash.type = 'button';
+        trash.className = 'home-project-delete-trigger';
+        trash.title = `Изтрий ${project.title}`;
+        trash.setAttribute('aria-label', `Изтрий проекта ${project.title}`);
+        const trashIcon = document.createElement('img');
+        trashIcon.src = `${import.meta.env.BASE_URL}ui/bin.svg`;
+        trashIcon.alt = '';
+        trashIcon.setAttribute('aria-hidden', 'true');
+        trash.append(trashIcon);
+        trash.addEventListener('click', () => showProjectDialog(project, trash, 'delete'));
+        tile.append(open, caption, menu, trash);
         fragment.append(tile);
       });
       for (let index = cards.length; index < 4; index++) fragment.append(placeholder());
@@ -207,6 +341,7 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
     document.documentElement.classList.toggle('sketchy-home-active', active);
     document.documentElement.style.minHeight = active ? `${window.screen.height}px` : '';
     if (active) { home.scrollTop = 0; scheduleFit(); void refreshGallery(); }
+    else if (!dialogBackdrop.hidden) closeProjectDialog();
   };
   setHome(true);
 
@@ -221,7 +356,7 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
     }
     if (cachedCards.length === 1) { void openSaved(cachedCards[0].project.id); return; }
     gallery.scrollTop = 0;
-    gallery.querySelector<HTMLButtonElement>('.home-project-saved')?.focus();
+    gallery.querySelector<HTMLButtonElement>('.home-project-open')?.focus();
     toast('Избери полароид, за да отвориш съответния проект.');
   });
   const closeOfflinePanel = initOfflineStatus();

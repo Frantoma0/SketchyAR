@@ -372,3 +372,120 @@ export async function verifyStoredSource(projectId: string): Promise<{
   await done;
   return { assetId: source.id, bytes: source.blob.size, mimeType: source.mimeType, sha256: hex, result: 'baseline-created' };
 }
+
+
+/** Day 7: update only project metadata. No assets or drawing presets are touched. */
+export async function renameImageProject(projectId: string, rawTitle: string): Promise<ProjectRecord> {
+  const title = rawTitle.trim().replace(/\s+/g, ' ');
+  if (!title || title.length > 100 || /[\u0000-\u001F\u007F]/.test(title)) {
+    throw new Error('Името трябва да съдържа между 1 и 100 символа.');
+  }
+  const db = await openProjectDB();
+  const tx = db.transaction('projects', 'readwrite');
+  const done = txDone(tx);
+  let saved: ProjectRecord | undefined;
+  let missing = false;
+  const request = tx.objectStore('projects').get(projectId) as IDBRequest<ProjectRecord | undefined>;
+  request.onsuccess = () => {
+    const current = request.result;
+    if (!current) { missing = true; tx.abort(); return; }
+    // Keep the last edit timestamp stable when the title did not change.
+    saved = { ...current, title, updatedAt: title === current.title ? current.updatedAt : now() };
+    tx.objectStore('projects').put(saved);
+  };
+  try { await done; }
+  catch (error) { if (missing) throw new Error('Проектът вече не съществува.'); throw error; }
+  if (!saved) throw new Error('Неуспешно преименуване на проекта.');
+  return saved;
+}
+
+/** Day 7: delete a project and ALL dependent records atomically.
+ * The database version stays at 1. Queue every delete during active IDB request callbacks;
+ * never await between reads and writes within this transaction (important on iOS WebKit).
+ * Deliberately includes historical source images and their SHA-256 baselines.
+ */
+export async function deleteImageProject(projectId: string): Promise<{
+  assetsDeleted: number; presetsDeleted: number; hashBaselinesDeleted: number;
+}> {
+  const db = await openProjectDB();
+  const tx = db.transaction(['projects', 'assets', 'overlay_presets', 'app_settings'], 'readwrite');
+  const done = txDone(tx);
+  const projects = tx.objectStore('projects');
+  const assets = tx.objectStore('assets');
+  const presets = tx.objectStore('overlay_presets');
+  const settings = tx.objectStore('app_settings');
+  const totals = { assetsDeleted: 0, presetsDeleted: 0, hashBaselinesDeleted: 0 };
+  let missing = false;
+  const projectRequest = projects.get(projectId) as IDBRequest<ProjectRecord | undefined>;
+  projectRequest.onsuccess = () => {
+    if (!projectRequest.result) { missing = true; tx.abort(); return; }
+    // Exact projectId lookups; never scan or mutate another user's projects.
+    const assetRequest = assets.index('projectId').getAll(IDBKeyRange.only(projectId)) as IDBRequest<AssetRecord[]>;
+    assetRequest.onsuccess = () => {
+      for (const asset of assetRequest.result) {
+        assets.delete(asset.id);
+        totals.assetsDeleted++;
+        if (asset.role === 'source') {
+          settings.delete(`day5-source-sha256:${asset.id}`);
+          totals.hashBaselinesDeleted++;
+        }
+      }
+    };
+    const presetRequest = presets.index('projectId').getAllKeys(IDBKeyRange.only(projectId));
+    presetRequest.onsuccess = () => {
+      for (const key of presetRequest.result) {
+        presets.delete(key);
+        totals.presetsDeleted++;
+      }
+    };
+    projects.delete(projectId);
+  };
+  try { await done; }
+  catch (error) { if (missing) throw new Error('Проектът вече не съществува.'); throw error; }
+  return totals;
+}
+
+/** Read-only G2 preparation: detect assets and presets with no owning project.
+ * No automatic deletion of existing data: audit first, repair only with consent.
+ */
+export async function auditProjectDatabase(): Promise<{
+  projects: number; assets: number; presets: number; sourceAssets: number;
+  orphanAssetIds: string[]; orphanPresetIds: string[]; brokenSourceLinks: string[];
+  invalidProjectIds: string[]; staleHashKeys: string[]; ok: boolean;
+}> {
+  const db = await openProjectDB();
+  const tx = db.transaction(['projects', 'assets', 'overlay_presets', 'app_settings'], 'readonly');
+  const done = txDone(tx);
+  const [projects, assets, presets, settings] = await Promise.all([
+    req<ProjectRecord[]>(tx.objectStore('projects').getAll()),
+    req<AssetRecord[]>(tx.objectStore('assets').getAll()),
+    req<OverlayPreset[]>(tx.objectStore('overlay_presets').getAll()),
+    req<AppSetting[]>(tx.objectStore('app_settings').getAll()),
+  ]);
+  await done;
+  const projectIds = new Set(projects.map(p => p.id));
+  const byAsset = new Map(assets.map(a => [a.id, a]));
+  const orphanAssetIds = assets.filter(a => !projectIds.has(a.projectId)).map(a => a.id);
+  const orphanPresetIds = presets.filter(p => !projectIds.has(p.projectId) ||
+    byAsset.get(p.assetId)?.projectId !== p.projectId).map(p => p.id);
+  const brokenSourceLinks = assets.filter(a => a.sourceAssetId &&
+    (byAsset.get(a.sourceAssetId)?.role !== 'source' ||
+      byAsset.get(a.sourceAssetId)?.projectId !== a.projectId)).map(a => a.id);
+  const invalidProjectIds = projects.filter(p =>
+    byAsset.get(p.activeAssetId)?.role !== 'source' ||
+    byAsset.get(p.activeAssetId)?.projectId !== p.id ||
+    (p.guide !== undefined && (!isGuidePlanV1(p.guide) ||
+      byAsset.get(p.guide.sourceAssetId)?.projectId !== p.id ||
+      p.guide.steps.some(step => byAsset.get(step.assetId)?.role !== 'guide-step' ||
+        byAsset.get(step.assetId)?.projectId !== p.id)))
+  ).map(p => p.id);
+  const staleHashKeys = settings.filter(s => s.key.startsWith('day5-source-sha256:') &&
+    !byAsset.has(s.key.substring('day5-source-sha256:'.length))).map(s => s.key);
+  return {
+    projects: projects.length, assets: assets.length, presets: presets.length,
+    sourceAssets: assets.filter(a => a.role === 'source').length,
+    orphanAssetIds, orphanPresetIds, brokenSourceLinks, invalidProjectIds, staleHashKeys,
+    ok: !(orphanAssetIds.length || orphanPresetIds.length || brokenSourceLinks.length ||
+      invalidProjectIds.length || staleHashKeys.length),
+  };
+}
