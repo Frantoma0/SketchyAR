@@ -13,6 +13,7 @@ import { initDay8Diagnostics } from './day8-diagnostics';
 import { initDay9Diagnostics } from './day9-diagnostics';
 import { initDay10Diagnostics } from './day10-diagnostics';
 import { initDay11Diagnostics } from './day11-diagnostics';
+import { initDay12Diagnostics } from './day12-diagnostics';
 
 D.installGlobalHandlers();
 D.checkPreviousSession();
@@ -114,7 +115,7 @@ document.getElementById('app')!.innerHTML = `
     <h1>SketchyAR</h1>
     <button id="ver" class="ver" type="button" aria-label="Версия на приложението"></button>
   </header>
-  <p class="lead">Ден 11: Otsu + NumPy морфология и изолиран Service Worker shell експеримент. Camera UI и локалните проекти са непроменени.</p>
+  <p class="lead">Ден 12: NMS + 8-свързан hysteresis и Canny-подобен Python pipeline. Няма промени по камерата и локалните проекти.</p>
   <section><h2>Build</h2><dl id="build"></dl></section>
   <section><h2>Среда</h2><dl id="env"><dt>Зареждане</dt><dd>…</dd></dl></section>
   <section><h2>Възможности на устройството</h2><ul id="caps" class="caps"></ul></section>
@@ -156,6 +157,13 @@ document.getElementById('app')!.innerHTML = `
     <h2>Ден 11 — Service Worker експеримент</h2>
     <p class="hint">ОТДЕЛНА тестова страница с ограничен scope <code>sw-spike/</code>. Не управлява основния SketchyAR, камерата или Python ресурсите. Не доказва Offline Ready.</p>
     <a class="act" id="day11-sw-spike-link" href="./sw-spike/" style="display:inline-flex;align-items:center;text-decoration:none">Отвори изолирания SW тест</a>
+    <h2>Ден 12 — NMS и hysteresis (NumPy)</h2>
+    <p class="hint">Детерминистичен тест на 4-посочно NMS, 8-свързан hysteresis и пълен Gaussian → Sobel → NMS → hysteresis върху 512/1024 px. Не обработва снимките в галерията и не променя IndexedDB.</p>
+    <div class="actions">
+      <button class="act" id="btn-day12-512" type="button">Тествай Day 12 · 512 px</button>
+      <button class="act" id="btn-day12-1024" type="button">Тествай Day 12 · 1024 px</button>
+    </div>
+    <pre id="day12-benchmark-result" class="benchmark-result" role="status">Още няма проверка.</pre>
   </section>
   <section id="day4">
     <h2>Ден 4 — Drawing основа</h2>
@@ -345,6 +353,8 @@ try { initDay10Diagnostics(); }
 catch (error) { D.log('error', 'startup', 'Day 10 diagnostics failed', error); }
 try { initDay11Diagnostics(); }
 catch (error) { D.log('error', 'startup', 'Day 11 diagnostics failed', error); }
+try { initDay12Diagnostics(); }
+catch (error) { D.log('error', 'startup', 'Day 12 diagnostics failed', error); }
 document.getElementById('startup-fallback')?.remove();
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;

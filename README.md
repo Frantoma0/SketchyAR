@@ -384,3 +384,16 @@ python scripts/day11_compare_cv2.py    # optional reference only
 ```
 
 iPhone диагностиката предлага тестове за 512/1024 px и отделен тестов SW shell линк. **Service Worker не е регистриран в основното PWA**; shell spike се намира на `/SketchyAR/sw-spike/` и работи само след ръчна регистрация. Виж подробно [docs/day11.md](docs/day11.md).
+
+### Ден 12 — Python NMS, hysteresis и финална карта F
+
+Добавен е собствен NumPy `python_engine/ar_drawing/day12_edges.py`. Диагностиката има отделни тестове за 512 и 1024 px; **не** обработва потребителските снимки в Drawing и не добавя нови runtime dependencies. Скриптове:
+
+```powershell
+python -m pytest python_engine -q
+python scripts/day12_benchmark.py --sizes 512 1024 --runs 5
+python scripts/day12_preview.py --input "C:\photos\your-photo.jpg"
+python scripts/day12_compare_cv2.py  # optional
+```
+
+Подробно: [`docs/day12.md`](docs/day12.md). Скриптът за сравнение на резултатите от iPhone е `scripts/day12_compare_device.py`. Личните изображения и preview файлове се пазят само локално в игнорираната `experiments/outputs/`.
