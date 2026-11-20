@@ -7,6 +7,7 @@ import sketchEngineSource from '../../python_engine/ar_drawing/sketch_engine.py?
 import day10TonesSource from '../../python_engine/ar_drawing/day10_tones.py?raw';
 import day11Source from '../../python_engine/ar_drawing/day11_morphology.py?raw';
 import day12Source from '../../python_engine/ar_drawing/day12_edges.py?raw';
+import day13Source from '../../python_engine/ar_drawing/day13_bridge.py?raw';
 
 const PYODIDE_VERSION = '314.0.8';
 // Worker script is in src/ during development and assets/ after Vite build.
@@ -47,14 +48,19 @@ interface PyodideRuntime {
   globals: { set: (name: string, value: unknown) => void };
   version: string;
 }
-type WorkerCommand = 'init' | 'numpy' | 'opencv' | 'opencv10' | 'day9' | 'day10-512' | 'day10-1024' | 'day11-512' | 'day11-1024' | 'day12-512' | 'day12-1024';
-type Incoming = { id: string; command: WorkerCommand };
+type WorkerCommand = 'init' | 'numpy' | 'opencv' | 'opencv10' | 'day9' | 'day10-512' | 'day10-1024' | 'day11-512' | 'day11-1024' | 'day12-512' | 'day12-1024' | 'day13-process';
+type Incoming = { id: string; command: WorkerCommand; width?: number; height?: number;
+  gray?: Uint8Array; sigma?: number; low?: number; high?: number };
 type Progress = { id: string; kind: 'progress'; stage: string; ms: number };
 type Done = { id: string; kind: 'done'; command: WorkerCommand; result: Record<string, unknown> };
+type ImageDone = { id: string; kind: 'image-done'; result: {
+  mask: Uint8Array; width: number; height: number; inkPixels: number;
+  pipelineVersion: string; bridgeVersion: string; processingMs: number; workerRequestMs: number;
+} };
 type Failure = { id: string; kind: 'error'; command: WorkerCommand; error: string; stack?: string };
 
 const workerScope = self as unknown as {
-  postMessage: (message: Progress | Done | Failure) => void;
+  postMessage: (message: Progress | Done | Failure | ImageDone, transfer?: Transferable[]) => void;
   onmessage: ((event: MessageEvent<Incoming>) => void) | null;
 };
 let runtimePromise: Promise<PyodideRuntime> | null = null;
@@ -64,6 +70,7 @@ let day9Ready = false;
 let day10Ready = false;
 let day11Ready = false;
 let day12Ready = false;
+let day13Ready = false;
 
 function progress(id: string, stage: string, ms: number): void {
   workerScope.postMessage({ id, kind: 'progress', stage, ms: Math.round(ms) } satisfies Progress);
@@ -184,7 +191,7 @@ function day11Benchmark(pyodide: PyodideRuntime, size: 512 | 1024): Record<strin
   return parseJSON(pyodide, `import json\njson.dumps(_sketchyar_day11.benchmark_day11(size=${size}, runs=3, seed=173))`);
 }
 
-function day12Benchmark(pyodide: PyodideRuntime, size: 512 | 1024): Record<string, unknown> {
+function ensureDay12Module(pyodide: PyodideRuntime): void {
   ensureDay11Module(pyodide);
   if (!day12Ready) {
     pyodide.globals.set('_sketchyar_day12_source', day12Source);
@@ -197,7 +204,68 @@ function day12Benchmark(pyodide: PyodideRuntime, size: 512 | 1024): Record<strin
     ].join('\n'));
     day12Ready = true;
   }
+}
+
+function day12Benchmark(pyodide: PyodideRuntime, size: 512 | 1024): Record<string, unknown> {
+  ensureDay12Module(pyodide);
   return parseJSON(pyodide, `import json\njson.dumps(_sketchyar_day12.benchmark_day12(size=${size}, runs=3, seed=173))`);
+}
+
+/** A binary bridge with explicit object lifetime. No photo bytes enter diagnostics. */
+function day13Process(pyodide: PyodideRuntime, event: Incoming): ImageDone['result'] {
+  const { width, height, sigma, low, high, gray } = event;
+  if (!(gray instanceof Uint8Array) || !Number.isInteger(width) || !Number.isInteger(height) ||
+      !width || !height || width > 1024 || height > 1024 ||
+      width * height !== gray.byteLength || ![sigma, low, high].every(v => typeof v === 'number' && Number.isFinite(v)))
+    throw new Error('Невалиден входен grayscale буфер за Day 13');
+  ensureDay12Module(pyodide);
+  if (!day13Ready) {
+    pyodide.globals.set('_sketchyar_day13_source', day13Source);
+    pyodide.runPython([
+      'import sys, types',
+      '_sketchyar_day13 = types.ModuleType("ar_drawing.day13_bridge")',
+      '_sketchyar_day13.__package__ = "ar_drawing"',
+      'sys.modules["ar_drawing.day13_bridge"] = _sketchyar_day13',
+      'exec(_sketchyar_day13_source, _sketchyar_day13.__dict__)',
+    ].join('\n'));
+    day13Ready = true;
+  }
+  const t0 = performance.now();
+  pyodide.globals.set('_sketchyar_input_gray', gray);
+  let output: unknown;
+  try {
+    // Typed-array .to_py() exposes a bytes-like buffer (memoryview in Pyodide).
+    // The Python method validates all dimensions, thresholds and buffer length.
+    pyodide.runPython(`_sketchyar_gray_py = _sketchyar_input_gray.to_py()
+_sketchyar_day13_result = _sketchyar_day13.process_gray8(_sketchyar_gray_py, ${width}, ${height}, sigma=${sigma}, low=${low}, high=${high})`);
+    output = pyodide.runPython('_sketchyar_day13_result.ink');
+    const asProxy = output as { toJs?: () => unknown; destroy?: () => void };
+    const converted = typeof asProxy?.toJs === 'function' ? asProxy.toJs() : output;
+    const mask = converted instanceof Uint8Array ? converted :
+      converted instanceof ArrayBuffer ? new Uint8Array(converted) : null;
+    if (!mask || mask.byteLength !== width * height)
+      throw new Error('Pyodide returned invalid mask bytes');
+    const metadata = parseJSON(pyodide, [
+      'import json',
+      'json.dumps({"inkPixels": _sketchyar_day13_result.ink_pixels,',
+      ' "pipelineVersion": _sketchyar_day13_result.engine_version,',
+      ' "bridgeVersion": _sketchyar_day13_result.bridge_version})',
+    ].join('\n'));
+    return {
+      mask: mask.slice(), width, height,
+      inkPixels: Number(metadata.inkPixels),
+      pipelineVersion: String(metadata.pipelineVersion),
+      bridgeVersion: String(metadata.bridgeVersion),
+      processingMs: Math.round(performance.now() - t0),
+      workerRequestMs: 0,
+    };
+  } finally {
+    (output as { destroy?: () => void } | undefined)?.destroy?.();
+    // Release both JS proxy and large Python buffers between image requests.
+    pyodide.runPython('del _sketchyar_input_gray\n' +
+      'globals().pop("_sketchyar_gray_py", None)\n' +
+      'globals().pop("_sketchyar_day13_result", None)');
+  }
 }
 
 async function openCVBenchmark(pyodide: PyodideRuntime, runs: number, id: string): Promise<Record<string, unknown>> {
@@ -221,6 +289,12 @@ workerScope.onmessage = async (event: MessageEvent<Incoming>) => {
   const started = performance.now();
   try {
     const pyodide = await ensureRuntime(id);
+    if (command === 'day13-process') {
+      const processed = day13Process(pyodide, event.data);
+      processed.workerRequestMs = Math.round(performance.now() - started);
+      workerScope.postMessage({ id, kind: 'image-done', result: processed }, [processed.mask.buffer]);
+      return;
+    }
     let result: Record<string, unknown>;
     if (command === 'init') result = { ...(startupReport ?? {}), reused: performance.now() - started < 100 };
     else if (command === 'numpy') result = numpyBenchmark(pyodide);

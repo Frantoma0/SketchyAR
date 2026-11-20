@@ -14,6 +14,7 @@ import { initDay9Diagnostics } from './day9-diagnostics';
 import { initDay10Diagnostics } from './day10-diagnostics';
 import { initDay11Diagnostics } from './day11-diagnostics';
 import { initDay12Diagnostics } from './day12-diagnostics';
+import { initDay13Diagnostics } from './day13-diagnostics';
 
 D.installGlobalHandlers();
 D.checkPreviousSession();
@@ -115,7 +116,7 @@ document.getElementById('app')!.innerHTML = `
     <h1>SketchyAR</h1>
     <button id="ver" class="ver" type="button" aria-label="Версия на приложението"></button>
   </header>
-  <p class="lead">Ден 12: NMS + 8-свързан hysteresis и Canny-подобен Python pipeline. Няма промени по камерата и локалните проекти.</p>
+  <p class="lead">Ден 13: реално изображение → Python Worker → прозрачна контурна PNG с проследим произход. Camera UI остава непроменен.</p>
   <section><h2>Build</h2><dl id="build"></dl></section>
   <section><h2>Среда</h2><dl id="env"><dt>Зареждане</dt><dd>…</dd></dl></section>
   <section><h2>Възможности на устройството</h2><ul id="caps" class="caps"></ul></section>
@@ -164,6 +165,21 @@ document.getElementById('app')!.innerHTML = `
       <button class="act" id="btn-day12-1024" type="button">Тествай Day 12 · 1024 px</button>
     </div>
     <pre id="day12-benchmark-result" class="benchmark-result" role="status">Още няма проверка.</pre>
+    <h2>Ден 13 — Реална снимка → Python → прозрачна скица</h2>
+    <p class="hint">Тестът работи с <strong>вече записана снимка</strong> от галерията и не променя оригинала, камерата или активното изображение. Умалява до 1024 px, записва резултата като отделен <code>processed</code> PNG asset с прозрачност. Първо опитай с тестов проект; снимките не се изпращат към сървър.</p>
+    <label for="day13-project">Избери проект за обработка:</label>
+    <select id="day13-project" style="max-width:100%;padding:10px;display:block;margin:10px 0"></select>
+    <div class="actions">
+      <button class="act" id="btn-day13-refresh" type="button">Обнови списъка</button>
+      <button class="act" id="btn-day13-process" type="button" disabled>Генерирай и запази PNG</button>
+      <button class="act" id="btn-day13-export" type="button" disabled>Изтегли PNG</button>
+    </div>
+    <img id="day13-preview" alt="Прозрачна контурна скица — резултат от Python" hidden style="max-width:100%;max-height:45vh;object-fit:contain;background:repeating-conic-gradient(#ddd 0% 25%,#fff 0% 50%) 50%/18px 18px" />
+    <pre id="day13-result" class="benchmark-result" role="status">Избери проект за теста.</pre>
+    <h2>Ден 13 — Backup manifest v1 · Предварителна проверка</h2>
+    <p class="hint">Проверява само целостта на метаданните (включително <code>guide</code>, произход и производни assets). <strong>Не създава ZIP и не е backup!</strong> Експорт, SHA-256 проверка и restore са Ден 14.</p>
+    <button class="act" id="btn-day13-manifest" type="button">Провери manifest v1</button>
+    <pre id="day13-manifest-result" class="benchmark-result" role="status">Още няма проверка.</pre>
   </section>
   <section id="day4">
     <h2>Ден 4 — Drawing основа</h2>
@@ -355,6 +371,8 @@ try { initDay11Diagnostics(); }
 catch (error) { D.log('error', 'startup', 'Day 11 diagnostics failed', error); }
 try { initDay12Diagnostics(); }
 catch (error) { D.log('error', 'startup', 'Day 12 diagnostics failed', error); }
+try { initDay13Diagnostics(); }
+catch (error) { D.log('error', 'startup', 'Day 13 diagnostics failed', error); }
 document.getElementById('startup-fallback')?.remove();
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;

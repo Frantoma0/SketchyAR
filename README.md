@@ -397,3 +397,12 @@ python scripts/day12_compare_cv2.py  # optional
 ```
 
 Подробно: [`docs/day12.md`](docs/day12.md). Скриптът за сравнение на резултатите от iPhone е `scripts/day12_compare_device.py`. Личните изображения и preview файлове се пазят само локално в игнорираната `experiments/outputs/`.
+
+
+## Day 13 — Реална снимка → Python Worker → прозрачен PNG (v0.13.0)
+
+След публикуване на версията отвори **Диагностика → Ден 13**, избери тестов проект и натисни **Генерирай и запази PNG**. Python Worker обработва максимум 1024 px по дългата страна, записва отделен `processed` asset с `sourceAssetId`/`params`/`pipelineVersion`/`modelId` и показва прозрачна PNG скица. **Оригиналната снимка остава активна.** След това тествай **Провери manifest v1** — това **не** е реален ZIP backup.
+
+Windows: `python -m pytest python_engine -q`; `python scripts/day13_benchmark.py --sizes 512 1024 --runs 5`; `cd app; npm ci; npm run typecheck; npm run build`.
+
+Подробният протокол, рисковете и iPhone тестовете са в `docs/day13.md`. Не изтривай инсталираното приложение, докато ZIP backup/restore не премине G2 на Ден 14.

@@ -1,0 +1,26 @@
+SketchyAR Day 13 v0.13.0 — установка / Windows PowerShell
+
+Използвай PATCH-а само върху работещ Day 12 v0.12.0. НЕ трий IndexedDB,
+НЕ деинсталирай Home Screen PWA и НЕ премахвай съществуващи ръчни CSS поправки.
+
+1. Разархивирай SketchyAR_Day13_Patch.zip в корена ar-drawing/.
+2. git status --short
+3. git apply --check SketchyAR_Day13_Image_Bridge.patch
+4. git apply SketchyAR_Day13_Image_Bridge.patch
+5. python -m pytest python_engine -q
+6. python scripts/day13_benchmark.py --sizes 512 1024 --runs 5
+7. cd app
+8. npm ci
+9. npm run typecheck
+10. npm run build
+11. cd ..
+12. git add .
+13. git commit -m "Day 13: real image Pyodide bridge and PNG provenance"
+14. git push origin main
+
+На iPhone: диагнoстика -> Ден 13 -> избери ТЕСТОВ проект ->
+Генерирай и запази PNG -> Провери manifest v1 -> експортирай JSON.
+Прочети docs/day13.md за приемателните проверки.
+
+ВНИМАНИЕ: Проверка на manifest v1 НЕ е ZIP backup.
+Ден 14 трябва да реализира export/verify/restore и G2.
