@@ -15,6 +15,7 @@ import { initDay10Diagnostics } from './day10-diagnostics';
 import { initDay11Diagnostics } from './day11-diagnostics';
 import { initDay12Diagnostics } from './day12-diagnostics';
 import { initDay13Diagnostics } from './day13-diagnostics';
+import { initDay14Diagnostics } from './day14-diagnostics';
 
 D.installGlobalHandlers();
 D.checkPreviousSession();
@@ -116,7 +117,7 @@ document.getElementById('app')!.innerHTML = `
     <h1>SketchyAR</h1>
     <button id="ver" class="ver" type="button" aria-label="Версия на приложението"></button>
   </header>
-  <p class="lead">Ден 13: реално изображение → Python Worker → прозрачна контурна PNG с проследим произход. Camera UI остава непроменен.</p>
+  <p class="lead">Ден 14: проверим ZIP backup/restore със SHA-256. Ден 13 Python Image Bridge и Camera UI са запазени.</p>
   <section><h2>Build</h2><dl id="build"></dl></section>
   <section><h2>Среда</h2><dl id="env"><dt>Зареждане</dt><dd>…</dd></dl></section>
   <section><h2>Възможности на устройството</h2><ul id="caps" class="caps"></ul></section>
@@ -180,6 +181,19 @@ document.getElementById('app')!.innerHTML = `
     <p class="hint">Проверява само целостта на метаданните (включително <code>guide</code>, произход и производни assets). <strong>Не създава ZIP и не е backup!</strong> Експорт, SHA-256 проверка и restore са Ден 14.</p>
     <button class="act" id="btn-day13-manifest" type="button">Провери manifest v1</button>
     <pre id="day13-manifest-result" class="benchmark-result" role="status">Още няма проверка.</pre>
+    <h2>Ден 14 — ZIP backup, SHA-256 и безопасно възстановяване</h2>
+    <p class="hint">Създай архив на всички локални проекти и assets. След запис във Files избери <strong>точно записания ZIP</strong> за независима проверка. Поддържат се безопасни ZIP32 файлове без компресия, създадени от SketchyAR. Не изтривай данните на приложението.</p>
+    <div class="actions">
+      <button class="act" id="btn-day14-create" type="button">1. Създай ZIP</button>
+      <button class="act" id="btn-day14-save" type="button" disabled>2. Запази ZIP във Files</button>
+      <button class="act" id="btn-day14-choose" type="button">3. Избери записания ZIP</button>
+      <button class="act" id="btn-day14-verify" type="button" disabled>4. Провери SHA-256</button>
+      <button class="act" id="btn-day14-sandbox" type="button" disabled>5. Тест Restore (безопасен)</button>
+    </div>
+    <input type="file" id="day14-file" accept=".zip,application/zip" hidden />
+    <p class="hint"><strong>Незадължително:</strong> реалният импорт е само добавящ и отказва ВСЕКИ ID конфликт. Първо изпълни безопасния тест; реалните проекти никога не се изтриват автоматично.</p>
+    <button class="act" id="btn-day14-restore" type="button" disabled>Restore в истинската база (с потвърждение)</button>
+    <pre id="day14-result" class="benchmark-result" role="status">ZIP backup още не е създаден.</pre>
   </section>
   <section id="day4">
     <h2>Ден 4 — Drawing основа</h2>
@@ -373,6 +387,8 @@ try { initDay12Diagnostics(); }
 catch (error) { D.log('error', 'startup', 'Day 12 diagnostics failed', error); }
 try { initDay13Diagnostics(); }
 catch (error) { D.log('error', 'startup', 'Day 13 diagnostics failed', error); }
+try { initDay14Diagnostics(); }
+catch (error) { D.log('error', 'startup', 'Day 14 diagnostics failed', error); }
 document.getElementById('startup-fallback')?.remove();
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;

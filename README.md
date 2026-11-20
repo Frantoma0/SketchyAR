@@ -406,3 +406,8 @@ python scripts/day12_compare_cv2.py  # optional
 Windows: `python -m pytest python_engine -q`; `python scripts/day13_benchmark.py --sizes 512 1024 --runs 5`; `cd app; npm ci; npm run typecheck; npm run build`.
 
 Подробният протокол, рисковете и iPhone тестовете са в `docs/day13.md`. Не изтривай инсталираното приложение, докато ZIP backup/restore не премине G2 на Ден 14.
+
+
+## Day 14 · Backup & Recovery (v0.14.0)
+
+The diagnostics panel now supports ZIP32 STORE export, independent SHA-256 verification of a saved ZIP, and safe restore into an isolated test database. Optional production restore is add-only and fails the entire IndexedDB transaction on any ID/key conflict. Existing projects, Drawing and the Python Image Bridge remain unchanged. See [docs/day14.md](docs/day14.md) for device test protocol and supported archive limits. **G2 is PENDING until real iPhone acceptance.**

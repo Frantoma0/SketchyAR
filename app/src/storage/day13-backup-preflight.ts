@@ -56,7 +56,7 @@ export function inspectBackupInput(projects: ProjectRecord[], assets: AssetRecor
  * survive in the manifest. Do not use before hashes have been calculated.
  */
 export function manifestRecordFromVerifiedAsset(asset: AssetRecord, path: string, sha256: string): BackupAssetV1 {
-  if (!/^assets\/[a-f0-9-]+\.(png|jpg|jpeg|webp|bin)$/.test(path) || !/^[a-f0-9]{64}$/.test(sha256))
+  if (!/^assets\/[a-f0-9-]+\.(png|jpg|jpeg|webp|heic|heif|gif|bin)$/.test(path) || !/^[a-f0-9]{64}$/.test(sha256))
     throw new Error('Invalid backup asset path or SHA-256');
   const { blob: _blob, hashSha256: _storedHash, ...metadata } = asset;
   void _blob; void _storedHash;
