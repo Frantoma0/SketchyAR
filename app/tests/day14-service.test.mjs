@@ -31,7 +31,7 @@ const args = [...tscPrefix, ...(tsMajor >= 6 ? ['--ignoreConfig'] : []), '--modu
 try { execFileSync(tscBin,args,{stdio:'pipe'}); }
 catch (e) { console.error(String(e.stdout??'')+String(e.stderr??'')); throw e; }
 writeFileSync(join(dir,'package.json'),'{"type":"commonjs"}');
-const { verifyBackup }=require(join(dir,'storage/day14-backup-service.js'));
+const { verifyBackup, normalizeBackupManifestOptionals }=require(join(dir,'storage/day14-backup-service.js'));
 const { crc32,makeStoredZip }=require(join(dir,'storage/day14-zip.js'));
 const ID = '00000000-0000-4000-8000-000000000001';
 const SRC = '00000000-0000-4000-8000-000000000002';
@@ -65,6 +65,28 @@ function archive(m, data=bytes) {
     ...m.assets.filter(a=>data[a.id]).map(a=>[a.path,data[a.id]])];
   return makeStoredZip(entries.map(([name,bytes])=>({name,blob:new Blob([bytes]),crc:crc32(bytes)})));
 }
+test('Day 14: undefined optional fields from IndexedDB are JSON-safe without changing source records',async()=>{
+  const m=fixture();
+  m.projects[0].guide=undefined; // replaceProjectSource legacy behavior
+  m.projects[0].lastOpenedAt=undefined;
+  m.assets[0].params=undefined;
+  m.assets[0].modelId=undefined;
+  m.presets[0].sceneHeight=undefined;
+  const original=m.projects[0];
+  const normalized=normalizeBackupManifestOptionals(m);
+  assert.equal(Object.hasOwn(original,'guide'),true,'source object is not mutated');
+  assert.equal(Object.hasOwn(normalized.projects[0],'guide'),false);
+  assert.equal(Object.hasOwn(normalized.projects[0],'lastOpenedAt'),false);
+  assert.equal(Object.hasOwn(normalized.assets[0],'params'),false);
+  assert.equal(Object.hasOwn(normalized.assets[0],'modelId'),false);
+  assert.equal(Object.hasOwn(normalized.presets[0],'sceneHeight'),false);
+  assert.equal(normalized.projects[0].activeAssetId,SRC);
+  assert.equal(normalized.assets[0].id,SRC);
+  assert.equal(normalized.presets[0].opacityPercent,50);
+  const verified=await verifyBackup(archive(normalized));
+  assert.equal(verified.assets.length,3);
+});
+
 test('independent verify: real manifest, 3 assets, settings and provenance', async()=>{
   globalThis.crypto ??= webcrypto;
   const ok=await verifyBackup(archive(fixture()));

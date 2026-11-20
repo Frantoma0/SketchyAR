@@ -138,6 +138,33 @@ function validateMetadata(m: unknown): asserts m is BackupManifestV1 {
   noDuplicates(presets.map(p => p.id), 'presets');
   noDuplicates(settings.map(s => s.key), 'settings');
 }
+/** IndexedDB structured cloning can preserve own properties whose value is undefined
+ * (e.g. replaceProjectSource writes guide: undefined). JSON has no representation
+ * for them. Only omit explicitly optional schema fields; never silently remove
+ * undefined from required fields, settings values, or arbitrary params.
+ * Work on shallow copies, leaving the live database records untouched. */
+function omitUndefinedOptionals<T extends object>(row: T, keys: readonly string[]): T {
+  const copy = { ...row } as T;
+  const record = copy as Record<string, unknown>;
+  for (const key of keys) {
+    if (Object.hasOwn(record, key) && record[key] === undefined) delete record[key];
+  }
+  return copy;
+}
+export function normalizeBackupManifestOptionals(m: BackupManifestV1): BackupManifestV1 {
+  const projects = m.projects.map(p => {
+    const clean = omitUndefinedOptionals(p, ['lastOpenedAt', 'guide']);
+    if (clean.guide) {
+      clean.guide = omitUndefinedOptionals(clean.guide, ['generator']);
+    }
+    return clean;
+  });
+  const assets = m.assets.map(a => omitUndefinedOptionals(a,
+    ['sourceAssetId', 'params', 'pipelineVersion', 'modelId', 'mirroredPixels', 'backend']));
+  const presets = m.presets.map(p => omitUndefinedOptionals(p,
+    ['coordinateSpace', 'sceneWidth', 'sceneHeight']));
+  return { ...m, projects, assets, presets };
+}
 export interface BackupBuildResult {
   blob: Blob; manifest: BackupManifestV1; assetBytes: number; filename: string;
 }
@@ -162,11 +189,11 @@ export async function createBackup(): Promise<BackupBuildResult> {
     meta.push(manifestRecordFromVerifiedAsset(a, path, hash));
     entries.push({ name: path, blob: a.blob, crc: crc32(raw) });
   }
-  const manifest: BackupManifestV1 = {
+  const manifest = normalizeBackupManifestOptionals({
     format: 'sketchyar-backup', schemaVersion: 1, appVersion: __APP_VERSION__,
     createdAt: new Date().toISOString(), projects: rows.projects, assets: meta,
     presets: rows.presets, settings: rows.settings, integrity: { algorithm: 'SHA-256' },
-  };
+  });
   // Ensure export also satisfies the *import* schema before producing any ZIP.
   validateMetadata(manifest);
   const data = safeDataJSON(manifest, ZIP_LIMITS.maxManifestBytes);
