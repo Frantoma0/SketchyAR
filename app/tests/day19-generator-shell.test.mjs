@@ -51,9 +51,11 @@ test('Day19: CSS scoped to editor, responsive, and Home geometry unchanged', () 
  assert.match(main,/class="home-project-grid"/);
 });
 
-test('Day19: editor retains navigation and keyboard close without DB writes', () => {
+test('Day19+23: editor retains navigation; only Draw may save PNG', () => {
  assert.match(editor,/route\.cancel\(\)/);
  assert.match(editor,/if \(event\.key === 'Escape'\)/);
  assert.match(editor,/if \(focus\?\.isConnected\) focus\.focus\(\)/);
- assert.doesNotMatch(editor,/(saveProcessedPng|putProject|updateProject|deleteImageProject)\s*\(/);
+ assert.match(editor,/drawButton\.addEventListener\('click'/);
+ assert.match(editor,/await saveProcessedPng\(/);
+ assert.match(editor,/if \(screen\.hidden \|\| drawBusy\) return;/);
 });

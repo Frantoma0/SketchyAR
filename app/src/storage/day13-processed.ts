@@ -12,7 +12,8 @@ export interface ProcessedProvenance {
 }
 
 export async function saveProcessedPng(projectId: string, provenance: ProcessedProvenance,
-                                       blob: Blob, width: number, height: number): Promise<AssetRecord> {
+                                       blob: Blob, width: number, height: number,
+                                       selectForDrawing = false): Promise<AssetRecord> {
   if (!blob || blob.type !== 'image/png' || blob.size <= 0 || !Number.isInteger(width) ||
       !Number.isInteger(height) || width < 3 || height < 3 || width > 1024 || height > 1024)
     throw new Error('Невалиден обработен PNG');
@@ -50,6 +51,9 @@ export async function saveProcessedPng(projectId: string, provenance: ProcessedP
         return;
       }
       assets.add(asset);
+      // Day 23: the selected derivative pointer is stored with the new asset atomically.
+      // Original source remains active and overlay presets remain attached to it.
+      if (selectForDrawing) projects.put({ ...project, selectedProcessedAssetId: asset.id });
       // Keep the source as the project's active image and avoid changing gallery order.
     };
   };

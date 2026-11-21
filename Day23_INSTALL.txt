@@ -1,0 +1,44 @@
+SketchyAR Day 23 — v0.23.0 — Real Sketch Save / Draw + style toggle
+Baseline: Day 22 v0.22.0, GitHub f4cc465bc09d.
+
+Install in repository ROOT:
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day23_Changes_Only_v0.23.0.zip" -DestinationPath . -Force
+  cd app
+  npm ci --include=dev
+  npm run typecheck
+  npm run build
+  npm run test:day23
+  cd ..
+  python -m pytest python_engine -q
+  git diff --check
+  git status
+
+Review expected changes and staged diff; do not include personal images/backups:
+  git add app/package.json app/package-lock.json
+  git add app/src/day20-sketch-state.ts app/src/day17-sketch-placeholder.ts app/src/day4.ts app/src/main.ts
+  git add app/src/storage/project-store.ts app/src/storage/day13-processed.ts
+  git add app/src/storage/day13-backup-preflight.ts app/src/storage/day14-backup-service.ts
+  git add app/tests/day14-service.test.mjs app/tests/day19-generator-shell.test.mjs
+  git add app/tests/day19-image-lightbox.test.mjs app/tests/day20-generator-state.test.mjs
+  git add app/tests/day21-camera-navigation.test.mjs app/tests/day22-sketch-mode.test.mjs
+  git add app/tests/day23-sketch-draw.test.mjs app/tests/day23-atomic-save.test.mjs
+  git add Day23_INSTALL.txt docs/day23.md
+  git commit -m "Day 23: Sketch save and Draw with style deselection and source-safe persistence"
+  git push origin main
+  git log -1 --oneline
+
+G23 iPhone acceptance:
+[ ] GitHub Pages deployed commit v0.23.0
+[ ] Pencil opens with NO selected style and NO selected line thickness; source photo shown
+[ ] Sketch tap triggers real PNG generation; Sketch tap again deselects and restores source
+[ ] Manga and Comic tap once selects; tap same again clears; always original for now
+[ ] When Sketch is selected and PNG ready, Draw becomes available; not for Manga/Comic/None
+[ ] Draw shows transparent black-line PNG over live camera (not original photo)
+[ ] Reopen from Home polaroid: selected PNG persists; source image remains preserved
+[ ] Change opacity/position, edit from camera, Draw again: exact camera pose retained
+[ ] Closing editor without Draw causes NO new saved asset or project selection
+[ ] Day7 audit, Day14 backup ZIP create/verify and sandbox restore PASS
+[ ] Force-close PWA and reopen: selected PNG and camera pose remain
+
+Original source remains activeAssetId. Optional selectedProcessedAssetId is only a pointer.
+No real source deletion, restore or database reset is required.

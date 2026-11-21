@@ -26,10 +26,11 @@ const controller = readFileSync(resolve(app,'src/day17-sketch-placeholder.ts'),'
 const storage = readFileSync(resolve(app,'src/storage/project-store.ts'),'utf8');
 test.after(()=>rmSync(tmp,{recursive:true,force:true}));
 test('D20: selections are immutable, validated and reset to known defaults',()=>{
-  assert.deepEqual(state.DEFAULT_SKETCH_UI,{style:'sketch',detail:3,line:'normal'});
+  assert.deepEqual(state.DEFAULT_SKETCH_UI,{style:null,detail:3,line:null});
   const selected=state.setSketchUiStyle(state.DEFAULT_SKETCH_UI,'manga');
   assert.equal(selected.style,'manga');
-  assert.equal(state.DEFAULT_SKETCH_UI.style,'sketch');
+  assert.equal(state.DEFAULT_SKETCH_UI.style,null);
+  assert.equal(state.setSketchUiStyle(selected,'manga').style,null);
   assert.equal(state.setSketchUiLine(selected,'thick').line,'thick');
   assert.equal(state.setSketchUiDetail(selected,5).detail,5);
 });
@@ -67,7 +68,8 @@ test('D20: only matching processed PNG for current source may be compared',()=>{
   assert.match(storage,/a\.role === 'processed'/);
   assert.match(controller,/getLatestProcessedPreview\(project\.id, source\.id\)/);
   assert.match(controller,/processedURL = savedURL/);
-  assert.match(controller,/preview\.src = savedURL/);
+  assert.match(controller,/savedProcessed = processed/);
+  assert.match(controller,/showUI\(\)/); // original until user explicitly selects Sketch
 });
 test('D20: hold/release, cancel, lost pointer, blur and background restore correctly',()=>{
   for(const name of ['pointerdown','pointerup','pointercancel','lostpointercapture','pointerleave',
@@ -79,10 +81,11 @@ test('D20: hold/release, cancel, lost pointer, blur and background restore corre
   assert.match(controller,/window\.addEventListener\('pointerup', resetComparison\)/);
   assert.match(controller,/resetComparison\(\);\n    zoomImage\.src = currentImageURL/);
 });
-test('D20: magnifier stays fixed and Draw stays disabled; no mutation endpoints',()=>{
+test('D20+23: magnifier stays fixed and Draw is gated on real output',()=>{
   assert.match(main,/id="day19-preview-zoom"/);
   assert.match(main,/<button id="day19-draw"[^>]*disabled/);
   assert.match(css,/\.day19-preview-zoom\s*\{[^}]*top:15px; right:15px/s);
-  assert.doesNotMatch(controller,/(saveProcessedPng|putProject|updateProject|deleteImageProject)\s*\(/);
+  assert.match(controller,/drawButton\.disabled = !ready/);
+  assert.match(controller,/await saveProcessedPng\(/);
   assert.match(controller,/if \(processedURL\) URL\.revokeObjectURL\(processedURL\)/);
 });

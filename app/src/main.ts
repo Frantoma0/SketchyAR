@@ -150,7 +150,7 @@ document.getElementById('app')!.innerHTML = `
         <legend class="day20-visually-hidden">Настройки на скицата</legend>
         <img class="day20-figma-controls-art" src="./ui/generator/figma-controls-lettering.svg" alt="" aria-hidden="true" />
         <div class="day19-style-list day20-figma-styles" role="group" aria-label="Стил">
-          <button type="button" class="day19-chip day19-chip-selected" data-style="sketch" aria-pressed="true" aria-label="Скица"><img class="day20-choice-graphite" src="./ui/generator/style-sketch-on.svg" data-selected-src="./ui/generator/style-sketch-on.svg" data-default-src="./ui/generator/style-sketch-off.svg" alt="" aria-hidden="true" /></button>
+          <button type="button" class="day19-chip" data-style="sketch" aria-pressed="false" aria-label="Скица"><img class="day20-choice-graphite" src="./ui/generator/style-sketch-off.svg" data-selected-src="./ui/generator/style-sketch-on.svg" data-default-src="./ui/generator/style-sketch-off.svg" alt="" aria-hidden="true" /></button>
           <button type="button" class="day19-chip" data-style="manga" aria-pressed="false" aria-label="Манга"><img class="day20-choice-graphite" src="./ui/generator/style-manga-off.svg" data-selected-src="./ui/generator/style-manga-on.svg" data-default-src="./ui/generator/style-manga-off.svg" alt="" aria-hidden="true" /></button>
           <button type="button" class="day19-chip" data-style="comic" aria-pressed="false" aria-label="Комикс"><img class="day20-choice-graphite" src="./ui/generator/style-comic-off.svg" data-selected-src="./ui/generator/style-comic-on.svg" data-default-src="./ui/generator/style-comic-off.svg" alt="" aria-hidden="true" /></button>
         </div>
@@ -165,7 +165,7 @@ document.getElementById('app')!.innerHTML = `
         <div class="day20-lines day20-figma-lines">
           <div class="day20-line-options" role="group" aria-label="Дебелина на линиите">
             <button type="button" class="day20-line-chip" data-line="thin" aria-pressed="false" aria-label="Тънки"><img class="day20-line-graphite" src="./ui/generator/line-thin-off.svg" data-selected-src="./ui/generator/line-thin-on.svg" data-default-src="./ui/generator/line-thin-off.svg" alt="" aria-hidden="true" /></button>
-            <button type="button" class="day20-line-chip day20-line-selected" data-line="normal" aria-pressed="true" aria-label="Нормални"><img class="day20-line-graphite" src="./ui/generator/line-normal-on.svg" data-selected-src="./ui/generator/line-normal-on.svg" data-default-src="./ui/generator/line-normal-off.svg" alt="" aria-hidden="true" /></button>
+            <button type="button" class="day20-line-chip" data-line="normal" aria-pressed="false" aria-label="Нормални"><img class="day20-line-graphite" src="./ui/generator/line-normal-off.svg" data-selected-src="./ui/generator/line-normal-on.svg" data-default-src="./ui/generator/line-normal-off.svg" alt="" aria-hidden="true" /></button>
             <button type="button" class="day20-line-chip" data-line="thick" aria-pressed="false" aria-label="Дебели"><img class="day20-line-graphite" src="./ui/generator/line-thick-off.svg" data-selected-src="./ui/generator/line-thick-on.svg" data-default-src="./ui/generator/line-thick-off.svg" alt="" aria-hidden="true" /></button>
           </div>
         </div>

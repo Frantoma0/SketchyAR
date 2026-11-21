@@ -20,6 +20,12 @@ export function inspectBackupInput(projects: ProjectRecord[], assets: AssetRecor
   for (const project of projects) {
     const active = assetById.get(project.activeAssetId);
     if (active?.role !== 'source' || active.projectId !== project.id) throw new Error('Active source image missing');
+    if (project.selectedProcessedAssetId !== undefined) {
+      const selected = assetById.get(project.selectedProcessedAssetId);
+      if (selected?.role !== 'processed' || selected.projectId !== project.id ||
+          selected.sourceAssetId !== project.activeAssetId || selected.mimeType !== 'image/png')
+        throw new Error('Invalid selected processed asset');
+    }
     if (project.guide) {
       if (!isGuidePlanV1(project.guide)) throw new Error('Invalid guide plan');
       const guideSource = assetById.get(project.guide.sourceAssetId);

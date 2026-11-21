@@ -48,12 +48,13 @@ test('D22: no processed preview may be shown for Manga and Comic', () => {
   assert.match(editor,/fresh\.source\.id !== sourceId/);
 });
 
-test('D22: the original Figma shell, stored PNG comparison, zoom and disabled Draw remain', () => {
+test('D22+23: original Figma shell, stored PNG comparison and zoom remain', () => {
   const editor=read('src/day17-sketch-placeholder.ts');
   const main=read('src/main.ts');
   const css=read('src/styles.css');
   assert.match(editor,/getLatestProcessedPreview\(project\.id, source\.id\)/);
-  assert.match(editor,/preview\.src = savedURL/);
+  assert.match(editor,/savedProcessed = processed/);
+  assert.match(editor,/showUI\(\)/);
   assert.match(editor,/openZoom/);
   assert.match(editor,/previewWindow\.classList\.add\('day22-processing'\)/);
   assert.match(editor,/D\.log\('info', 'day22', 'sketch\.generate\.pass'/);
@@ -62,12 +63,13 @@ test('D22: the original Figma shell, stored PNG comparison, zoom and disabled Dr
   assert.match(css,/\.day20-figma-screen #day18-preview-window\.day22-processing::after/);
 });
 
-test('D22: draw remains gated; settings cannot be misrepresented as applied', () => {
+test('D22+23: Draw enables only with real Sketch; detail and line remain visual' , () => {
   const editor=read('src/day17-sketch-placeholder.ts');
   const service=read('src/day22-sketch-mode.ts');
   assert.match(editor,/persisted: false/);
   assert.match(editor,/Детайлност и линии все още не променят PNG/);
   assert.doesNotMatch(service,/saveProcessedPng/);
   const pkg=JSON.parse(read('package.json'));
-  assert.equal(pkg.version,'0.22.0');
+  assert.equal(pkg.version,'0.23.0');
+  assert.match(editor,/ui\.style === 'sketch' && Boolean\(processedURL\)/);
 });

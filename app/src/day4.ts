@@ -4,7 +4,7 @@
 import * as D from './diagnostics';
 import { cameraController, type CameraSnapshot } from './camera-controller';
 import { isBusy } from './day2';
-import { createImageProject, replaceProjectSource, getProjectImage, assertProjectIntegrity, saveProjectOverlay, type OverlayPreset, type OverlaySnapshot } from './storage/project-store';
+import { createImageProject, replaceProjectSource, getProjectImage, getSelectedProcessedAsset, assertProjectIntegrity, saveProjectOverlay, type OverlayPreset, type OverlaySnapshot } from './storage/project-store';
 import { makeThumbnail } from './storage/thumbnail';
 import { CameraEditTransition, sameDrawingPlacement, type CameraEditToken } from './day21-camera-navigation';
 
@@ -488,7 +488,8 @@ export async function openSavedDrawing(projectId: string): Promise<void> {
   try {
     await assertProjectIntegrity(projectId);
     const { project, source, preset } = await getProjectImage(projectId);
-    const prepared = await preparePreview(source.blob);
+    const selectedSketch = await getSelectedProcessedAsset(project, source);
+    const prepared = await preparePreview(selectedSketch?.blob ?? source.blob);
     url = prepared.url;
     img.src = url;
     await img.decode();
@@ -503,13 +504,50 @@ export async function openSavedDrawing(projectId: string): Promise<void> {
     try { await openDrawing(); restorePreset(preset); }
     finally { img.style.visibility = ''; }
     D.log('info', 'day6', 'project.restored', {
-      projectId, sourceBytes: source.byteSize, presetSpace: preset?.coordinateSpace ?? 'css-px',
+      projectId, sourceBytes: source.byteSize, processedSelected: Boolean(selectedSketch),
+      presetSpace: preset?.coordinateSpace ?? 'css-px',
       locked: artworkLocked, opacity, scale: artworkScale,
     });
   } catch (error) {
     if (url) URL.revokeObjectURL(url);
     D.log('error', 'day5', 'project.reopen.failed', { projectId, message: String(error) });
     window.alert(`Проектът не можа да бъде отворен: ${String(error)}`);
+  }
+}
+
+/** Day 23: when editor sits over the active camera, swap ONLY the overlay bitmap.
+ * Preserve the ongoing camera stream, camera placement and source-linked preset.
+ */
+export async function applySketchToActiveCamera(projectId: string, sourceId: string,
+                                                png: Blob): Promise<boolean> {
+  if (!drawingOpen || activeProjectId !== projectId || activeAssetId !== sourceId ||
+      !cameraEditTransition.editing) return false;
+  if (png.type !== 'image/png' || !png.size) throw new Error('Невалидна скица за камерата');
+  const image = el<HTMLImageElement>('drawing-user-image');
+  const oldURL = userImageUrl;
+  const nextURL = URL.createObjectURL(png);
+  try {
+    image.src = nextURL;
+    await image.decode();
+    if (!drawingOpen || activeProjectId !== projectId || activeAssetId !== sourceId ||
+        !cameraEditTransition.editing) {
+      if (oldURL) image.src = oldURL;
+      else image.removeAttribute('src');
+      return false;
+    }
+    userImageUrl = nextURL;
+    if (oldURL) URL.revokeObjectURL(oldURL);
+    reflect(); // unchanged position/size/opacity/mirror/lock/grid
+    D.log('info', 'day23', 'drawing.sketch.applied', { projectId, sourceId, bytes: png.size });
+    return true;
+  } catch (error) {
+    if (userImageUrl !== nextURL) {
+      if (oldURL) image.src = oldURL;
+      else image.removeAttribute('src');
+    }
+    throw error;
+  } finally {
+    if (userImageUrl !== nextURL) URL.revokeObjectURL(nextURL);
   }
 }
 

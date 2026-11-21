@@ -16,6 +16,8 @@ export interface ProjectRecord {
   createdAt: string;
   updatedAt: string;
   activeAssetId: string;
+  /** Day 23: optional, source-owned derivative selected for Camera. Source stays active. */
+  selectedProcessedAssetId?: string;
   lastOpenedAt?: string;
   guide?: GuidePlanV1;
 }
@@ -219,6 +221,7 @@ export async function replaceProjectSource(projectId: string, file: File,
   const sourceId = crypto.randomUUID();
   const timestamp = now();
   const project = { ...previous, activeAssetId: sourceId, updatedAt: timestamp, guide: undefined };
+  delete project.selectedProcessedAssetId; // old derivative must not attach to the replacement source
   const tx = db.transaction(['projects', 'assets', 'overlay_presets'], 'readwrite');
   const done = txDone(tx);
   tx.objectStore('projects').put(project);
@@ -245,6 +248,51 @@ export async function getProjectImage(projectId: string): Promise<ProjectWithIma
     .objectStore('overlay_presets').index('assetId').getAll(source.id));
   return { project, source, preset: options.filter(p => p.projectId === project.id)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] };
+}
+
+/** Day 23: validate the selected derivative on EVERY read. Legacy projects have no selection. */
+export async function getSelectedProcessedAsset(project: ProjectRecord, source: AssetRecord): Promise<AssetRecord | null> {
+  if (!project.selectedProcessedAssetId) return null;
+  if (project.activeAssetId !== source.id || source.projectId !== project.id || source.role !== 'source')
+    throw new Error('Несъответстваща оригинална снимка');
+  const db = await openProjectDB();
+  const asset = await req<AssetRecord | undefined>(db.transaction('assets', 'readonly')
+    .objectStore('assets').get(project.selectedProcessedAssetId));
+  if (!asset || asset.projectId !== project.id || asset.sourceAssetId !== source.id ||
+      asset.role !== 'processed' || asset.mimeType !== 'image/png' ||
+      asset.blob?.type !== 'image/png' || !asset.blob || asset.blob.size === 0 || asset.byteSize !== asset.blob.size)
+    throw new Error('Избраната скица е невалидна. Оригиналът не е засегнат.');
+  return asset;
+}
+
+/** Select an existing validated PNG without copying it and without touching presets.
+ * All source/project/processed identity checks are within the SAME write transaction.
+ */
+export async function selectProcessedAsset(projectId: string, sourceId: string,
+                                            processedId: string): Promise<void> {
+  const db = await openProjectDB();
+  const tx = db.transaction(['projects', 'assets'], 'readwrite');
+  const finished = txDone(tx);
+  let invalid = false;
+  const projects = tx.objectStore('projects');
+  const assets = tx.objectStore('assets');
+  const projectRequest = projects.get(projectId) as IDBRequest<ProjectRecord | undefined>;
+  projectRequest.onsuccess = () => {
+    const project = projectRequest.result;
+    if (!project || project.activeAssetId !== sourceId) { invalid = true; tx.abort(); return; }
+    const assetRequest = assets.get(processedId) as IDBRequest<AssetRecord | undefined>;
+    assetRequest.onsuccess = () => {
+      const a = assetRequest.result;
+      if (!a || a.projectId !== projectId || a.sourceAssetId !== sourceId ||
+          a.role !== 'processed' || a.mimeType !== 'image/png' || a.blob?.type !== 'image/png' || !a.blob ||
+          !a.blob.size || a.byteSize !== a.blob.size) { invalid = true; tx.abort(); return; }
+      projects.put({ ...project, selectedProcessedAssetId: a.id });
+    };
+  };
+  try { await finished; } catch (error) {
+    if (invalid) throw new Error('Проектът или обработената скица са сменени; изборът е отказан.');
+    throw error;
+  }
 }
 
 /** Day 20: read-only newest saved PNG for the current ORIGINAL source.
@@ -339,6 +387,11 @@ export async function assertProjectIntegrity(projectId: string): Promise<void> {
   if (!project) throw new Error('Няма такъв проект');
   const byId = new Map(assets.map(a => [a.id, a]));
   if (byId.get(project.activeAssetId)?.role !== 'source') throw new Error('Невалидна активна снимка');
+  if (project.selectedProcessedAssetId) {
+    const selected = byId.get(project.selectedProcessedAssetId);
+    if (selected?.role !== 'processed' || selected.projectId !== projectId ||
+        selected.sourceAssetId !== project.activeAssetId) throw new Error('Невалидна избрана скица');
+  }
   for (const a of assets) {
     if (!a.blob || a.byteSize !== a.blob.size || a.projectId !== projectId) throw new Error('Повреден asset');
     if (a.sourceAssetId && !byId.has(a.sourceAssetId)) throw new Error('Невалиден sourceAssetId');
@@ -488,6 +541,10 @@ export async function auditProjectDatabase(): Promise<{
   const invalidProjectIds = projects.filter(p =>
     byAsset.get(p.activeAssetId)?.role !== 'source' ||
     byAsset.get(p.activeAssetId)?.projectId !== p.id ||
+    (p.selectedProcessedAssetId !== undefined &&
+      (byAsset.get(p.selectedProcessedAssetId)?.role !== 'processed' ||
+       byAsset.get(p.selectedProcessedAssetId)?.projectId !== p.id ||
+       byAsset.get(p.selectedProcessedAssetId)?.sourceAssetId !== p.activeAssetId)) ||
     (p.guide !== undefined && (!isGuidePlanV1(p.guide) ||
       byAsset.get(p.guide.sourceAssetId)?.projectId !== p.id ||
       p.guide.steps.some(step => byAsset.get(step.assetId)?.role !== 'guide-step' ||

@@ -1,17 +1,20 @@
 /** Day 20: temporary Generator UI choices. No effect on source/processed assets yet. */
 export type SketchUiStyle = 'sketch' | 'manga' | 'comic';
+export type SketchUiSelection = SketchUiStyle | null;
 export type SketchUiLine = 'thin' | 'normal' | 'thick';
+export type SketchUiLineSelection = SketchUiLine | null;
 export type SketchUiState = Readonly<{
-  style: SketchUiStyle;
+  style: SketchUiSelection;
   detail: 1 | 2 | 3 | 4 | 5;
-  line: SketchUiLine;
+  line: SketchUiLineSelection;
 }>;
 export const DEFAULT_SKETCH_UI: SketchUiState = Object.freeze({
-  style: 'sketch', detail: 3, line: 'normal',
+  style: null, detail: 3, line: null,
 });
 export function setSketchUiStyle(state: SketchUiState, style: string): SketchUiState {
   if (style !== 'sketch' && style !== 'manga' && style !== 'comic') throw new Error('Unknown style');
-  return { ...state, style };
+  // Tap the selected profile again to return to the original image.
+  return { ...state, style: state.style === style ? null : style };
 }
 export function setSketchUiLine(state: SketchUiState, line: string): SketchUiState {
   if (line !== 'thin' && line !== 'normal' && line !== 'thick') throw new Error('Unknown thickness');

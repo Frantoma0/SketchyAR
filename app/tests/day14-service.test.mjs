@@ -321,3 +321,18 @@ test('Day16.1: archive with 2 projects adds ONLY missing second project and its 
   assert.deepEqual(['projects','assets','overlay_presets','app_settings'].map(x=>db.count(x)),[2,6,2,2]);
   assert.equal(db.data.get('projects').get(ID).title,'New local project title');
 });
+
+test('Day23: selected processed pointer survives backup-v1 ZIP Verify', async () => {
+  const m=fixture(); m.projects[0].selectedProcessedAssetId=PROCESSED;
+  const verified=await verifyBackup(archive(m));
+  assert.equal(verified.manifest.projects[0].selectedProcessedAssetId,PROCESSED);
+  assert.equal(verified.assets.find(a=>a.id===PROCESSED).sourceAssetId,SRC);
+});
+test('Day23: backup-v1 refuses a missing or mismatched selected processed asset', async () => {
+  const missing=fixture(); missing.projects[0].selectedProcessedAssetId='00000000-0000-4000-8000-000000000099';
+  await assert.rejects(()=>verifyBackup(archive(missing)),/selected processed asset/);
+  const wrong=fixture(); wrong.projects[0].selectedProcessedAssetId=THUMB;
+  await assert.rejects(()=>verifyBackup(archive(wrong)),/selected processed asset/);
+  const invalid=fixture(); invalid.projects[0].selectedProcessedAssetId='not-an-uuid';
+  await assert.rejects(()=>verifyBackup(archive(invalid)),/project record/);
+});

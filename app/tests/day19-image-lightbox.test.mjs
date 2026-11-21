@@ -43,7 +43,9 @@ test('Day19.2: opens only after source load, uses same Blob URL and never writes
   assert.match(editor, /zoomButton\.disabled = false/);
   assert.match(editor, /screen\.inert = true/);
   assert.match(editor, /screen\.inert = false/);
-  assert.doesNotMatch(editor, /(saveProcessedPng|putProject|updateProject|deleteImageProject)\s*\(/);
+  // Magnifier is still read-only; the new Day 23 write exists only in Draw's handler.
+  const zoom = editor.slice(editor.indexOf('const openZoom ='),editor.indexOf('const releasePreview ='));
+  assert.doesNotMatch(zoom,/(saveProcessedPng|selectProcessedAsset|putProject|updateProject)\s*\(/);
 });
 
 test('Day19.2: close X, backdrop, Escape and editor lifecycle all release zoom state', () => {
