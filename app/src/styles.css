@@ -418,8 +418,9 @@ body.drawing-open { background: #090b0c !important; }
   text-shadow:0 1px 0 #fff;
 }
 .home-project-caption:active { background:rgba(85,79,74,.10); }
-/* Pencil and bin are SIBLING buttons above the picture. Their 44px touch targets
-   do not overlap, and the visible graphite icons are only 29px. */
+/* Pencil and bin are sibling buttons with unchanged 44px non-overlapping touch targets.
+   Center distance = 46px; artwork = 29px; moving each icon 5.5px inward
+   produces a precise 46 - 29 - 2*5.5 = 6px visible artwork gap. */
 .home-project-edit-trigger {
   position:absolute; z-index:4; top:4%; right:calc(4% + 46px);
   width:44px; height:44px; margin:0; padding:0;
@@ -428,7 +429,7 @@ body.drawing-open { background: #090b0c !important; }
   -webkit-tap-highlight-color:transparent;
 }
 .home-project-edit-trigger img {
-  display:block; width:29px; height:29px; object-fit:contain;
+  display:block; position:relative; left:5.5px; width:29px; height:29px; object-fit:contain;
   pointer-events:none; user-select:none; -webkit-user-drag:none;
 }
 .home-project-edit-trigger:active img { transform:scale(.96); }
@@ -444,7 +445,7 @@ body.drawing-open { background: #090b0c !important; }
   -webkit-tap-highlight-color:transparent;
 }
 .home-project-delete-trigger img {
-  display:block; width:29px; height:29px;
+  display:block; position:relative; left:-5.5px; width:29px; height:29px;
   object-fit:contain; pointer-events:none; user-select:none;
   -webkit-user-drag:none;
 }

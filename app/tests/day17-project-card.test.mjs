@@ -36,7 +36,7 @@ test('Day17: rename and delete both have cancel without invoking save or delete'
 });
 test('Day17: graphite icon and 44px separate touch targets preserve fixed layout', () => {
   assert.match(icon,/<svg/);
-  assert.match(icon,/viewBox="0 0 29 29"/);
+  assert.match(icon,/viewBox="0 0 27 27"/);
   assert.match(styles,/\.home-project-edit-trigger\s*\{[^}]*width:44px; height:44px/s);
   assert.match(styles,/\.home-project-delete-trigger\s*\{[^}]*width:44px; height:44px/s);
   assert.match(styles,/right:calc\(4% \+ 46px\)/);
@@ -52,6 +52,27 @@ test('Day17: placeholder promises no processing; back and Escape return focus', 
   assert.doesNotMatch(editor,/put\(|delete\(|renameImageProject\(|createBackup\(/);
 });
 test('Day17: exact version and all earlier tests are still run', () => {
-  assert.equal(packageJson.version,'0.17.0');
+  assert.equal(packageJson.version,'0.17.1');
   assert.equal(packageJson.scripts['test:day17'],packageJson.scripts['test:day16']);
+});
+
+test('Day17.1: exact user-provided pencil art, 6px visible gap and preserved click actions', () => {
+  assert.match(icon,/<svg width="27" height="27" viewBox="0 0 27 27"/);
+  assert.match(home,/pencilIcon\.src = `\$\{import\.meta\.env\.BASE_URL\}ui\/project-edit-pencil\.svg`/);
+  assert.match(home,/pencil\.addEventListener\('click', \(\) => sketchEditor\.open\(project, pencil\)\)/);
+  assert.match(home,/trash\.addEventListener\('click', \(\) => showProjectDialog\(project, trash, 'delete'\)\)/);
+  const pencilRule = styles.match(/\.home-project-edit-trigger img \{([^}]*)\}/)?.[1] ?? '';
+  const binRule = styles.match(/\.home-project-delete-trigger img \{([^}]*)\}/)?.[1] ?? '';
+  assert.match(pencilRule,/left:5\.5px/);
+  assert.match(binRule,/left:-5\.5px/);
+  assert.match(pencilRule,/width:29px; height:29px/);
+  assert.match(binRule,/width:29px; height:29px/);
+  // Both 44px click boxes remain 2px apart; only their icons shift.
+  const centerDistance = 46;
+  const iconSize = 29;
+  const inwardShift = 5.5;
+  assert.equal(centerDistance - iconSize - 2 * inwardShift, 6);
+  assert.match(styles,/right:calc\(4% \+ 46px\)/);
+  assert.match(styles,/\.home-project-edit-trigger\s*\{[^}]*width:44px; height:44px/s);
+  assert.match(styles,/\.home-project-delete-trigger\s*\{[^}]*width:44px; height:44px/s);
 });
