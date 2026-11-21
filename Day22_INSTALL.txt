@@ -1,0 +1,38 @@
+SketchyAR Day 22 / v0.22.0 — първи РЕАЛЕН режим Скица (временен PNG preview)
+Изходна версия: v0.21.0 (commit 4b8d148212ac).
+
+1) Извлечи само PATCH архива върху съществуващата папка ar-drawing:
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day22_Sketch_Mode_Changes_v0.22.0.zip" -DestinationPath . -Force
+
+2) Windows тестове (PowerShell):
+  cd app
+  npm ci --include=dev
+  npm run typecheck
+  npm run build
+  npm run test:day22
+  cd ..
+  python -m pytest python_engine -q
+  git diff --check
+  git status
+
+3) Ако всички тестове са успешни и файловете са очакваните:
+  git add app/package.json app/package-lock.json
+  git add app/src/day13-image-bridge.ts app/src/day17-sketch-placeholder.ts
+  git add app/src/day22-sketch-gate.ts app/src/day22-sketch-mode.ts app/src/styles.css
+  git add app/tests/day21-camera-navigation.test.mjs app/tests/day22-sketch-mode.test.mjs
+  git add docs/day22.md docs/sketch_functional_sequence_v3_3.md Day22_INSTALL.txt
+  git diff --cached --check
+  git diff --cached --stat
+  git commit -m "Day 22: real Python Sketch preview with stale-result protection"
+  git push origin main
+  git log -1 --oneline
+
+4) iPhone след GitHub Pages deploy:
+  - Увери се, че версията е v0.22.0.
+  - Отвори нов тестов проект от Home чрез моливчето.
+  - Виж реалния обработен PNG. Дръж пръст за оригинал, отпусни за PNG.
+  - Пробвай лупата и смяна на проект преди да свърши обработката.
+  - Манга/Комикс не трябва да показват Скица под чуждо име.
+  - Рисувай остава деактивиран; записът и камерата са следваща задача.
+
+НЕ качвай папката с 30-те частни снимки или техния ZIP в публичното репозитори.

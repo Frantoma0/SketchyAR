@@ -8,7 +8,7 @@ import { log } from './diagnostics';
 
 const PARAMS = { sigma: 1, low: .04, high: .10, input: 'grayscale-u8' as const, maxSide: 1024 as const };
 
-async function decodeReducedGray(blob: Blob): Promise<{ gray: Uint8Array; width: number; height: number }> {
+export async function decodeReducedGray(blob: Blob): Promise<{ gray: Uint8Array; width: number; height: number }> {
   const url = URL.createObjectURL(blob);
   const img = new Image();
   const canvas = document.createElement('canvas');
@@ -43,7 +43,7 @@ async function decodeReducedGray(blob: Blob): Promise<{ gray: Uint8Array; width:
   }
 }
 
-async function encodeTransparentPng(mask: Uint8Array, width: number, height: number): Promise<Blob> {
+export async function encodeTransparentPng(mask: Uint8Array, width: number, height: number): Promise<Blob> {
   if (mask.length !== width * height) throw new Error('Невалиден резултат от Python');
   const canvas = document.createElement('canvas');
   canvas.width = width; canvas.height = height;

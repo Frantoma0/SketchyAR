@@ -1108,3 +1108,24 @@ body.day19-zoom-open { overflow:hidden; }
 .drawing-screen .sketch-camera-change-menu button:focus-visible {
   outline:3px solid #37302a; outline-offset:2px;
 }
+
+/* Day 22: temporary processing indicator, only while a real Python job is active.
+ * No change to the fixed Figma geometry or persistent labels. */
+.day20-figma-screen #day18-preview-window.day22-processing::after {
+  content: 'Генериране…';
+  position: absolute;
+  bottom: 8px; left: 50%; transform: translateX(-50%);
+  z-index: 3; padding: 5px 10px;
+  border: 1px solid #777; border-radius: 18px;
+  color: #333; background: rgba(255,255,255,.93);
+  font: 600 12px sans-serif; white-space: nowrap;
+  pointer-events: none;
+}
+
+.day20-figma-screen #day18-preview-window.day22-failed::after {
+  content: 'Няма готова скица · опитай пак';
+  position:absolute; bottom:8px; left:50%; transform:translateX(-50%); z-index:3;
+  padding:5px 10px; border-radius:14px; background:rgba(255,255,255,.95);
+  border:1px solid #777; font:600 11px sans-serif; color:#333; white-space:nowrap;
+  pointer-events:none;
+}

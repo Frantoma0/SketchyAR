@@ -6,6 +6,7 @@
 import * as D from './diagnostics';
 import { planSketchRoute, SketchRouteMachine, choosePreviewRole } from './day18-navigation';
 import { getProjectImage, getLatestProcessedPreview, type ProjectRecord } from './storage/project-store';
+import { generateSketchDraft, SketchDraftGate } from './day22-sketch-mode';
 import { DEFAULT_SKETCH_UI, setSketchUiDetail, setSketchUiLine, setSketchUiStyle,
   previewCanCompare, type SketchUiState } from './day20-sketch-state';
 
@@ -34,17 +35,21 @@ export function initDay17EditPlaceholder(): {
   const route = new SketchRouteMachine();
   let ui: SketchUiState = DEFAULT_SKETCH_UI;
   let processedURL: string | null = null;
+  let sourceForSketch: { projectId: string; sourceId: string; blob: Blob } | null = null;
+  let sketchBuilding = false;
+  const sketchGate = new SketchDraftGate();
   let comparisonHeld = false;
   let comparisonTimer: ReturnType<typeof setTimeout> | null = null;
   const resetComparison = (): void => {
     if (comparisonTimer !== null) { clearTimeout(comparisonTimer); comparisonTimer = null; }
-    if (comparisonHeld && processedURL) preview.src = processedURL;
+    if (comparisonHeld && processedURL && ui.style === 'sketch') preview.src = processedURL;
+    else if (comparisonHeld && previewURL) preview.src = previewURL;
     comparisonHeld = false;
     compareIndicator.hidden = true;
     previewWindow.classList.remove('day20-holding-original');
   };
   const currentImageURL = (): string | null =>
-    (comparisonHeld || !processedURL) ? previewURL : processedURL;
+    (comparisonHeld || ui.style !== 'sketch' || !processedURL) ? previewURL : processedURL;
   const showUI = (): void => {
     for (const button of controls) {
       const selected = button.dataset.style === ui.style || button.dataset.line === ui.line;
@@ -60,13 +65,68 @@ export function initDay17EditPlaceholder(): {
     detailValue.value = `${ui.detail} / 5`;
     detail.style.setProperty('--day20-detail-progress', `${(ui.detail - 1) * 25}%`);
     detail.parentElement?.style.setProperty('--day20-detail-progress', `${(ui.detail - 1) * 25}%`);
+    if (previewURL && !comparisonHeld) preview.src = currentImageURL()!;
+  };
+  // Do not generate a Manga/Comic preview with Sketch code; those modes are next milestones.
+  // A second tap on "Скица" can retry a failed generation without adding new visible UI.
+  const requestSketch = (): void => {
+    if (sketchBuilding || !sourceForSketch || screen.hidden || ui.style !== 'sketch' || processedURL) return;
+    const { projectId, sourceId, blob } = sourceForSketch;
+    const ticket = sketchGate.begin(projectId, sourceId);
+    sketchBuilding = true;
+    previewWindow.classList.remove('day22-failed');
+    previewWindow.classList.add('day22-processing');
+    previewWindow.setAttribute('aria-busy', 'true');
+    previewNote.textContent = 'Генерира се истинска контурна скица с Python…';
+    D.log('info', 'day22', 'sketch.generate.started', { projectId, sourceId });
+    void generateSketchDraft(blob).then(async result => {
+      if (!sketchGate.isCurrent(ticket, projectId, sourceId) || screen.hidden) return;
+      // Another tab may have replaced the active source during processing. Never
+      // show a draft for that outdated source, even if this editor stayed open.
+      const fresh = await getProjectImage(projectId);
+      if (fresh.source.id !== sourceId || !sketchGate.isCurrent(ticket, projectId, sourceId) || screen.hidden) {
+        D.log('warn', 'day22', 'sketch.generate.stale-source', { projectId, sourceId });
+        return;
+      }
+      const url = URL.createObjectURL(result.png);
+      if (processedURL) URL.revokeObjectURL(processedURL);
+      processedURL = url;
+      if (ui.style === 'sketch') preview.src = url;
+      previewNote.textContent = 'Реална скица · задръж върху изображението за оригинала.';
+      info.textContent = 'Скица: реален NumPy резултат. Детайлност и линии все още не променят PNG.';
+      D.log('info', 'day22', 'sketch.generate.pass', {
+        projectId, sourceId, width: result.width, height: result.height,
+        inkPixels: result.inkPixels, pngBytes: result.png.size,
+        pipelineVersion: result.pipelineVersion, requestId: result.requestId,
+        processingMs: result.processingMs, workerRequestMs: result.workerRequestMs,
+        persisted: false,
+      });
+    }).catch(error => {
+      if (!sketchGate.isCurrent(ticket, projectId, sourceId) || screen.hidden) return;
+      previewNote.textContent = 'Скицата не можа да се генерира. Натисни „Скица“ за повторен опит.';
+      previewWindow.classList.add('day22-failed');
+      D.log('error', 'day22', 'sketch.generate.failed', {
+        projectId, sourceId, message: String(error),
+      });
+    }).finally(() => {
+      if (!sketchGate.isCurrent(ticket, projectId, sourceId)) return;
+      sketchBuilding = false;
+      previewWindow.classList.remove('day22-processing');
+      previewWindow.setAttribute('aria-busy', 'false');
+    });
   };
   controls.forEach(button => button.addEventListener('click', () => {
     if (screen.hidden) return;
+    resetComparison();
     if (button.dataset.style) ui = setSketchUiStyle(ui, button.dataset.style);
     if (button.dataset.line) ui = setSketchUiLine(ui, button.dataset.line);
     showUI();
-    D.log('info', 'day20', 'generator.choice.visual-only', { style: ui.style, detail: ui.detail, line: ui.line });
+    if (ui.style === 'sketch') requestSketch();
+    else {
+      info.textContent = 'Манга и Комикс предстоят. Показан е оригиналът, не симулирана обработка.';
+      previewNote.textContent = 'Оригинална снимка · този режим още не е реализиран.';
+    }
+    D.log('info', 'day22', 'generator.choice', { style: ui.style, detail: ui.detail, line: ui.line });
   }));
   detail.addEventListener('input', () => {
     if (screen.hidden) return;
@@ -74,13 +134,13 @@ export function initDay17EditPlaceholder(): {
     D.log('info', 'day20', 'generator.detail.visual-only', { detail: ui.detail });
   });
   previewWindow.addEventListener('pointerdown', event => {
-    if (event.button !== 0 || !previewCanCompare(Boolean(previewURL), Boolean(processedURL)) ||
+    if (event.button !== 0 || ui.style !== 'sketch' || !previewCanCompare(Boolean(previewURL), Boolean(processedURL)) ||
         !zoomOverlay.hidden || screen.hidden) return;
     resetComparison();
     // A deliberate hold avoids flashing the original while simply scrolling a long screen.
     comparisonTimer = setTimeout(() => {
       comparisonTimer = null;
-      if (!previewCanCompare(Boolean(previewURL), Boolean(processedURL)) || screen.hidden || !zoomOverlay.hidden) return;
+      if (ui.style !== 'sketch' || !previewCanCompare(Boolean(previewURL), Boolean(processedURL)) || screen.hidden || !zoomOverlay.hidden) return;
       comparisonHeld = true;
       preview.src = previewURL!;
       compareIndicator.hidden = false;
@@ -92,7 +152,7 @@ export function initDay17EditPlaceholder(): {
     previewWindow.addEventListener(type, resetComparison);
   // Keyboard parity without adding a separate comparison button.
   previewWindow.addEventListener('keydown', event => {
-    if (event.code === 'Space' && processedURL && !event.repeat) {
+    if (event.code === 'Space' && ui.style === 'sketch' && processedURL && !event.repeat) {
       event.preventDefault(); resetComparison(); comparisonHeld = true;
       preview.src = previewURL!; compareIndicator.hidden = false;
     }
@@ -133,6 +193,11 @@ export function initDay17EditPlaceholder(): {
   };
   const releasePreview = (): void => {
     closeZoom(false); // the Blob URL must not be revoked while the zoom is visible
+    sketchGate.cancel();
+    sourceForSketch = null;
+    sketchBuilding = false;
+    previewWindow.classList.remove('day22-processing', 'day22-failed');
+    previewWindow.setAttribute('aria-busy', 'false');
     resetComparison();
     zoomButton.disabled = true;
     preview.removeAttribute('src');
@@ -187,6 +252,7 @@ export function initDay17EditPlaceholder(): {
         url = URL.createObjectURL(source.blob);
         if (!route.isActive(token) || screen.hidden) return;
         previewURL = url;
+        sourceForSketch = { projectId: project.id, sourceId: source.id, blob: source.blob };
         url = null;
         preview.src = previewURL;
         preview.hidden = false;
@@ -213,6 +279,10 @@ export function initDay17EditPlaceholder(): {
         } catch (error) {
           D.log('warn', 'day20', 'compare.processed.unavailable', { message: String(error) });
         }
+        // Day 22: when no saved PNG exists, produce a REAL temporary preview.
+        // The original remains pristine; no IndexedDB or camera operation occurs.
+        if (route.isActive(token) && !screen.hidden && ui.style === 'sketch' && !processedURL)
+          requestSketch();
       } catch (error) {
         if (route.isActive(token)) {
           previewNote.textContent = 'Оригиналът не можа да се покаже. Проектът не е променен.';
