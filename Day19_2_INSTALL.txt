@@ -1,0 +1,29 @@
+SketchyAR v0.19.2 — Day19.2 / Image zoom hotfix
+
+Prerequisite: local working tree already has Day19.1 full-image-fit change (v0.19.1).
+The GitHub main branch may still be at v0.19.0; apply v0.19.1 first if needed.
+
+1) From ar-drawing root in PowerShell:
+Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day19_2_Image_Zoom_Hotfix_v0.19.2.zip" -DestinationPath . -Force
+
+2) Run:
+cd app
+npm ci --include=dev
+npm run typecheck
+npm run build
+npm run test:day19
+cd ..
+python -m pytest python_engine -q
+git diff --check
+git status
+
+3) If all tests pass and diff is expected:
+git add Day19_2_INSTALL.txt app/package.json app/package-lock.json app/src/main.ts app/src/styles.css app/src/day17-sketch-placeholder.ts app/public/ui/generator/zoom-control.svg app/tests/day19-image-lightbox.test.mjs docs/day19-zoom-lightbox-hotfix.md
+git commit -m "fix(day19): add full-image zoom lightbox to generator preview"
+git push origin main
+
+4) In iPhone Home Screen app, check v0.19.2 / new commit, tap pencil for an
+existing project, wait for image, tap magnifier, confirm dark background and
+full image, then close via X and backdrop. Test both portrait and landscape.
+
+Important: no production Restore, no project deletion, no IndexedDB migration.

@@ -633,9 +633,20 @@ body.day17-edit-open { overflow:hidden; }
 .day19-content .day17-edit-project-name { margin:2px 0 10px; font:700 25px/1.07 'Caveat',cursive; }
 .day19-preview-frame { border:2px solid #665f55; box-shadow:5px 6px 0 rgba(88,78,63,.20),
   0 0 0 3px rgba(255,255,255,.45) inset; padding:11px; background:#fffdf7; }
+/* Day 19.1: FIT ONLY inside the new generator's Polaroid, never in Home or Camera.
+   The image is centered, keeps its natural aspect ratio, and its LONGER constrained
+   dimension fits inside the preview with an 8px inner breathing space.
+   Absolute positioning removes the image from Grid's intrinsic track sizing,
+   preventing large source dimensions from enlarging/cropping the preview. */
 .day19-content .day17-edit-preview-placeholder { height:clamp(185px,35dvh,338px);
+  position:relative; overflow:hidden; min-width:0; min-height:0;
   border:1px solid #98928a; border-radius:0; background:#f5f2ed; }
-.day19-content #day18-original-preview { border-radius:0; background:#f8f6f0; }
+.day19-content #day18-original-preview {
+  position:absolute; top:8px; left:8px; width:calc(100% - 16px); height:calc(100% - 16px);
+  max-width:calc(100% - 16px); max-height:calc(100% - 16px);
+  display:block; object-fit:contain; object-position:center center;
+  border-radius:0; background:transparent;
+}
 .day19-content .day18-preview-note { min-height:22px; margin:10px 0 13px;
   color:#625a52; font:12px/1.45 var(--font); }
 .day19-controls { padding:0; border:0; min-width:0; margin:0; text-align:left; }
@@ -706,3 +717,35 @@ body.day17-edit-open { overflow:hidden; }
   .day19-line-labels { font-size:13px; }
 }
 @media (prefers-reduced-motion: reduce) { .day19-editor * { scroll-behavior:auto; } }
+
+
+/* Day 19.2: scoped, opt-in image preview overlay. Gallery and Drawing untouched. */
+.day19-preview-frame { position:relative; }
+.day19-preview-zoom { position:absolute; z-index:2; top:15px; right:15px;
+  width:44px; height:44px; padding:4px; display:grid; place-items:center;
+  border:0; background:transparent; border-radius:11px; cursor:pointer;
+  touch-action:manipulation; }
+.day19-preview-zoom img { width:100%; height:100%; object-fit:contain;
+  pointer-events:none; filter:drop-shadow(0 1px 1px rgba(0,0,0,.22)); }
+.day19-preview-zoom:disabled { opacity:.48; cursor:default; }
+.day19-preview-zoom:focus-visible, .day19-lightbox-close:focus-visible {
+  outline:3px solid #fff; outline-offset:2px; box-shadow:0 0 0 5px #3c352f; }
+.day19-image-lightbox[hidden] { display:none !important; }
+.day19-image-lightbox { position:fixed; inset:0; z-index:2300;
+  width:100%; height:100dvh; overflow:hidden; overscroll-behavior:contain;
+  background:rgba(12,11,12,.93); display:grid; place-items:center; }
+.day19-lightbox-panel { position:relative; display:flex; align-items:center; justify-content:center;
+  width:100%; height:100%; min-width:0; min-height:0;
+  padding:calc(env(safe-area-inset-top,0px) + 62px) 12px
+    calc(env(safe-area-inset-bottom,0px) + 20px); }
+#day19-lightbox-image { display:block; width:auto; height:auto;
+  max-width:100%; max-height:100%; min-width:0; min-height:0;
+  object-fit:contain; object-position:center; border-radius:2px; }
+.day19-lightbox-close { position:absolute; z-index:1;
+  top:calc(env(safe-area-inset-top,0px) + 8px);
+  right:calc(env(safe-area-inset-right,0px) + 12px);
+  min-width:46px; min-height:46px; padding:0 0 4px;
+  border:2px solid rgba(255,255,255,.8); border-radius:13px;
+  background:rgba(40,38,38,.85); color:#fff;
+  font:600 38px/1 'Caveat',cursive; cursor:pointer; touch-action:manipulation; }
+body.day19-zoom-open { overflow:hidden; }

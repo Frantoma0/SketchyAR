@@ -140,6 +140,11 @@ document.getElementById('app')!.innerHTML = `
           <span id="day18-preview-empty" aria-hidden="true">✎</span>
           <img id="day18-original-preview" alt="Оригинална снимка на проекта — необработена" hidden />
         </div>
+        <button id="day19-preview-zoom" class="day19-preview-zoom" type="button"
+                aria-label="Отвори цялото изображение" aria-controls="day19-image-lightbox"
+                aria-haspopup="dialog" disabled>
+          <img src="./ui/generator/zoom-control.svg" alt="" aria-hidden="true" />
+        </button>
       </div>
       <p id="day18-preview-note" class="day18-preview-note" role="status" aria-live="polite">
         Зарежда се оригиналната снимка…
@@ -192,6 +197,15 @@ document.getElementById('app')!.innerHTML = `
       </button>
       <button id="day17-edit-return" type="button" class="day17-edit-return day19-return">Към проектите</button>
     </div>
+  </div>
+</div>
+<!-- Day 19.2: full-source-image lightbox. Sibling of the editor so inert editor
+     cannot make its close button inaccessible. Uses the existing preview Blob URL. -->
+<div id="day19-image-lightbox" class="day19-image-lightbox" role="presentation" hidden>
+  <div class="day19-lightbox-panel" role="dialog" aria-modal="true" aria-label="Цялото изображение">
+    <button id="day19-lightbox-close" class="day19-lightbox-close" type="button"
+            aria-label="Затвори цялото изображение">×</button>
+    <img id="day19-lightbox-image" alt="Цялата оригинална снимка на проекта" />
   </div>
 </div>
 <!-- Day 16: Native file picker is never inside a hidden Home or developer container. -->

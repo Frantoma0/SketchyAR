@@ -18,11 +18,36 @@ export function initDay17EditPlaceholder(): {
   const preview = document.getElementById('day18-original-preview') as HTMLImageElement;
   const previewEmpty = document.getElementById('day18-preview-empty') as HTMLElement;
   const previewNote = document.getElementById('day18-preview-note') as HTMLElement;
+  const zoomButton = document.getElementById('day19-preview-zoom') as HTMLButtonElement;
+  const zoomOverlay = document.getElementById('day19-image-lightbox') as HTMLElement;
+  const zoomImage = document.getElementById('day19-lightbox-image') as HTMLImageElement;
+  const zoomClose = document.getElementById('day19-lightbox-close') as HTMLButtonElement;
   const route = new SketchRouteMachine();
   let returnFocus: HTMLElement | null = null;
   let previewURL: string | null = null;
 
+  // Zoom reuses the already-loaded source Blob URL, never fetches or writes data.
+  const closeZoom = (restoreFocus = true): void => {
+    if (zoomOverlay.hidden) return;
+    zoomOverlay.hidden = true;
+    zoomImage.removeAttribute('src');
+    screen.inert = false;
+    document.body.classList.remove('day19-zoom-open');
+    if (restoreFocus && !screen.hidden) zoomButton.focus();
+    D.log('info', 'day19', 'image.zoom.closed');
+  };
+  const openZoom = (): void => {
+    if (!previewURL || preview.hidden || screen.hidden || !zoomOverlay.hidden) return;
+    zoomImage.src = previewURL;
+    zoomOverlay.hidden = false;
+    screen.inert = true;
+    document.body.classList.add('day19-zoom-open');
+    zoomClose.focus();
+    D.log('info', 'day19', 'image.zoom.opened');
+  };
   const releasePreview = (): void => {
+    closeZoom(false); // the Blob URL must not be revoked while the zoom is visible
+    zoomButton.disabled = true;
     preview.removeAttribute('src');
     preview.hidden = true;
     previewEmpty.hidden = false;
@@ -70,6 +95,7 @@ export function initDay17EditPlaceholder(): {
         preview.src = previewURL;
         preview.hidden = false;
         previewEmpty.hidden = true;
+        zoomButton.disabled = false;
         previewNote.textContent = 'Показан е оригиналът — обработката на скици предстои.';
         D.log('info', 'day18', 'source.preview.loaded', { projectId: project.id,
           assetId: source.id, role, byteSize: source.byteSize });
@@ -83,6 +109,16 @@ export function initDay17EditPlaceholder(): {
       }
     })();
   };
+  zoomButton.addEventListener('click', openZoom);
+  zoomClose.addEventListener('click', () => closeZoom());
+  // Backdrop click also closes; a tap on the image never does.
+  zoomOverlay.addEventListener('click', event => {
+    if (event.target === zoomOverlay || event.target === zoomOverlay.firstElementChild) closeZoom();
+  });
+  zoomOverlay.addEventListener('keydown', event => {
+    if (event.key === 'Escape') { event.preventDefault(); closeZoom(); }
+    else if (event.key === 'Tab') { event.preventDefault(); zoomClose.focus(); }
+  });
   back.addEventListener('click', close);
   returnButton.addEventListener('click', close);
   screen.addEventListener('keydown', event => {
