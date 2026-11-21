@@ -1,7 +1,7 @@
 {
   "name": "sketchyar",
   "private": true,
-  "version": "0.14.0",
+  "version": "0.15.0",
   "type": "module",
   "engines": {
     "node": ">=20.19"
@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host",
-    "test:day14": "node --experimental-strip-types --test tests/*.test.mjs"
+    "test:day14": "node --experimental-strip-types --test tests/*.test.mjs",
+    "test:day15": "node --experimental-strip-types --test tests/*.test.mjs"
   },
   "devDependencies": {
     "typescript": "7.0.2",

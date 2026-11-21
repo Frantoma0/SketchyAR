@@ -185,3 +185,45 @@ test('transaction abort rolls back all staged writes on quota error',async()=>{
   await assert.rejects(()=>restoreVerifiedToDB(db,verified),/quota/);
   assert.deepEqual(['projects','assets','overlay_presets','app_settings'].map(x=>db.count(x)),[0,0,0,0]);
 });
+
+
+// Day 15 regression tests use the REAL restore service with a deterministic,
+// transactional IDB mock. Never touch an actual browser or user's projects.
+test('Day15: collision on assets/presets/settings refuses the entire import', async () => {
+  const verified = await verifyBackup(archive(fixture()));
+  for (const [name, row] of [
+    ['assets', verified.assets[1]],
+    ['overlay_presets', verified.manifest.presets[0]],
+    ['app_settings', verified.manifest.settings[0]],
+  ]) {
+    const existing = { [name]: [structuredClone(row)] };
+    const db = new MockIDB(existing);
+    const before = ['projects','assets','overlay_presets','app_settings'].map(store=>db.count(store));
+    await assert.rejects(() => restoreVerifiedToDB(db, verified), /ID конфликт/);
+    assert.deepEqual(['projects','assets','overlay_presets','app_settings'].map(store=>db.count(store)), before, name);
+  }
+});
+test('Day15: repeated full restore rejects duplicates and leaves the first import intact', async () => {
+  const verified = await verifyBackup(archive(fixture()));
+  const db = new MockIDB();
+  await restoreVerifiedToDB(db, verified);
+  const before = ['projects','assets','overlay_presets','app_settings'].map(store=>db.count(store));
+  await assert.rejects(() => restoreVerifiedToDB(db, verified), /ID конфликт/);
+  assert.deepEqual(['projects','assets','overlay_presets','app_settings'].map(store=>db.count(store)),before);
+});
+test('Day15: every simulated storage quota failure aborts all four stores', async () => {
+  const verified = await verifyBackup(archive(fixture()));
+  const totalWrites = verified.manifest.projects.length + verified.assets.length +
+    verified.manifest.presets.length + verified.manifest.settings.length;
+  for (let failAt = 1; failAt <= totalWrites; failAt++) {
+    const db = new MockIDB({}, failAt);
+    await assert.rejects(() => restoreVerifiedToDB(db, verified), /quota/);
+    assert.deepEqual(['projects','assets','overlay_presets','app_settings'].map(store=>db.count(store)),
+      [0,0,0,0],`quota failed write ${failAt}`);
+  }
+});
+test('Day15: duplicate metadata IDs are rejected before database transaction', async () => {
+  const m = fixture();
+  m.projects.push(structuredClone(m.projects[0]));
+  await assert.rejects(() => verifyBackup(archive(m)), /Duplicate projects/);
+});

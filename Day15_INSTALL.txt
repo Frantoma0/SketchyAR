@@ -1,0 +1,28 @@
+SKETCHYAR DAY 15 — v0.15.0
+=========================
+Base GitHub commit: c7d6de3 (normalize undefined optional backup metadata)
+
+1) Download SketchyAR_Day15_Changes_Only_v0.15.0.zip.
+2) In PowerShell from repository ROOT ar-drawing:
+   Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day15_Changes_Only_v0.15.0.zip" -DestinationPath . -Force
+3) Verify:
+   cd app
+   npm ci --include=dev
+   npm run typecheck
+   npm run build
+   npm run test:day15
+   cd ..
+   python -m pytest python_engine -q
+   git diff --check
+   git status
+4) Only if ALL pass, commit and push:
+   git add app/package.json app/package-lock.json app/src/main.ts app/src/day15-diagnostics.ts app/src/storage/day14-backup-service.ts app/tests/day14-service.test.mjs app/tests/day15-adversarial-zip.test.mjs docs/day15.md Day15_INSTALL.txt
+   git commit -m "Day 15: non-destructive G2 hardening and rollback tests"
+   git push origin main
+5) Wait for successful Pages deployment, open iPhone app from Home Screen.
+6) Diagnostic → Day 15 → Select EXISTING verified ZIP → Run safe test.
+   Expected: DAY15 HARDENING PASS and four true flags.
+7) Verify projects and presets after force close; export diagnostic JSON.
+
+WARNING: DO NOT DELETE ANY REAL PROJECT. DO NOT RUN PRODUCTION RESTORE.
+Full details in docs/day15.md.

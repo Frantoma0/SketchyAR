@@ -296,9 +296,9 @@ export async function restoreBackupToCurrentDB(file: Blob): Promise<VerifiedBack
   return verified;
 }
 const SANDBOX = 'sketchyar-day14-restore-sandbox';
-function createTestDB(): Promise<IDBDatabase> {
+function createTestDB(name = SANDBOX): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(SANDBOX, 1);
+    const req = indexedDB.open(name, 1);
     req.onupgradeneeded = () => {
       const db = req.result;
       const projects = db.createObjectStore('projects', { keyPath: 'id' });
@@ -314,9 +314,9 @@ function createTestDB(): Promise<IDBDatabase> {
     req.onblocked = () => reject(new Error('Sandbox database is blocked'));
   });
 }
-function deleteTestDB(): Promise<void> {
+function deleteTestDB(name = SANDBOX): Promise<void> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.deleteDatabase(SANDBOX);
+    const req = indexedDB.deleteDatabase(name);
     req.onsuccess = () => resolve();
     req.onerror = () => reject(req.error ?? new Error('Sandbox delete failed'));
     req.onblocked = () => reject(new Error('Sandbox is open elsewhere'));
@@ -361,4 +361,80 @@ export async function runDay14SandboxRestore(file: Blob): Promise<Day14DrillResu
     db.close();
     await deleteTestDB();
   }
+}
+
+
+/** Day 15 — non-destructive G2 hardening drill. Production access is read-only.
+ * Deliberately malformed ZIP and repeated restore are tested ONLY in the sandbox.
+ * No production delete, clear, put or add is performed by this function.
+ */
+const DAY15_SANDBOX = 'sketchyar-day15-safety-sandbox';
+const BACKUP_STORES = ['projects', 'assets', 'overlay_presets', 'app_settings'] as const;
+async function databaseKeySnapshot(db: IDBDatabase): Promise<Record<string, string[]>> {
+  const tx = db.transaction([...BACKUP_STORES], 'readonly');
+  const finished = done(tx);
+  const requests = BACKUP_STORES.map(name => tx.objectStore(name).getAllKeys());
+  const values = await Promise.all(requests.map(req => read(req)));
+  await finished;
+  const out: Record<string, string[]> = {};
+  BACKUP_STORES.forEach((name, i) => { out[name] = values[i].map(String).sort(); });
+  return out;
+}
+function sameKeySnapshot(a: Record<string, string[]>, b: Record<string, string[]>): boolean {
+  return BACKUP_STORES.every(name => JSON.stringify(a[name]) === JSON.stringify(b[name]));
+}
+export interface Day15SafetyResult {
+  status: 'DAY15 HARDENING PASS'; archiveSha256: string;
+  malformedArchiveRejected: boolean;
+  duplicateRestoreRejected: boolean;
+  sandboxUnchangedAfterConflict: boolean;
+  productionKeysUnchanged: boolean;
+  productionCounts: Record<string, number>;
+  sandboxRecords: Record<string, number>;
+}
+export async function runDay15SafetyDrill(file: Blob): Promise<Day15SafetyResult> {
+  // Snapshots contain primary keys only, not private image bytes.
+  const production = await openProjectDB();
+  const before = await databaseKeySnapshot(production);
+  const verified = await verifyBackup(file);
+  let malformedArchiveRejected = false;
+  try { await verifyBackup(file.slice(0, file.size - 1)); }
+  catch { malformedArchiveRejected = true; }
+  if (!malformedArchiveRejected) throw new Error('Day15: truncated ZIP unexpectedly accepted');
+
+  // This name is deliberately different from the production DB and Day14 sandbox.
+  await deleteTestDB(DAY15_SANDBOX);
+  const sandbox = await createTestDB(DAY15_SANDBOX);
+  let duplicateRestoreRejected = false;
+  let sandboxUnchangedAfterConflict = false;
+  let sandboxKeys: Record<string, string[]> = {};
+  try {
+    await restoreVerifiedToDB(sandbox, verified);
+    sandboxKeys = await databaseKeySnapshot(sandbox);
+    if (sandboxKeys.projects.length !== verified.manifest.projects.length ||
+        sandboxKeys.assets.length !== verified.assets.length ||
+        sandboxKeys.overlay_presets.length !== verified.manifest.presets.length ||
+        sandboxKeys.app_settings.length !== verified.manifest.settings.length)
+      throw new Error('Day15: sandbox record count mismatch');
+    try { await restoreVerifiedToDB(sandbox, verified); }
+    catch (e) {
+      if (e instanceof Error && e.message.includes('ID конфликт')) duplicateRestoreRejected = true;
+      else throw e;
+    }
+    if (!duplicateRestoreRejected) throw new Error('Day15: duplicate restore unexpectedly succeeded');
+    sandboxUnchangedAfterConflict = sameKeySnapshot(sandboxKeys, await databaseKeySnapshot(sandbox));
+    if (!sandboxUnchangedAfterConflict) throw new Error('Day15: partial sandbox import after conflict');
+  } finally {
+    sandbox.close();
+    await deleteTestDB(DAY15_SANDBOX);
+  }
+  const after = await databaseKeySnapshot(production);
+  const productionKeysUnchanged = sameKeySnapshot(before, after);
+  if (!productionKeysUnchanged) throw new Error('Day15: production keys changed during safety drill');
+  const count = (keys: Record<string, string[]>) => Object.fromEntries(
+    BACKUP_STORES.map(name => [name, keys[name].length])) as Record<string, number>;
+  return { status: 'DAY15 HARDENING PASS', archiveSha256: verified.archiveSha256,
+    malformedArchiveRejected, duplicateRestoreRejected,
+    sandboxUnchangedAfterConflict, productionKeysUnchanged,
+    productionCounts: count(after), sandboxRecords: count(sandboxKeys) };
 }

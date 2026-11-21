@@ -16,6 +16,7 @@ import { initDay11Diagnostics } from './day11-diagnostics';
 import { initDay12Diagnostics } from './day12-diagnostics';
 import { initDay13Diagnostics } from './day13-diagnostics';
 import { initDay14Diagnostics } from './day14-diagnostics';
+import { initDay15Diagnostics } from './day15-diagnostics';
 
 D.installGlobalHandlers();
 D.checkPreviousSession();
@@ -117,7 +118,7 @@ document.getElementById('app')!.innerHTML = `
     <h1>SketchyAR</h1>
     <button id="ver" class="ver" type="button" aria-label="Версия на приложението"></button>
   </header>
-  <p class="lead">Ден 14: проверим ZIP backup/restore със SHA-256. Ден 13 Python Image Bridge и Camera UI са запазени.</p>
+  <p class="lead">Ден 15: защитни тестове на ZIP и локалната база. Ден 14 backup и Ден 13 Python Image Bridge са запазени.</p>
   <section><h2>Build</h2><dl id="build"></dl></section>
   <section><h2>Среда</h2><dl id="env"><dt>Зареждане</dt><dd>…</dd></dl></section>
   <section><h2>Възможности на устройството</h2><ul id="caps" class="caps"></ul></section>
@@ -194,6 +195,14 @@ document.getElementById('app')!.innerHTML = `
     <p class="hint"><strong>Незадължително:</strong> реалният импорт е само добавящ и отказва ВСЕКИ ID конфликт. Първо изпълни безопасния тест; реалните проекти никога не се изтриват автоматично.</p>
     <button class="act" id="btn-day14-restore" type="button" disabled>Restore в истинската база (с потвърждение)</button>
     <pre id="day14-result" class="benchmark-result" role="status">ZIP backup още не е създаден.</pre>
+    <h2>Ден 15 — Hardening на Backup & Recovery</h2>
+    <p class="hint">Безопасен тест с вече записан ZIP: отхвърляне на повреден архив, повторен импорт с конфликт и сравнение на ключовете в истинската база. <strong>Няма изтриване или запис в реалните проекти.</strong> Тества се само отделна временна база.</p>
+    <div class="actions">
+      <button class="act" id="btn-day15-choose" type="button">1. Избери запазения ZIP</button>
+      <button class="act" id="btn-day15-run" type="button" disabled>2. Стартирай безопасния тест</button>
+    </div>
+    <input type="file" id="day15-file" accept=".zip,application/zip" hidden />
+    <pre id="day15-result" class="benchmark-result" role="status">Още няма тест за Ден 15.</pre>
   </section>
   <section id="day4">
     <h2>Ден 4 — Drawing основа</h2>
@@ -389,6 +398,8 @@ try { initDay13Diagnostics(); }
 catch (error) { D.log('error', 'startup', 'Day 13 diagnostics failed', error); }
 try { initDay14Diagnostics(); }
 catch (error) { D.log('error', 'startup', 'Day 14 diagnostics failed', error); }
+try { initDay15Diagnostics(); }
+catch (error) { D.log('error', 'startup', 'Day 15 diagnostics failed', error); }
 document.getElementById('startup-fallback')?.remove();
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
