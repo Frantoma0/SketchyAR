@@ -1,0 +1,37 @@
+SketchyAR Day 28.1 v0.28.1 — Editor Polaroid TRUE contain-fit
+============================================================
+Base required: v0.28.0. Small ZIP root has app/, docs/, Day28_1_INSTALL.txt.
+No DB changes; no need to delete projects. The full ZIP is for backup only.
+
+PowerShell:
+cd "C:\Users\vikit\Desktop\AR Drawing Проект\Код\ar-drawing"
+Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day28_1_Polaroid_Contain_Fit_Hotfix_v0.28.1.zip" -DestinationPath . -Force
+cd app
+npm ci --include=dev
+npm run typecheck
+npm run build
+npm run test:day28-1
+cd ..
+python -m pytest python_engine -q
+git diff --check
+git status
+
+If the whole repo was already v0.28.0 and there are no other changes:
+git add app/package.json app/package-lock.json
+git add app/src/day28-1-polaroid-fit.ts app/src/day17-sketch-placeholder.ts app/src/styles.css
+git add app/tests/day28-1-polaroid-fit.test.mjs app/tests/day28-flow-coherent.test.mjs
+git add app/tests/day21-camera-navigation.test.mjs app/tests/day22-sketch-mode.test.mjs
+git add app/tests/day25-sketch-quality.test.mjs app/tests/day26-multiscale.test.mjs app/tests/day27-importance.test.mjs
+git add docs/day28-1-polaroid-fit.md Day28_1_INSTALL.txt
+git diff --cached --check
+git diff --cached --stat
+git status
+git commit -m "fix(day28): fit editor polaroid image within both axes"
+git push origin main
+
+If Days 26–28 have NOT yet been committed, commit their staged source too, but
+review `git status` carefully; never stage user photos, node_modules, dist,
+private reports, personal ZIP backups, or diagnostics.
+
+iPhone acceptance: landscape, portrait, square and panorama; full-image visible;
+repeat after Sketch/Original compare, re-open, and return from Camera.

@@ -48,5 +48,5 @@ test('G25: no change to graphite SVGs, image size, detail/line or camera geometr
   assert.match(engine,/SKETCH_V1_SETTINGS = Object\.freeze\(\{ sigma: 1, low: 0\.04, high: 0\.10 \}\)/);
   assert.match(editor,/generator\.detail\.visual-only/);
   assert.match(editor,/Манга и Комикс предстоят/);
-  assert.equal(JSON.parse(get('package.json')).version,'0.28.0');
+  assert.equal(JSON.parse(get('package.json')).version,'0.28.1');
 });

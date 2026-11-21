@@ -23,6 +23,8 @@ Review expected changes and staged diff; do not include personal images/backups:
   git add app/tests/day21-camera-navigation.test.mjs app/tests/day22-sketch-mode.test.mjs
   git add app/tests/day23-sketch-draw.test.mjs app/tests/day23-atomic-save.test.mjs
   git add Day23_INSTALL.txt docs/day23.md
+  git diff --cached --check
+  git diff --cached --stat
   git commit -m "Day 23: Sketch save and Draw with style deselection and source-safe persistence"
   git push origin main
   git log -1 --oneline

@@ -8,6 +8,7 @@ import { getProjectImage, getLatestProcessedPreview, getSelectedProcessedAsset, 
 import { saveProcessedPng, type ProcessedProvenance } from './storage/day13-processed';
 import { openSavedDrawing, applySketchToActiveCamera, applyOriginalToActiveCamera } from './day4';
 import { generateSketchDraft, SketchDraftGate, SKETCH_V4_SETTINGS, SKETCH_QUALITY_VERSION, type SketchDraftResult } from './day22-sketch-mode';
+import { fitImageInAperture } from './day28-1-polaroid-fit';
 import { DEFAULT_SKETCH_UI, setSketchUiDetail, setSketchUiLine, setSketchUiStyle,
   previewCanCompare, type SketchUiState } from './day20-sketch-state';
 
@@ -34,6 +35,28 @@ export function initDay17EditPlaceholder(): {
   const info = document.getElementById('day17-edit-info') as HTMLElement;
   const drawButton = document.getElementById('day19-draw') as HTMLButtonElement;
   const previewWindow = document.getElementById('day18-preview-window') as HTMLElement;
+  // Day 28.1: always fit BOTH decoded dimensions within the photo cut-out.
+  // Unlike a height-only rule, this also contains panoramas and square images.
+  // The same <img> alternates between original and PNG; 'load' remeasures each.
+  const fitPolaroidPreview = (): void => {
+    if (preview.hidden || !preview.naturalWidth || !preview.naturalHeight) return;
+    const size = fitImageInAperture(
+      preview.naturalWidth, preview.naturalHeight,
+      previewWindow.clientWidth, previewWindow.clientHeight,
+    );
+    if (!size) return; // Hidden screen / zero layout: ResizeObserver retries.
+    preview.style.width = `${size.width}px`;
+    preview.style.height = `${size.height}px`;
+    preview.style.left = '50%';
+    preview.style.top = '50%';
+    preview.style.transform = 'translate(-50%, -50%)';
+  };
+  preview.addEventListener('load', fitPolaroidPreview);
+  // Observe the aperture, not the image: no resize feedback loop.
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(fitPolaroidPreview).observe(previewWindow);
+  }
+  window.addEventListener('resize', fitPolaroidPreview);
   const route = new SketchRouteMachine();
   let ui: SketchUiState = DEFAULT_SKETCH_UI;
   let processedURL: string | null = null;
@@ -325,6 +348,12 @@ export function initDay17EditPlaceholder(): {
     zoomButton.disabled = true;
     preview.removeAttribute('src');
     preview.hidden = true;
+    // No stale inline dimensions during loading of the next project.
+    preview.style.removeProperty('width');
+    preview.style.removeProperty('height');
+    preview.style.removeProperty('top');
+    preview.style.removeProperty('left');
+    preview.style.removeProperty('transform');
     previewEmpty.hidden = false;
     if (previewURL) URL.revokeObjectURL(previewURL);
     if (processedURL) URL.revokeObjectURL(processedURL);
@@ -367,6 +396,7 @@ export function initDay17EditPlaceholder(): {
     previewNote.textContent = 'Зарежда се оригиналната снимка…';
     releasePreview();
     screen.hidden = false;
+    fitPolaroidPreview();
     updateDraw();
     screen.scrollTop = 0; // each project opens at the preview, not previous scroll position
     document.body.classList.add('day17-edit-open');
