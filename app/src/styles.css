@@ -596,3 +596,13 @@ body.drawing-open { background: #090b0c !important; }
 .day17-edit-card h3 { margin:18px 0 6px; font:700 30px/1.1 'Caveat',cursive; }
 .day17-edit-card p#day17-edit-info { max-width:35ch; margin:0 auto 21px; line-height:1.5; }
 body.day17-edit-open { overflow:hidden; }
+
+/* Day 18: read-only source preview within the existing graphite edit shell.
+   Responsive; no changes to the Home Figma positions or Polaroid layout. */
+.day17-edit-preview-placeholder { overflow:hidden; position:relative; }
+.day17-edit-preview-placeholder #day18-preview-empty[hidden],
+.day17-edit-preview-placeholder #day18-original-preview[hidden] { display:none !important; }
+#day18-original-preview { width:100%; height:100%; object-fit:contain; display:block;
+  background:#fdfcf8; border-radius:12px; }
+.day17-edit-card .day18-preview-note { margin:10px 0 6px; font:13px/1.45 var(--font);
+  color:#6d635a; text-wrap:balance; }

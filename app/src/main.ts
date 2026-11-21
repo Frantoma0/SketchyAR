@@ -113,7 +113,7 @@ document.getElementById('app')!.innerHTML = `
     </div>
   </div>
 </div>
-<!-- Day 17: safe placeholder for the future Sketch Generator. It does not alter IndexedDB. -->
+<!-- Day 18: safe read-only source preview on the existing Day 17 placeholder. No IndexedDB writes. -->
 <div id="day17-edit-screen" class="day17-edit-screen" role="dialog" aria-modal="true" aria-labelledby="day17-edit-heading" aria-describedby="day17-edit-info" hidden>
   <div class="day17-edit-top">
     <button id="day17-edit-back" type="button" class="day17-edit-back" aria-label="Върни се към старите проекти">← Назад</button>
@@ -122,7 +122,11 @@ document.getElementById('app')!.innerHTML = `
   <div class="day17-edit-card">
     <p class="day17-edit-project-label">Избран проект</p>
     <p id="day17-edit-project-name" class="day17-edit-project-name"></p>
-    <div class="day17-edit-preview-placeholder" aria-hidden="true">✎</div>
+    <div class="day17-edit-preview-placeholder" id="day18-preview-window">
+      <span id="day18-preview-empty" aria-hidden="true">✎</span>
+      <img id="day18-original-preview" alt="Оригинална снимка на проекта" hidden />
+    </div>
+    <p id="day18-preview-note" class="day18-preview-note" role="status" aria-live="polite">Зарежда се оригиналната снимка…</p>
     <h3>Редакторът е в подготовка</h3>
     <p id="day17-edit-info">Скоро тук ще можеш да настройваш контурите, детайлността и стила. Засега този екран не променя изображението или запазените настройки.</p>
     <button id="day17-edit-return" type="button" class="day17-edit-return">Към проектите</button>

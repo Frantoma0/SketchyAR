@@ -1,8 +1,11 @@
-/** Day 17: a truthful edit-route placeholder; no generator, no IndexedDB writes.
- * The real Sketch Generator will replace this screen during Days 18–21/36–42.
+/** Day 18: read-only, truthful edit route on the existing Day 17 graphite shell.
+ * The original image is previewed from IndexedDB; no save, no mutation, no camera.
+ * The separate typed router prepares the next stages without activating a fake
+ * new-drawing Generator before Generate -> Save -> Draw is truly implemented.
  */
 import * as D from './diagnostics';
-import type { ProjectRecord } from './storage/project-store';
+import { planSketchRoute, SketchRouteMachine, choosePreviewRole } from './day18-navigation';
+import { getProjectImage, type ProjectRecord } from './storage/project-store';
 
 export function initDay17EditPlaceholder(): {
   open(project: Pick<ProjectRecord, 'id' | 'title'>, trigger: HTMLElement): void;
@@ -12,10 +15,24 @@ export function initDay17EditPlaceholder(): {
   const back = document.getElementById('day17-edit-back') as HTMLButtonElement;
   const returnButton = document.getElementById('day17-edit-return') as HTMLButtonElement;
   const projectName = document.getElementById('day17-edit-project-name') as HTMLElement;
+  const preview = document.getElementById('day18-original-preview') as HTMLImageElement;
+  const previewEmpty = document.getElementById('day18-preview-empty') as HTMLElement;
+  const previewNote = document.getElementById('day18-preview-note') as HTMLElement;
+  const route = new SketchRouteMachine();
   let returnFocus: HTMLElement | null = null;
+  let previewURL: string | null = null;
 
+  const releasePreview = (): void => {
+    preview.removeAttribute('src');
+    preview.hidden = true;
+    previewEmpty.hidden = false;
+    if (previewURL) URL.revokeObjectURL(previewURL);
+    previewURL = null;
+  };
   const close = (): void => {
     if (screen.hidden) return;
+    route.cancel();
+    releasePreview();
     screen.hidden = true;
     document.body.classList.remove('day17-edit-open');
     const focus = returnFocus;
@@ -25,12 +42,45 @@ export function initDay17EditPlaceholder(): {
   };
   const open = (project: Pick<ProjectRecord, 'id' | 'title'>, trigger: HTMLElement): void => {
     if (!screen.hidden) return;
+    planSketchRoute('edit-sketch', project.id);
+    const token = route.openExisting('edit-sketch', project.id);
+    if (token === null) return;
     returnFocus = trigger;
     projectName.textContent = project.title; // textContent avoids title injection
+    previewNote.textContent = 'Зарежда се оригиналната снимка…';
+    releasePreview();
     screen.hidden = false;
     document.body.classList.add('day17-edit-open');
     back.focus();
     D.log('info', 'day17', 'sketch.edit.placeholder', { projectId: project.id });
+    D.log('info', 'day18', 'route.enter', { intent: 'edit-sketch', projectId: project.id });
+    void (async () => {
+      let url: string | null = null;
+      try {
+        const { source } = await getProjectImage(project.id);
+        if (!route.isActive(token) || screen.hidden) return;
+        // The current DB schema keeps activeAssetId pointing at the SOURCE.
+        // Never imply that the source preview has been processed.
+        const role = choosePreviewRole(false);
+        url = URL.createObjectURL(source.blob);
+        if (!route.isActive(token) || screen.hidden) return;
+        previewURL = url;
+        url = null;
+        preview.src = previewURL;
+        preview.hidden = false;
+        previewEmpty.hidden = true;
+        previewNote.textContent = 'Показан е оригиналът — обработката на скици предстои.';
+        D.log('info', 'day18', 'source.preview.loaded', { projectId: project.id,
+          assetId: source.id, role, byteSize: source.byteSize });
+      } catch (error) {
+        if (route.isActive(token)) {
+          previewNote.textContent = 'Оригиналът не можа да се покаже. Проектът не е променен.';
+          D.log('warn', 'day18', 'source.preview.failed', { projectId: project.id, message: String(error) });
+        }
+      } finally {
+        if (url) URL.revokeObjectURL(url);
+      }
+    })();
   };
   back.addEventListener('click', close);
   returnButton.addEventListener('click', close);

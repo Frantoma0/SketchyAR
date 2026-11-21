@@ -1,0 +1,30 @@
+SketchyAR Day 18 / v0.18.0 — typed Generator routes & safe read-only preview
+
+Based on v0.17.1 / GitHub commit 6154f7d. No DB schema migration.
+The editor shows the ORIGINAL saved photo. It does not process or replace it.
+New drawing still opens the existing native picker -> camera. This is intentional
+until the real Generate -> Save -> Draw gate is complete. Day18 draft state is tested
+but NOT enabled in the production new-drawing flow.
+
+Windows PowerShell from ar-drawing root:
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day18_Changes_Only_v0.18.0.zip" -DestinationPath . -Force
+  cd app
+  npm ci --include=dev
+  npm run typecheck
+  npm run build
+  npm run test:day18
+  cd ..
+  python -m pytest python_engine -q
+  git diff --check
+  git status
+
+Only after all checks PASS:
+  git add app/package.json app/package-lock.json app/src/day18-navigation.ts app/src/day17-sketch-placeholder.ts app/src/main.ts app/src/styles.css app/tests/day17-project-card.test.mjs app/tests/day18-navigation.test.mjs docs/day18.md Day18_INSTALL.txt
+  git commit -m "Day 18: typed sketch routes and safe source preview"
+  git push origin main
+
+iPhone: verify v0.18.0 and current SHA; tap pencil on old Polaroid => "Промени
+скицата" with the REAL original image; Back => projects; tap picture => camera;
+title => rename/cancel; bin => delete/cancel. New Drawing still launches native
+picker and opens camera after selection. Test picker Cancel; no new project.
+Force-close/reopen; Day7 DB Audit; send diagnostic JSON. DO NOT DELETE PROJECTS.

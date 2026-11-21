@@ -52,7 +52,7 @@ test('Day17: placeholder promises no processing; back and Escape return focus', 
   assert.doesNotMatch(editor,/put\(|delete\(|renameImageProject\(|createBackup\(/);
 });
 test('Day17: exact version and all earlier tests are still run', () => {
-  assert.equal(packageJson.version,'0.17.1');
+  assert.ok(Number(packageJson.version.split('.')[1]) >= 17, 'Day17 regression must remain enabled in later versions');
   assert.equal(packageJson.scripts['test:day17'],packageJson.scripts['test:day16']);
 });
 
