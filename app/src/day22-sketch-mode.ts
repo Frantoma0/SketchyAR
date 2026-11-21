@@ -1,5 +1,5 @@
-/** Day 28: the real Sketch preview now uses flow-coherent Sketch V4.
- * Detail/line/style variants are intentionally NOT applied yet.
+/** Day 29: Sketch V4 plus five real nested detail tiers.
+ * Line thickness / Manga / Comic remain future work.
  * The PNG is a temporary draft; no DB write or camera routing occurs in this module.
  */
 import { decodeReducedGray, encodeTransparentPng } from './day13-image-bridge';
@@ -7,7 +7,7 @@ import { runPythonImage } from './python-client';
 export { SketchDraftGate } from './day22-sketch-gate';
 
 /** Version is checked when reading a cached draft; old applied drawings stay valid. */
-export const SKETCH_QUALITY_VERSION = 'day28-flow-coherent-v4';
+export const SKETCH_QUALITY_VERSION = 'day29-v4-detail-v1';
 
 // Historical V1 settings remain for reproducible Day 12/25 comparisons.
 export const SKETCH_V1_SETTINGS = Object.freeze({ sigma: 1, low: 0.04, high: 0.10 });
@@ -29,13 +29,26 @@ export interface SketchDraftResult {
   requestId: string;
 }
 
+// Decoding the same original on every slider move is unnecessary: the Worker
+// already caches the V4 score, and a WeakMap retains <=1 MiB gray8 per Blob.
+// Entries are GC-eligible when the editor releases its source Blob.
+const grayCache = new WeakMap<Blob, Promise<Awaited<ReturnType<typeof decodeReducedGray>>>>();
+
 /** White-composited source -> grayscale <=1024px -> real Python edges -> alpha PNG.
  * Does not alter the original or save a processed asset: explicit save follows later.
  */
-export async function generateSketchDraft(source: Blob): Promise<SketchDraftResult> {
+export async function generateSketchDraft(source: Blob, detail: 1 | 2 | 3 | 4 | 5 = 3): Promise<SketchDraftResult> {
   if (!source || source.size === 0) throw new Error('Няма оригинална снимка за обработка.');
-  const gray = await decodeReducedGray(source);
-  const result = await runPythonImage({ ...gray, ...SKETCH_V4_SETTINGS });
+  let decoded = grayCache.get(source);
+  if (!decoded) {
+    decoded = decodeReducedGray(source).catch((error: unknown) => {
+      grayCache.delete(source);
+      throw error;
+    });
+    grayCache.set(source, decoded);
+  }
+  const gray = await decoded;
+  const result = await runPythonImage({ ...gray, ...SKETCH_V4_SETTINGS, detail });
   if (result.inkPixels === 0) throw new Error('Не бяха открити контури в избраното изображение.');
   const png = await encodeTransparentPng(result.mask, result.width, result.height);
   if (!png.size) throw new Error('Получена е празна PNG скица.');

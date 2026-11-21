@@ -152,7 +152,7 @@ test('G23.1: actual editor restores saved style and source-owned preview',()=>{
   const appMain=readFileSync(resolve(app,'src/main.ts'),'utf8');
   assert.match(editor,/style: storedProject.selectedProcessedAssetId \? 'sketch' : null/);
   assert.match(editor,/storedProject.selectedProcessedAssetId \? 'sketch' : null/);
-  assert.match(editor,/if \(ui.style === 'sketch'\) preview.src = url/);
+  assert.match(editor,/if \(!comparisonHeld && ui.style === 'sketch'\) preview.src = processedURL/);
   assert.match(editor,/savedProcessed = processed/);
   assert.match(editor,/await saveProcessedPng\(projectId, provenance,[\s\S]*?false\)/);
   assert.match(editor,/await selectOriginalForDrawing\(projectId, sourceId\)/);

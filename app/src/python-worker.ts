@@ -9,6 +9,7 @@ import day11Source from '../../python_engine/ar_drawing/day11_morphology.py?raw'
 import day12Source from '../../python_engine/ar_drawing/day12_edges.py?raw';
 import day13Source from '../../python_engine/ar_drawing/day13_bridge.py?raw';
 import day28Source from '../../python_engine/ar_drawing/day28_flow_coherent.py?raw';
+import day29Source from '../../python_engine/ar_drawing/day29_detail.py?raw';
 
 const PYODIDE_VERSION = '314.0.8';
 // Worker script is in src/ during development and assets/ after Vite build.
@@ -51,7 +52,7 @@ interface PyodideRuntime {
 }
 type WorkerCommand = 'init' | 'numpy' | 'opencv' | 'opencv10' | 'day9' | 'day10-512' | 'day10-1024' | 'day11-512' | 'day11-1024' | 'day12-512' | 'day12-1024' | 'day13-process';
 type Incoming = { id: string; command: WorkerCommand; width?: number; height?: number;
-  gray?: Uint8Array; sigma?: number; low?: number; high?: number };
+  gray?: Uint8Array; sigma?: number; low?: number; high?: number; detail?: number };
 type Progress = { id: string; kind: 'progress'; stage: string; ms: number };
 type Done = { id: string; kind: 'done'; command: WorkerCommand; result: Record<string, unknown> };
 type ImageDone = { id: string; kind: 'image-done'; result: {
@@ -73,6 +74,7 @@ let day11Ready = false;
 let day12Ready = false;
 let day13Ready = false;
 let day28Ready = false;
+let day29Ready = false;
 
 function progress(id: string, stage: string, ms: number): void {
   workerScope.postMessage({ id, kind: 'progress', stage, ms: Math.round(ms) } satisfies Progress);
@@ -215,10 +217,10 @@ function day12Benchmark(pyodide: PyodideRuntime, size: 512 | 1024): Record<strin
 
 /** A binary bridge with explicit object lifetime. No photo bytes enter diagnostics. */
 function day13Process(pyodide: PyodideRuntime, event: Incoming): ImageDone['result'] {
-  const { width, height, sigma, low, high, gray } = event;
+  const { width, height, sigma, low, high, gray, detail = 3 } = event;
   if (!(gray instanceof Uint8Array) || !Number.isInteger(width) || !Number.isInteger(height) ||
       !width || !height || width > 1024 || height > 1024 ||
-      width * height !== gray.byteLength || ![sigma, low, high].every(v => typeof v === 'number' && Number.isFinite(v)))
+      width * height !== gray.byteLength || !Number.isInteger(detail) || detail < 1 || detail > 5 || ![sigma, low, high].every(v => typeof v === 'number' && Number.isFinite(v)))
     throw new Error('Невалиден входен grayscale буфер за Day 13');
   ensureDay12Module(pyodide);
   if (!day13Ready) {
@@ -232,7 +234,7 @@ function day13Process(pyodide: PyodideRuntime, event: Incoming): ImageDone['resu
     ].join('\n'));
     day13Ready = true;
   }
-  // V4 is the ONLY production Sketch engine. V1, V2, V3 remain
+  // Day29 detail engine is active, reusing the V4 score. V1, V2, V3 remain
   // historical CPython comparison modules, never imported into this Worker.
   if (!day28Ready) {
     pyodide.globals.set('_sketchyar_day28_source', day28Source);
@@ -245,6 +247,17 @@ function day13Process(pyodide: PyodideRuntime, event: Incoming): ImageDone['resu
     ].join('\n'));
     day28Ready = true;
   }
+  if (!day29Ready) {
+    pyodide.globals.set('_sketchyar_day29_source', day29Source);
+    pyodide.runPython([
+      'import sys, types',
+      '_sketchyar_day29 = types.ModuleType("ar_drawing.day29_detail")',
+      '_sketchyar_day29.__package__ = "ar_drawing"',
+      'sys.modules["ar_drawing.day29_detail"] = _sketchyar_day29',
+      'exec(_sketchyar_day29_source, _sketchyar_day29.__dict__)',
+    ].join('\n'));
+    day29Ready = true;
+  }
   const t0 = performance.now();
   pyodide.globals.set('_sketchyar_input_gray', gray);
   let output: unknown;
@@ -252,7 +265,7 @@ function day13Process(pyodide: PyodideRuntime, event: Incoming): ImageDone['resu
     // Typed-array .to_py() exposes a bytes-like buffer (memoryview in Pyodide).
     // The Python method validates all dimensions, thresholds and buffer length.
     pyodide.runPython(`_sketchyar_gray_py = _sketchyar_input_gray.to_py()
-_sketchyar_day13_result = _sketchyar_day28.process_gray8_flow(_sketchyar_gray_py, ${width}, ${height}, sigma=${sigma}, low=${low}, high=${high})`);
+_sketchyar_day13_result = _sketchyar_day29.process_gray8_detail(_sketchyar_gray_py, ${width}, ${height}, sigma=${sigma}, low=${low}, high=${high}, detail=${detail})`);
     output = pyodide.runPython('_sketchyar_day13_result.ink');
     const asProxy = output as { toJs?: () => unknown; destroy?: () => void };
     const converted = typeof asProxy?.toJs === 'function' ? asProxy.toJs() : output;

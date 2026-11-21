@@ -66,7 +66,7 @@ test('G23.1: preview is persisted on generation, Camera selection changes only o
   assert.match(editor,/drawButton.disabled = !ready/);
   const before=editor.slice(0,editor.indexOf("drawButton.addEventListener('click'"));
   assert.match(before,/await saveProcessedPng\(projectId, provenance,[\s\S]*?false\)/);
-  assert.match(before,/savedProcessed = stored/);
+  assert.match(before,/useProcessed\(stored\)/);
   assert.doesNotMatch(before,/saveProjectEditorStyle\(|rememberStyle\(|styleWrites/);
   const draw=editor.slice(editor.indexOf("drawButton.addEventListener('click'"));
   assert.match(draw,/await selectOriginalForDrawing\(projectId, sourceId\)/);

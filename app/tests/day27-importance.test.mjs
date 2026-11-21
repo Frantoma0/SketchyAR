@@ -8,7 +8,7 @@ test('G27 regression: V3 remains available, while only V4 runs in production Wor
   assert.doesNotMatch(worker,/import day27Source/);
   assert.match(worker,/import day28Source from '\.\.\/\.\.\/python_engine\/ar_drawing\/day28_flow_coherent\.py\?raw'/);
   assert.doesNotMatch(worker,/sys\.modules\["ar_drawing\.day27_importance"\]/);
-  assert.match(worker,/_sketchyar_day13_result = _sketchyar_day28\.process_gray8_flow\(/);
+  assert.match(worker,/_sketchyar_day13_result = _sketchyar_day29\.process_gray8_detail\(/);
   assert.doesNotMatch(worker,/import day26Source/);
   assert.doesNotMatch(worker,/_sketchyar_day26\.process_gray8_multiscale\(/);
   assert.doesNotMatch(worker,/import day25Source/);
@@ -33,12 +33,12 @@ test('G27 regression: V3 baseline remains versioned, while editor and Worker are
   const ui=read('src/day17-sketch-placeholder.ts');
   const draft=read('src/day22-sketch-mode.ts');
   const v3=read('../python_engine/ar_drawing/day27_importance.py');
-  assert.match(draft,/export const SKETCH_QUALITY_VERSION = 'day28-flow-coherent-v4'/);
+  assert.match(draft,/export const SKETCH_QUALITY_VERSION = 'day29-v4-detail-v1'/);
   assert.match(v3,/SKETCH_QUALITY_VERSION = 'day27-importance-v3'/);
-  assert.match(draft,/runPythonImage\(\{ \.\.\.gray, \.\.\.SKETCH_V4_SETTINGS \}\)/);
-  assert.match(ui,/params: \{ \.\.\.SKETCH_V4_SETTINGS, input: 'grayscale-u8', maxSide: 1024 \}/);
-  assert.match(ui,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION\)/);
-  assert.match(ui,/savedProcessed\.pipelineVersion !== SKETCH_QUALITY_VERSION/);
+  assert.match(draft,/runPythonImage\(\{ \.\.\.gray, \.\.\.SKETCH_V4_SETTINGS, detail \}\)/);
+  assert.match(ui,/params: \{ \.\.\.SKETCH_V4_SETTINGS, detail: (?:ui\.detail|requestedDetail),[\s\S]*?input: 'grayscale-u8', maxSide: 1024 \}/);
+  assert.match(ui,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION, ui\.detail\)/);
+  assert.match(ui,/!matchesDetailVariant\(savedProcessed, sourceForSketch\?\.sourceId \?\? '', ui\.detail,/);
   assert.doesNotMatch(ui,/SKETCH_V2_SETTINGS/);
   assert.doesNotMatch(ui,/SKETCH_V3_SETTINGS/);
 });
@@ -55,7 +55,7 @@ test('G27: only Draw commits applied style, PNG and Home; preview stays a draft'
 });
 
 test('G27: upgraded version and Figma UI untouched',()=>{
-  assert.equal(JSON.parse(read('package.json')).version,'0.28.1');
+  assert.equal(JSON.parse(read('package.json')).version,'0.29.0');
   assert.match(read('src/day13-image-bridge.ts'),/encodeTransparentPng/);
-  assert.match(read('src/day17-sketch-placeholder.ts'),/generator\.detail\.visual-only/);
+  assert.match(read('src/day17-sketch-placeholder.ts'),/generator\.detail\.requested/);
 });

@@ -226,10 +226,10 @@ def select_flow_contours(score: np.ndarray, *, low: float = .04,
     return mask
 
 
-def process_gray8_flow(data: bytes | bytearray | memoryview,
+def get_cached_flow_score(data: bytes | bytearray | memoryview,
                        width: int, height: int, sigma: float = 1.,
-                       low: float = .04, high: float = .10) -> BridgeResult:
-    """Day13-compatible binary mask 0/1 with per-input bounded score cache."""
+                       low: float = .04, high: float = .10) -> np.ndarray:
+    """Validated SHA-256 keyed V4 score cache, shared with Day29 detail tiers."""
     global _SCORE_CACHE
     if (type(width) is not int or type(height) is not int or
             width < 3 or height < 3 or width > 1024 or height > 1024 or
@@ -253,11 +253,20 @@ def process_gray8_flow(data: bytes | bytearray | memoryview,
         gray = np.frombuffer(view, dtype=np.uint8).reshape(height, width)
         score = flow_importance(gray.astype(np.float32) / np.float32(255.0), sigma=sigma)
         _SCORE_CACHE = (key, score)
+    return score
+
+
+def process_gray8_flow(data: bytes | bytearray | memoryview,
+                       width: int, height: int, sigma: float = 1.,
+                       low: float = .04, high: float = .10) -> BridgeResult:
+    """Historical V4 binary mask, unchanged output for the same input."""
+    score = get_cached_flow_score(data, width, height, sigma=sigma, low=low, high=high)
     mask = select_flow_contours(score, low=low, high=high)
     return BridgeResult(mask.astype(np.uint8).tobytes(), width, height,
                         int(np.count_nonzero(mask)),
                         engine_version=SKETCH_QUALITY_VERSION,
                         bridge_version=BRIDGE_VERSION)
+
 
 
 def clear_flow_cache() -> None:

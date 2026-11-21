@@ -1,0 +1,46 @@
+SketchyAR Day29 v0.29.0 — FIVE REAL DETAIL LEVELS (D1...D5)
+
+BASELINE: FULLY TESTED v0.28.1 (Day28.1 Polaroid Contain Fit).
+Download SketchyAR_Day29_Detail_Levels_Patch_v0.29.0.zip into Downloads.
+
+PowerShell:
+cd "C:\Users\vikit\Desktop\AR Drawing Проект\Код\ar-drawing"
+Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day29_Detail_Levels_Patch_v0.29.0.zip" -DestinationPath . -Force
+cd app
+npm ci --include=dev
+npm run typecheck
+npm run build
+npm run test:day29
+cd ..
+python -m pytest python_engine -q
+git diff --check
+git status
+
+BEFORE COMMIT: check git status and staged diff for personal photos, HEIC, project backups,
+node_modules, dist, PWA data. Do NOT include user imagery or private benchmark/contact sheets.
+
+Stage these exact files (including updated historical regression tests):
+git add app/package.json app/package-lock.json
+git add app/src/python-worker.ts app/src/python-client.ts
+git add app/src/day17-sketch-placeholder.ts app/src/day22-sketch-mode.ts app/src/day29-detail-variants.ts
+git add app/src/storage/day13-processed.ts app/src/storage/project-store.ts
+git add python_engine/ar_drawing/day28_flow_coherent.py python_engine/ar_drawing/day29_detail.py
+git add python_engine/tests/test_day29_detail.py
+git add app/tests/day29-details.test.mjs
+git add app/tests/day20-generator-state.test.mjs app/tests/day21-camera-navigation.test.mjs
+git add app/tests/day22-sketch-mode.test.mjs app/tests/day23-sketch-draw.test.mjs
+git add app/tests/day23-1-editor-persistence.test.mjs
+git add app/tests/day25-sketch-quality.test.mjs app/tests/day26-multiscale.test.mjs
+git add app/tests/day27-importance.test.mjs app/tests/day28-flow-coherent.test.mjs
+git add docs/day29-detail-levels.md docs/day29-anonymized-detail-metrics.csv Day29_INSTALL.txt
+
+git diff --cached --check
+git diff --cached --stat
+git status
+git commit -m "Day 29: activate five nested real V4 Sketch detail levels"
+git push origin main
+git log -1 --oneline
+git status
+
+EXPECTED LOCAL: Node 167/167; Python 238/238. Windows TS7/Vite and iPhone are NOT proven
+until you run those tests. Existing projects / backup ZIP schema unchanged.
