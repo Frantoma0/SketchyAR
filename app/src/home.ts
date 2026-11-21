@@ -4,6 +4,7 @@
  */
 import * as D from './diagnostics';
 import { initOfflineStatus } from './offline-status';
+import { initDay16BackupUI } from './day16-backup-ui';
 import { listProjectThumbnails, openProjectDB, upgradeLegacyThumbnails, renameImageProject, deleteImageProject, type ProjectThumbnail } from './storage/project-store';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -360,10 +361,7 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
     toast('Избери полароид, за да отвориш съответния проект.');
   });
   const closeOfflinePanel = initOfflineStatus();
-  el<HTMLButtonElement>('home-save-icon').addEventListener('click', () => {
-    setHome(false);
-    D.log('info', 'home', 'open-developer-diagnostics');
-  });
+  const backupUI = initDay16BackupUI(() => setHome(false));
   el<HTMLButtonElement>('developer-back-home').addEventListener('click', () => {
     setHome(true);
     D.log('info', 'home', 'return-from-diagnostics');
@@ -371,6 +369,7 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
   // The Drawing screen lives outside the hidden developer container.
   document.addEventListener('sketchyar:drawing:opened', () => {
     closeOfflinePanel();
+    backupUI.close();
     home.hidden = true;
     document.body.classList.remove('sketchy-home-active');
     document.documentElement.classList.remove('sketchy-home-active');

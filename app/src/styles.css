@@ -482,3 +482,71 @@ body.drawing-open { background: #090b0c !important; }
 .project-dialog .project-dialog-warning { font-size:13px; color:#6b3c38; }
 .project-dialog .project-dialog-error { color:#a32925; font-weight:600; }
 @media (max-width:355px) { .project-dialog-inline { flex-direction:column; } }
+
+
+/* Day 16: small backup bubble. It is a visual OVERLAY and never participates in
+   the original Figma vertical layout; button coordinates, gaps and scaling stay intact. */
+.home-backup-popover[hidden], .home-backup-dialog-backdrop[hidden],
+.home-backup-panel [hidden] { display: none !important; }
+.home-backup-popover {
+  position: absolute; z-index: 25;
+  right: 8px; bottom: calc(71px + 10px); width: 235px;
+  padding: 8px; border: 2px solid #615b55; border-radius: 19px;
+  background: #faf8f3; color: #3a3834;
+  box-shadow: 2px 4px 0 rgba(104,96,88,.32), 0 9px 22px rgba(37,34,30,.22);
+}
+.home-backup-popover::after {
+  content: ''; position: absolute; right: 23px; bottom: -10px;
+  width: 15px; height: 15px; background: #faf8f3;
+  border-right: 2px solid #615b55; border-bottom: 2px solid #615b55;
+  transform: rotate(45deg);
+}
+.home-backup-popover button {
+  position: relative; z-index: 1; width: 100%; min-height: 47px;
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 9px; border: 0; background: transparent;
+  color: #3d3a37; font: 700 26px/1.0 'Caveat',cursive;
+  text-align: left; cursor: pointer; touch-action: manipulation;
+}
+.home-backup-popover button + button { border-top: 1px solid #c9c2b8; }
+.home-backup-popover button span { width: 29px; text-align: center; font: 24px/1 var(--font); }
+.home-backup-popover button:active { background: #eae5db; border-radius: 9px; }
+.home-backup-popover button:focus-visible { outline: 2px solid #605c56; outline-offset: -1px; border-radius: 8px; }
+.home-backup-dialog-backdrop {
+  position: fixed; inset: 0; z-index: 1700;
+  display: flex; align-items: center; justify-content: center;
+  padding: max(20px, env(safe-area-inset-top, 0px))
+           max(18px, env(safe-area-inset-right, 0px))
+           max(24px, env(safe-area-inset-bottom, 0px))
+           max(18px, env(safe-area-inset-left, 0px));
+  background: rgba(22,23,24,.58); overscroll-behavior: contain;
+}
+.home-backup-panel {
+  position: relative; width: min(100%, 390px); max-height: 100%;
+  overflow-y: auto; padding: 24px 18px 18px;
+  border: 2px solid #615b55; border-radius: 24px;
+  background: #faf9f5; color: #423e3a;
+  box-shadow: 0 4px 0 #fff inset, 3px 5px 0 rgba(90,83,74,.25), 0 18px 38px rgba(0,0,0,.20);
+  font-family: var(--font); -webkit-overflow-scrolling: touch;
+}
+.home-backup-panel h2 { margin: 0 44px 8px 0; font: 700 35px/1.05 'Caveat',cursive; }
+.home-backup-panel > p { margin: 9px 0; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+.home-backup-close {
+  position: absolute; right: 9px; top: 6px; width: 44px; height: 44px;
+  background: transparent; border: 0; border-radius: 12px;
+  color: #514c47; font: 34px/1 var(--font); cursor: pointer;
+}
+.home-backup-status { padding: 12px; background: #f0ece6; border: 1px solid #cbc2b9;
+  border-radius: 13px; min-height: 56px; font-weight: 600; }
+.home-backup-status[data-error="true"] { border-color: #9c5852; color: #793832; }
+.home-backup-panel .home-backup-warning { color: #78634f; font-size: 12px; }
+.home-backup-actions { display: flex; flex-direction: column; gap: 10px; margin: 15px 0; }
+.home-backup-actions button {
+  min-height: 48px; padding: 9px 12px; border: 1.5px solid #68615c;
+  border-radius: 16px; background: #fffdf9; color: #37332f;
+  font: 700 19px/1.2 'Caveat',cursive; cursor: pointer;
+  box-shadow: 1px 2px 0 rgba(109,99,89,.25);
+}
+.home-backup-actions button:disabled { opacity: .45; cursor: not-allowed; }
+.home-backup-actions .home-backup-restore { border-color: #5e574c; }
+.home-backup-panel .home-backup-limits { margin-top: 14px; color: #756d64; font-size: 11px; }

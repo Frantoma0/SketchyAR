@@ -58,10 +58,16 @@ document.getElementById('app')!.innerHTML = `
       <span id="home-offline-indicator" class="home-offline-indicator" aria-hidden="true"></span>
       <span class="home-pill-text home-offline-text">Офлайн Режим</span>
     </button>
-    <button id="home-save-icon" class="home-save" type="button" aria-label="Диагностика на приложението — временно на бутона за запазване" title="Диагностика (временно)">
+    <button id="home-save-icon" class="home-save" type="button" aria-label="Архивиране" title="Архивиране" aria-controls="home-backup-popover" aria-expanded="false">
       <img class="home-square-bg" src="./ui/square-button-white.svg" alt="" />
       <img class="home-floppy" src="./ui/floppy.png" alt="" />
     </button>
+    <!-- Day 16: compact menu layered over the EXISTING Figma-sized home; no layout changes. -->
+    <div id="home-backup-popover" class="home-backup-popover" role="group" aria-label="Архивиране" hidden>
+      <button id="home-backup-create" type="button"><span aria-hidden="true">↓</span> Запази архив</button>
+      <button id="home-backup-load" type="button"><span aria-hidden="true">↑</span> Зареди архив</button>
+      <button id="home-backup-diagnostics" type="button"><span aria-hidden="true">⚙</span> Диагностика</button>
+    </div>
   </div>
   <p id="home-message" class="home-message" role="status" aria-live="polite" hidden></p>
 </section>
@@ -75,7 +81,7 @@ document.getElementById('app')!.innerHTML = `
     <div class="offline-status-row"><span>Cache Storage</span><strong id="offline-cache-status">Проверява се…</strong></div>
     <div class="offline-status-row"><span>Локално пространство</span><strong id="offline-storage-status">Проверява се…</strong></div>
     <div class="offline-status-row"><span>Постоянно съхранение</span><strong id="offline-persist-status">Проверява се…</strong></div>
-    <p id="offline-dialog-note" class="offline-dialog-note">Офлайн пакетите и проверката на хешовете ще бъдат реализирани на Ден 19.</p>
+    <p id="offline-dialog-note" class="offline-dialog-note">Офлайн пакетите и проверката на хешовете са планирани за Дни 48–51 (план v3.1).</p>
     <p id="offline-dialog-action-status" class="offline-dialog-action-status" aria-live="polite"></p>
     <div class="offline-dialog-actions">
       <button id="offline-dialog-check" type="button">Провери отново</button>
@@ -111,6 +117,26 @@ document.getElementById('app')!.innerHTML = `
     </div>
   </div>
 </div>
+<!-- Day 16: Native file picker is never inside a hidden Home or developer container. -->
+<input id="home-backup-file" type="file" accept=".zip,application/zip" hidden />
+<div id="home-backup-dialog" class="home-backup-dialog-backdrop" role="presentation" hidden>
+  <div id="home-backup-panel" class="home-backup-panel" role="dialog" aria-modal="true" aria-labelledby="home-backup-dialog-title" aria-describedby="home-backup-details" tabindex="-1">
+    <button id="home-backup-close" class="home-backup-close" type="button" aria-label="Затвори">×</button>
+    <h2 id="home-backup-dialog-title">Архивиране</h2>
+    <p id="home-backup-details"></p>
+    <p id="home-backup-status" class="home-backup-status" role="status" aria-live="polite"></p>
+    <p id="home-backup-warning" class="home-backup-warning"></p>
+    <div id="home-backup-export-actions" class="home-backup-actions" hidden>
+      <button id="home-backup-prepare" type="button">Подготви ZIP отново</button>
+      <button id="home-backup-share" type="button" disabled>Запази във Files</button>
+    </div>
+    <div id="home-backup-import-actions" class="home-backup-actions" hidden>
+      <button id="home-backup-sandbox" type="button" disabled>Тест във временна база</button>
+      <button id="home-backup-restore" class="home-backup-restore" type="button" disabled>Възстанови с потвърждение</button>
+    </div>
+    <p class="home-backup-limits">Само локално · Без изпращане на снимки · ZIP32 STORE до 64 MiB · Няма автоматично презаписване.</p>
+  </div>
+</div>
 <div id="developer-screen" hidden>
 <main>
   <button id="developer-back-home" class="act developer-back" type="button">← Начална страница</button>
@@ -118,7 +144,7 @@ document.getElementById('app')!.innerHTML = `
     <h1>SketchyAR</h1>
     <button id="ver" class="ver" type="button" aria-label="Версия на приложението"></button>
   </header>
-  <p class="lead">Ден 15: защитни тестове на ZIP и локалната база. Ден 14 backup и Ден 13 Python Image Bridge са запазени.</p>
+  <p class="lead">Ден 16: продуктово Backup меню. Диагностиката за Дни 13–15 е запазена.</p>
   <section><h2>Build</h2><dl id="build"></dl></section>
   <section><h2>Среда</h2><dl id="env"><dt>Зареждане</dt><dd>…</dd></dl></section>
   <section><h2>Възможности на устройството</h2><ul id="caps" class="caps"></ul></section>

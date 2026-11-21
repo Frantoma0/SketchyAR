@@ -1,0 +1,27 @@
+SketchyAR Day 16 — v0.16.0
+Основа: v0.15.0 / 13b3c8a. План v3.1, Ден 16.
+
+Инсталация: разархивирай SketchyAR_Day16_Changes_Only_v0.16.0.zip
+В ОСНОВНАТА папка ar-drawing с презаписване; не замествай .git.
+
+PowerShell:
+cd "C:\Users\vikit\Desktop\AR Drawing Проект\Код\ar-drawing"
+Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day16_Changes_Only_v0.16.0.zip" -DestinationPath . -Force
+cd app
+npm ci --include=dev
+npm run typecheck
+npm run build
+npm run test:day16
+cd ..
+python -m pytest python_engine -q
+git diff --check
+git status
+
+При PASS в Windows:
+git add .gitignore Day16_INSTALL.txt docs/day16.md docs/day16-license-inventory.md app/package.json app/package-lock.json app/src/main.ts app/src/home.ts app/src/styles.css app/src/day16-backup-ui.ts app/src/day16-backup-conflicts.ts app/tests/day16-backup-conflicts.test.mjs
+git commit -m "Day 16: product backup menu and safe local archive flow"
+git push origin main
+
+Провери успешен deploy и след това изпълни iPhone acceptance checklist в docs/day16.md.
+Не изтривай проекти. Тестовият sandbox restore не променя реалната база.
+Ден 17 (моливче и rename чрез име) не е реализиран в този пакет.

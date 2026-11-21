@@ -12,3 +12,12 @@ experiments/outputs/
 app/public/pyodide/
 app/src/fonts/*.woff2
 app/public/licenses/Caveat-OFL.txt
+
+# Day 16: personal backups, diagnostics and non-licensed local test photographs.
+# Do not commit source images, even if used for academic benchmarking.
+/SketchyAR-backup-*.zip
+/sketchyar-diagnostics-*.json
+/fixtures/private/
+/tests/private-images/
+/research/private-fixtures/
+/app/public/user-content/
