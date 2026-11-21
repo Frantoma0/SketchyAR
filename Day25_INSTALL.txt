@@ -1,0 +1,42 @@
+SketchyAR Day 25 — v0.25.0 (Apply over verified v0.24.1)
+
+1. Download SketchyAR_Day25_Sketch_Quality_Changes_v0.25.0.zip.
+2. PowerShell:
+
+cd "C:\Users\vikit\Desktop\AR Drawing Проект\Код\ar-drawing"
+Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day25_Sketch_Quality_Changes_v0.25.0.zip" -DestinationPath . -Force
+cd app
+npm ci --include=dev
+npm run typecheck
+npm run build
+npm run test:day25
+cd ..
+python -m pytest python_engine -q
+git diff --check
+git status
+
+3. After successful checks, verify files staged before commit:
+
+git add .gitignore app/package.json app/package-lock.json
+git add app/src/python-worker.ts app/src/day22-sketch-mode.ts
+git add app/src/day17-sketch-placeholder.ts app/src/storage/project-store.ts
+git add app/tests/day20-generator-state.test.mjs app/tests/day21-camera-navigation.test.mjs
+git add app/tests/day22-sketch-mode.test.mjs app/tests/day23-1-editor-persistence.test.mjs
+git add app/tests/day25-sketch-quality.test.mjs
+git add python_engine/ar_drawing/day25_quality.py python_engine/tests/test_day25_quality.py
+git add scripts/day25_benchmark_private.py docs/day25-sketch-quality.md
+git add docs/day25-sketch-comparison.csv Day25_INSTALL.txt
+git diff --cached --check
+git diff --cached --stat
+git commit -m "Day 25: conservative Sketch quality pass and versioned previews"
+git push origin main
+
+git log -1 --oneline
+git status
+
+Important:
+- Preserve personal projects and IndexedDB; do not clear Safari data.
+- Old applied Sketch stays applied until Draw. To see improved engine on an
+  old applied sketch: toggle Sketch OFF and ON, then click Draw to apply.
+- Do not commit the original set of 30 images, diagnostic JSON or local private CSV.
+- Complete G25 iPhone checks in docs/day25-sketch-quality.md.

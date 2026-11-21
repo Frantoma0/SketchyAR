@@ -7,7 +7,7 @@ import { getProjectImage, getLatestProcessedPreview, getSelectedProcessedAsset, 
   selectOriginalForDrawing, type AssetRecord, type ProjectRecord } from './storage/project-store';
 import { saveProcessedPng, type ProcessedProvenance } from './storage/day13-processed';
 import { openSavedDrawing, applySketchToActiveCamera, applyOriginalToActiveCamera } from './day4';
-import { generateSketchDraft, SketchDraftGate, SKETCH_V1_SETTINGS, type SketchDraftResult } from './day22-sketch-mode';
+import { generateSketchDraft, SketchDraftGate, SKETCH_V1_SETTINGS, SKETCH_QUALITY_VERSION, type SketchDraftResult } from './day22-sketch-mode';
 import { DEFAULT_SKETCH_UI, setSketchUiDetail, setSketchUiLine, setSketchUiStyle,
   previewCanCompare, type SketchUiState } from './day20-sketch-state';
 
@@ -161,6 +161,16 @@ export function initDay17EditPlaceholder(): {
       userTouchedStyle = true;
     }
     if (button.dataset.line) ui = setSketchUiLine(ui, button.dataset.line);
+    // An already APPLIED pre-Day25 sketch is still valid in Camera/Home.
+    // If the user deselects then reselects Sketch, generate the improved v2
+    // preview rather than silently recycling an older pipeline's bitmap.
+    // This only changes the draft; applied selection changes on Draw.
+    if (ui.style === 'sketch' && savedProcessed &&
+        savedProcessed.pipelineVersion !== SKETCH_QUALITY_VERSION) {
+      if (processedURL) URL.revokeObjectURL(processedURL);
+      processedURL = null;
+      savedProcessed = null;
+    }
     showUI();
     if (ui.style === 'sketch') requestSketch();
     else if (ui.style === null) {
@@ -395,7 +405,7 @@ export function initDay17EditPlaceholder(): {
           // a newer cached draft that the user never applied.
           const processed = storedProject.selectedProcessedAssetId
             ? await getSelectedProcessedAsset(storedProject, source)
-            : await getLatestProcessedPreview(project.id, source.id);
+            : await getLatestProcessedPreview(project.id, source.id, SKETCH_QUALITY_VERSION);
           if (!route.isActive(token) || screen.hidden) return;
           if (processed) {
             const savedURL = URL.createObjectURL(processed.blob);

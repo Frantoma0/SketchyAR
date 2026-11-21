@@ -6,6 +6,9 @@ import { decodeReducedGray, encodeTransparentPng } from './day13-image-bridge';
 import { runPythonImage } from './python-client';
 export { SketchDraftGate } from './day22-sketch-gate';
 
+/** Version is checked when reading a cached draft; old applied drawings stay valid. */
+export const SKETCH_QUALITY_VERSION = 'day25-sketch-quality-v1';
+
 export const SKETCH_V1_SETTINGS = Object.freeze({ sigma: 1, low: 0.04, high: 0.10 });
 
 export interface SketchDraftResult {

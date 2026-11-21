@@ -8,6 +8,7 @@ import day10TonesSource from '../../python_engine/ar_drawing/day10_tones.py?raw'
 import day11Source from '../../python_engine/ar_drawing/day11_morphology.py?raw';
 import day12Source from '../../python_engine/ar_drawing/day12_edges.py?raw';
 import day13Source from '../../python_engine/ar_drawing/day13_bridge.py?raw';
+import day25Source from '../../python_engine/ar_drawing/day25_quality.py?raw';
 
 const PYODIDE_VERSION = '314.0.8';
 // Worker script is in src/ during development and assets/ after Vite build.
@@ -71,6 +72,7 @@ let day10Ready = false;
 let day11Ready = false;
 let day12Ready = false;
 let day13Ready = false;
+let day25Ready = false;
 
 function progress(id: string, stage: string, ms: number): void {
   workerScope.postMessage({ id, kind: 'progress', stage, ms: Math.round(ms) } satisfies Progress);
@@ -230,6 +232,19 @@ function day13Process(pyodide: PyodideRuntime, event: Incoming): ImageDone['resu
     ].join('\n'));
     day13Ready = true;
   }
+  // Day 25: retain the legacy Day 13 module for benchmarks/diagnostics and
+  // load the quality pass as a separate versioned module, with NumPy only.
+  if (!day25Ready) {
+    pyodide.globals.set('_sketchyar_day25_source', day25Source);
+    pyodide.runPython([
+      'import sys, types',
+      '_sketchyar_day25 = types.ModuleType("ar_drawing.day25_quality")',
+      '_sketchyar_day25.__package__ = "ar_drawing"',
+      'sys.modules["ar_drawing.day25_quality"] = _sketchyar_day25',
+      'exec(_sketchyar_day25_source, _sketchyar_day25.__dict__)',
+    ].join('\n'));
+    day25Ready = true;
+  }
   const t0 = performance.now();
   pyodide.globals.set('_sketchyar_input_gray', gray);
   let output: unknown;
@@ -237,7 +252,7 @@ function day13Process(pyodide: PyodideRuntime, event: Incoming): ImageDone['resu
     // Typed-array .to_py() exposes a bytes-like buffer (memoryview in Pyodide).
     // The Python method validates all dimensions, thresholds and buffer length.
     pyodide.runPython(`_sketchyar_gray_py = _sketchyar_input_gray.to_py()
-_sketchyar_day13_result = _sketchyar_day13.process_gray8(_sketchyar_gray_py, ${width}, ${height}, sigma=${sigma}, low=${low}, high=${high})`);
+_sketchyar_day13_result = _sketchyar_day25.process_gray8_quality(_sketchyar_gray_py, ${width}, ${height}, sigma=${sigma}, low=${low}, high=${high})`);
     output = pyodide.runPython('_sketchyar_day13_result.ink');
     const asProxy = output as { toJs?: () => unknown; destroy?: () => void };
     const converted = typeof asProxy?.toJs === 'function' ? asProxy.toJs() : output;

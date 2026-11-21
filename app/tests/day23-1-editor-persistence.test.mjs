@@ -240,3 +240,22 @@ test('G24.1: editing without Draw has no persistence call or implicit style save
   assert.match(editor,/await getSelectedProcessedAsset\(storedProject, source\)/);
   assert.match(home,/asset.id === project.selectedProcessedAssetId/);
 });
+
+test('G25: pipeline-aware draft lookup never changes the previously Draw-applied PNG', async()=>{
+  resetForG241();
+  const legacy={...provenance,pipelineVersion:'day12-canny-like-v1'};
+  const improved={...provenance,pipelineVersion:'day25-sketch-quality-v1'};
+  const old=await saveProcessedPng(ID,legacy,png,64,64,false);
+  await store.selectProcessedAsset(ID,SRC,old.id);
+  const latest=await saveProcessedPng(ID,improved,png,64,64,false);
+  assert.equal((await store.getLatestProcessedPreview(ID,SRC,improved.pipelineVersion)).id,latest.id);
+  assert.equal((await store.getLatestProcessedPreview(ID,SRC,legacy.pipelineVersion)).id,old.id);
+  assert.equal(await store.getLatestProcessedPreview(ID,SRC,'unknown-pipeline'),null);
+  const oldProject=(await store.getProjectImage(ID)).project;
+  assert.equal(oldProject.selectedProcessedAssetId,old.id,'cached draft is not applied');
+  assert.equal((await store.getSelectedProcessedAsset(oldProject,db.data.assets.get(SRC))).id,old.id);
+  assert.equal(store.selectHomeSketchPreview(oldProject,[db.data.assets.get(old.id),db.data.assets.get(latest.id)]).id,old.id);
+  await store.selectProcessedAsset(ID,SRC,latest.id);
+  assert.equal((await store.getProjectImage(ID)).project.selectedProcessedAssetId,latest.id);
+  resetForG241();
+});

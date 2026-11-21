@@ -21,3 +21,6 @@ app/public/licenses/Caveat-OFL.txt
 /tests/private-images/
 /research/private-fixtures/
 /app/public/user-content/
+
+# Day 25: per-file local QA may include source hashes. Never publish it.
+/day25-private-metrics.csv

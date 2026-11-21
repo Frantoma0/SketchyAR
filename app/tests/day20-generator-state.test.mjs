@@ -67,7 +67,7 @@ test('D20: only matching processed PNG for current source may be compared',()=>{
   assert.match(storage,/getLatestProcessedPreview\(/);
   assert.match(storage,/a\.sourceAssetId === sourceAssetId/);
   assert.match(storage,/a\.role === 'processed'/);
-  assert.match(controller,/getLatestProcessedPreview\(project\.id, source\.id\)/);
+  assert.match(controller,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION\)/);
   assert.match(controller,/processedURL = savedURL/);
   assert.match(controller,/savedProcessed = processed/);
   assert.match(controller,/showUI\(\)/); // original until user explicitly selects Sketch
