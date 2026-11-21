@@ -11,7 +11,7 @@ const section=main.split('<!-- Day 19: truthful graphite Generator UI shell.')[1
 const read=(s)=>readFileSync(resolve(dir,'public/ui/generator',s),'utf8');
 test('Day20.1: Figma vector typography, controls and 264x71 Draw source are exact geometry',()=>{
  assert.ok(section);
- for(const [f,w,h] of [['figma-header-exact.svg','353','51'],['figma-controls-clean.svg','344','205.16'],
+ for(const [f,w,h] of [['figma-header-exact.svg','353','51'],['figma-controls-lettering.svg','344','205.16'],
  ['figma-polaroid.svg','346','368'],['figma-draw.svg','264','71']]) {
   assert.match(read(f),new RegExp(`<svg[^>]*width="${w}" height="${h}"`));
   assert.ok(section.includes(`./ui/generator/${f}`));

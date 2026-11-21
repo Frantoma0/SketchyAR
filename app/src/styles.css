@@ -1024,3 +1024,53 @@ body.day19-zoom-open { overflow:hidden; }
 .day20-figma-screen {background:#fbfaf7 url('./ui/generator/figma-paper.svg') center / cover no-repeat;}
 .day20-figma-screen .day20-choice-graphite,
 .day20-figma-screen .day20-line-graphite {opacity:.65;}
+
+
+/* Day 20.2: exact user-delivered graphite variants; labels stay in Figma vector foreground.
+   This block deliberately overrides v0.20.1 only within the Generator screen. */
+.day20-figma-screen {
+  /* The same image URL as Home, supplied by home.ts on the html element. */
+  background-color:#f6f6f6;
+  background-image:var(--sketchy-home-image, url('./ui/home-background.png'));
+  background-size:cover; background-position:center center; background-repeat:no-repeat;
+  padding-bottom:calc(env(safe-area-inset-bottom,0px) + 8px);
+}
+/* Home wallpaper overrides the previous extracted Figma-paper background. */
+.day20-figma-screen .day20-figma-controls-art {
+  z-index:3; pointer-events:none;
+}
+.day20-figma-screen .day19-style-list.day20-figma-styles,
+.day20-figma-screen .day20-figma-lines { z-index:2; }
+.day20-figma-screen .day19-style-list .day19-chip,
+.day20-figma-screen .day20-line-chip { position:absolute; z-index:1; }
+.day20-figma-screen .day19-style-list .day19-chip .day20-choice-graphite,
+.day20-figma-screen .day20-line-chip .day20-line-graphite,
+.day20-figma-screen .day19-style-list .day19-chip.day19-chip-selected .day20-choice-graphite,
+.day20-figma-screen .day20-line-chip.day20-line-selected .day20-line-graphite {
+  display:block; position:absolute; inset:0; margin:0;
+  width:100%; height:100%; max-width:none; max-height:none;
+  object-fit:fill; opacity:1; mix-blend-mode:normal; pointer-events:none;
+}
+/* Foreground vector lettering remains dark and crisp on top of whichever SVG art is selected. */
+.day20-figma-screen .day20-figma-detail {z-index:4;}
+.day20-figma-screen .day20-figma-detail-track {position:relative; isolation:isolate;}
+.day20-figma-screen .day20-figma-slider-fill {
+  position:absolute; left:0; top:19.355%; width:100%; height:48.387%;
+  object-fit:fill; pointer-events:none; display:block; z-index:4;
+  -webkit-clip-path:inset(0 calc(100% - var(--day20-detail-progress,50%)) 0 0 round 999px);
+  clip-path:inset(0 calc(100% - var(--day20-detail-progress,50%)) 0 0 round 999px);
+}
+.day20-figma-screen .day20-figma-slider-thumb {
+  z-index:5; left:clamp(12px, var(--day20-detail-progress,50%), calc(100% - 12px));
+}
+.day20-figma-screen #day19-detail-slider { z-index:6; }
+/* The magnifier belongs to the photo aperture, not the outside frame contour. */
+.day20-figma-screen .day19-preview-zoom {
+  top:10%; right:11.8%; width:34px; height:34px; padding:2px;
+  border:0; background:transparent; z-index:5;
+}
+.day20-figma-screen .day19-preview-zoom img {width:100%;height:100%;object-fit:contain;}
+/* Controlled micro spacing — photo + settings slightly higher; Draw a little lower. */
+.day20-figma-screen .day20-figma-content .day20-figma-polaroid {transform:translateY(-4px);}
+.day20-figma-screen .day20-figma-controls {transform:translateY(-5px);}
+.day20-figma-screen .day20-figma-draw {transform:translateY(2px);}

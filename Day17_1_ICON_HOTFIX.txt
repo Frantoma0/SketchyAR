@@ -1,0 +1,28 @@
+SketchyAR v0.17.1 — Day 17.1 pencil button alignment hotfix
+
+Changed files:
+- app/public/ui/project-edit-pencil.svg (the exact uploaded Group 47.svg)
+- app/src/styles.css (6 CSS-pixel visible spacing, existing 44x44 hitboxes preserved)
+- app/tests/day17-project-card.test.mjs (regression test)
+- app/package.json and app/package-lock.json (patch version)
+
+No changes to app/src/home.ts — the original pencil click handler remains intact.
+No changes to IndexedDB, camera, backup or project names.
+
+From repository root on Windows PowerShell:
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day17_1_Pencil_6px_Hotfix_v0.17.1.zip" -DestinationPath . -Force
+  cd app
+  npm ci --include=dev
+  npm run typecheck
+  npm run build
+  npm run test:day17
+  cd ..
+  git diff --check
+  git status
+
+After successful checks:
+  git add app/public/ui/project-edit-pencil.svg app/src/styles.css app/tests/day17-project-card.test.mjs app/package.json app/package-lock.json
+  git commit -m "fix(day17): use supplied pencil icon and align 6px from trash"
+  git push origin main
+
+iPhone: verify v0.17.1 on Home Screen; click pencil => sketch edit placeholder; click bin => cancel deletion; click photo => drawing; click title => rename. Confirm visual gap 6px and unchanged lower backup menu.

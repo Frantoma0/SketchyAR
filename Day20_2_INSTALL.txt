@@ -1,0 +1,31 @@
+SketchyAR Day 20.2 — Figma UI polish (v0.20.2)
+Основа: v0.20.1 — пачът се разархивира от основната папка ar-drawing.
+Не изтривай приложението или IndexedDB; тази промяна е само в UI/JS и SVG assets.
+
+1) От PowerShell:
+cd "C:\Users\vikit\Desktop\AR Drawing Проект\Код\ar-drawing"
+Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day20_2_Figma_UI_Refinement_v0.20.2.zip" -DestinationPath . -Force
+
+2) Windows проверки:
+cd app
+npm ci --include=dev
+npm run typecheck
+npm run build
+npm run test:day20
+cd ..
+python -m pytest python_engine -q
+git diff --check
+git status
+
+3) След като прегледаш всички промени и тестовете са зелени:
+git add app/package.json app/package-lock.json app/src/main.ts app/src/styles.css app/src/day17-sketch-placeholder.ts
+git add app/public/ui/generator/figma-controls-lettering.svg app/public/ui/generator/style-*.svg app/public/ui/generator/line-*.svg app/public/ui/generator/detail-graphite-fill-exact.svg
+git add app/tests/day20-figma-fidelity.test.mjs app/tests/day20-generator-state.test.mjs app/tests/day20-visual-refinement.test.mjs
+git add docs/day20-2-ui-refinement.md Day20_2_INSTALL.txt
+git diff --cached --check
+git diff --cached --stat
+git commit -m "fix(day20): match Figma button states and camera-style detail fill"
+git push origin main
+
+4) На iPhone след GitHub Pages deployment: виж docs/day20-2-ui-refinement.md.
+Не използвай Production Restore или изтриване на проекти за този тест.

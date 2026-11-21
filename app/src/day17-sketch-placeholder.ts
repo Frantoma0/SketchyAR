@@ -50,6 +50,10 @@ export function initDay17EditPlaceholder(): {
       button.setAttribute('aria-pressed', String(selected));
       button.classList.toggle('day19-chip-selected', selected && button.hasAttribute('data-style'));
       button.classList.toggle('day20-line-selected', selected && button.hasAttribute('data-line'));
+      // Keep all Figma lettering ABOVE the physical SVG button background.
+      const art = button.querySelector<HTMLImageElement>('.day20-choice-graphite, .day20-line-graphite');
+      const src = selected ? art?.dataset.selectedSrc : art?.dataset.defaultSrc;
+      if (art && src && art.getAttribute('src') !== src) art.setAttribute('src', src);
     }
     detail.value = String(ui.detail);
     detailValue.value = `${ui.detail} / 5`;
