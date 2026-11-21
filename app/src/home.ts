@@ -267,7 +267,7 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
       cachedCards = cards;
       const nextURLs: string[] = [];
       const fragment = document.createDocumentFragment();
-      cards.forEach(({ project, thumbnail }) => {
+      cards.forEach(({ project, thumbnail, displayAsset, displayKind }) => {
         const tile = document.createElement('div');
         tile.className = 'home-project-tile home-project-saved';
         const open = document.createElement('button');
@@ -275,16 +275,20 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
         open.className = 'home-project-open';
         open.title = project.title;
         open.setAttribute('aria-label', `Отвори ${project.title}`);
-        if (thumbnail?.blob) {
+        const visibleAsset = displayAsset ?? thumbnail;
+        if (visibleAsset?.blob) {
           const imageWindow = document.createElement('span');
           imageWindow.className = 'home-project-photo-window';
           imageWindow.setAttribute('aria-hidden', 'true');
           const image = document.createElement('img');
-          const objectURL = URL.createObjectURL(thumbnail.blob);
+          const objectURL = URL.createObjectURL(visibleAsset.blob);
           nextURLs.push(objectURL);
           image.src = objectURL;
           image.alt = '';
           image.className = 'home-project-preview';
+          // Transparent Sketch PNG is fitted fully on the paper-colored window;
+          // photo thumbnails retain their existing cropped Figma presentation.
+          if (displayKind === 'sketch') image.classList.add('home-project-preview-sketch');
           imageWindow.append(image);
           open.append(imageWindow);
         }

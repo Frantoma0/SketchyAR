@@ -1,0 +1,30 @@
+SketchyAR v0.24.0 — Day 24: last selected image in Home polaroids
+
+APPLY THIS CHANGES ZIP ON TOP OF A CLEAN v0.23.1 REPOSITORY.
+
+Windows PowerShell from the ar-drawing repository root:
+
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day24_Home_Thumbnail_Changes_v0.24.0.zip" -DestinationPath . -Force
+  cd app
+  npm ci --include=dev
+  npm run typecheck
+  npm run build
+  npm run test:day24
+  cd ..
+  python -m pytest python_engine -q
+  git diff --check
+  git status
+
+If only expected Day 24 files changed, stage exactly:
+
+  git add app/src/storage/project-store.ts app/src/home.ts app/src/styles.css
+  git add app/src/day17-sketch-placeholder.ts
+  git add app/tests/day24-home-thumbnail.test.mjs
+  git add app/tests/day21-camera-navigation.test.mjs app/tests/day22-sketch-mode.test.mjs
+  git add app/package.json app/package-lock.json docs/day24.md Day24_INSTALL.txt
+  git diff --cached --check
+  git diff --cached --stat
+  git commit -m "Day 24: persist last selected Sketch preview on Home polaroids"
+  git push origin main
+
+Do not delete projects, import a backup, or clear website data for acceptance tests.

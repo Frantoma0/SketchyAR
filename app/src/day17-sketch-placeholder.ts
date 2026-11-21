@@ -132,6 +132,7 @@ export function initDay17EditPlaceholder(): {
       };
       const stored = await saveProcessedPng(projectId, provenance,
         result.png, result.width, result.height, false);
+      if (screen.hidden) document.dispatchEvent(new Event('sketchyar:projects:changed'));
       if (!sketchGate.isCurrent(ticket, projectId, sourceId) || screen.hidden) return;
       const url = URL.createObjectURL(stored.blob);
       if (processedURL) URL.revokeObjectURL(processedURL);
@@ -347,6 +348,11 @@ export function initDay17EditPlaceholder(): {
     afterClose = null;
     callback?.(); // release camera inert before restoring focus
     if (focus?.isConnected) focus.focus();
+    // Refresh the Home image only AFTER the editor releases its focus target.
+    // A just-saved Sketch and the last chosen style are already in IndexedDB.
+    void styleWrites.catch(error => {
+      D.log('warn', 'day24', 'home.preview.style-write.failed', { message: String(error) });
+    }).then(() => document.dispatchEvent(new Event('sketchyar:projects:changed')));
     D.log('info', 'day17', 'sketch.edit.closed');
   };
   const open = (project: Pick<ProjectRecord, 'id' | 'title'>, trigger: HTMLElement,
