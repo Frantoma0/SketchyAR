@@ -798,3 +798,229 @@ body.day19-zoom-open { overflow:hidden; }
   .day20-line-options { gap:3px; }
   .day20-line-chip { font-size:18px; }
 }
+
+
+/* Day 20 Figma fidelity correction (v0.20.1): exact uploaded user SVGs.
+   One-viewport layout; overrides only Generator. Home, Drawing and IndexedDB untouched. */
+.day20-visually-hidden,
+.day20-figma-screen .day17-edit-project-label,
+.day20-figma-screen .day17-edit-project-name,
+.day20-figma-screen .day19-return,
+.day20-figma-screen .day18-preview-note,
+.day20-figma-screen .day19-limits-note {
+  position:absolute!important; width:1px!important; height:1px!important;
+  margin:0!important; padding:0!important; overflow:hidden!important;
+  clip-path:inset(50%)!important; white-space:nowrap!important;
+  border:0!important;
+}
+.day20-figma-screen {
+  height:100dvh; overflow:hidden; overscroll-behavior:none;
+  padding:calc(env(safe-area-inset-top,0px) + 3px) max(9px, env(safe-area-inset-right,0px))
+    calc(env(safe-area-inset-bottom,0px) + 7px) max(9px, env(safe-area-inset-left,0px));
+  background:#fbfaf7;
+  background-image:none;
+}
+.day20-figma-layout {
+  box-sizing:border-box; width:min(100%,385px); height:100%; min-height:0;
+  margin-inline:auto; display:grid; gap:clamp(5px,1.05dvh,11px);
+  grid-template-rows:51px minmax(0,1fr);
+}
+.day20-figma-screen .day19-header {
+  position:relative; width:min(100%,353px); height:51px; min-height:51px;
+  margin:0 auto; padding:0; display:block; max-width:none; gap:0;
+}
+.day20-figma-header-art {position:absolute; inset:0; display:block; width:100%; height:100%; object-fit:fill; pointer-events:none;}
+.day20-figma-screen .day19-header h2 {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  margin:0; width:calc(100% - 115px); text-align:center; overflow:visible;
+  font:700 clamp(27px,5.8dvh,36px)/1 'Caveat',cursive; color:#3d3935;
+  white-space:nowrap; overflow-wrap:normal; pointer-events:none;
+}
+.day20-figma-screen .day19-icon-button.day20-figma-back {
+  position:absolute; top:0; left:0; width:53px; min-width:53px; height:51px;
+  background:transparent; cursor:pointer; border:0; padding:0;
+}
+.day20-figma-screen .day19-icon-button.day20-figma-back:focus-visible {outline:2px solid #4d453c; outline-offset:1px; border-radius:13px;}
+.day20-figma-screen .day17-edit-card.day19-content {
+  box-sizing:border-box; min-width:0; min-height:0; height:100%; max-width:none;
+  border:0; box-shadow:none; background:transparent; padding:0; margin:0;
+  display:grid; justify-items:center; align-items:center;
+  grid-template-rows:minmax(0,1fr) auto auto;
+  gap:clamp(3px, .8dvh,9px);
+}
+/* The photo always fits the original Figma 346x368 Polaroid, with the same inset.
+   At short viewports the entire frame scales DOWN rather than scrolling. */
+.day20-figma-screen .day19-preview-frame.day20-figma-polaroid {
+  position:relative; box-sizing:border-box; width:auto; height:100%; min-height:0;
+  max-width:100%; aspect-ratio:346/368;
+  border:0; padding:0; background:transparent; box-shadow:none; overflow:visible;
+}
+.day20-figma-polaroid-art {position:absolute; inset:0; width:100%; height:100%; object-fit:fill; pointer-events:none; z-index:1;}
+.day20-figma-screen .day19-content .day17-edit-preview-placeholder {
+  position:absolute; left:7.6%; right:7.9%; top:7.5%; bottom:21.3%;
+  width:auto; height:auto; min-width:0; min-height:0; display:grid; place-items:center;
+  margin:0; padding:0; border:0; background:transparent; border-radius:0; overflow:hidden;
+  box-shadow:none; z-index:0;
+}
+.day20-figma-screen .day19-content #day18-original-preview {
+  position:absolute; inset:0; top:0; left:0; width:100%; height:100%;
+  max-width:100%; max-height:100%; padding:0; margin:0;
+  object-fit:contain; object-position:center center; border:0; border-radius:0;
+  background:transparent;
+}
+.day20-figma-screen #day18-preview-empty {font-size:0;}
+.day20-figma-screen .day19-preview-zoom {z-index:3; top:8%; right:9%; width:42px; height:42px; padding:4px;}
+.day20-figma-screen .day19-preview-zoom img {width:100%;height:100%;}
+/* Exact Figma groups: 344x44 styles, 329x15 rail, 329x32 numbers, 240x30 lines. */
+.day20-figma-screen .day19-controls.day20-figma-controls {
+  box-sizing:border-box; display:flex; flex-direction:column; justify-content:space-between;
+  width:min(100%,344px); min-height:0; height:clamp(158px,24.5dvh,205px);
+  padding:0; border:0; margin:0; text-align:left; overflow:visible;
+}
+.day20-figma-screen .day19-style-list.day20-figma-styles {
+  flex:0 0 auto; width:100%; height:44px; padding:0;
+  display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:0;
+  background:none;
+}
+.day20-figma-screen .day19-style-list .day19-chip {
+  box-sizing:border-box; display:grid; place-items:center; width:100%; height:44px;
+  min-width:0; border:0; padding:0 2px; background:transparent;
+  font:700 clamp(22px,5.1vw,29px)/1 'Caveat',cursive; color:#48413b;
+  cursor:pointer; opacity:1;
+}
+.day20-figma-screen .day19-chip.day19-chip-selected::after {display:none;}
+.day20-figma-screen .day19-chip .day20-choice-graphite {
+  display:none; z-index:1; width:79px; max-width:85%; height:24px;
+  inset:auto; border:0; border-radius:0; opacity:.72; object-fit:fill;
+}
+.day20-figma-screen .day19-chip.day19-chip-selected .day20-choice-graphite {display:block;}
+.day20-figma-screen .day19-chip span {z-index:2;}
+.day20-figma-screen .day19-slider-group.day20-figma-detail {
+  box-sizing:border-box; display:flex; flex-direction:column; gap:0;
+  width:min(100%,329px); min-height:0; padding:0; margin:0 auto;
+}
+.day20-figma-screen .day20-figma-detail label {
+  width:100%; height:clamp(28px,4dvh,38px); margin:0; display:block; padding:0;
+  font:700 clamp(27px,4.35dvh,36px)/1 'Caveat',cursive; color:#433f3a;
+}
+.day20-figma-screen .day20-figma-detail-track {
+  position:relative; box-sizing:border-box; height:31px; width:100%; min-height:31px; margin:0;
+}
+.day20-figma-slider-rail {position:absolute; width:100%; height:15px; top:8px; left:0; object-fit:fill; pointer-events:none;}
+.day20-figma-slider-thumb {position:absolute; left:var(--day20-detail-progress,50%); top:50%;
+  transform:translate(-50%,-50%); width:27px; height:28px; object-fit:contain; pointer-events:none; z-index:2;}
+.day20-figma-screen .day20-figma-detail-track #day19-detail-slider {
+  appearance:none; -webkit-appearance:none; position:absolute; inset:0; width:100%; height:31px;
+  margin:0; border:0; outline:none; background:transparent; z-index:3; cursor:pointer; touch-action:pan-x;
+}
+.day20-figma-screen .day20-figma-detail-track #day19-detail-slider::-webkit-slider-runnable-track {background:transparent; height:31px; border:0;}
+.day20-figma-screen .day20-figma-detail-track #day19-detail-slider::-webkit-slider-thumb {appearance:none; -webkit-appearance:none;
+  width:27px; height:31px; margin:0; background:transparent; border:0; box-shadow:none;}
+.day20-figma-screen .day20-figma-detail-track #day19-detail-slider::-moz-range-track {background:transparent;border:0;height:31px;}
+.day20-figma-screen .day20-figma-detail-track #day19-detail-slider::-moz-range-thumb {width:27px;height:31px;background:transparent;border:0;}
+.day20-figma-screen .day20-figma-scale.day19-scale {
+  width:100%; height:32px; min-height:32px; display:block; padding:0; margin:0;
+}
+.day20-figma-screen .day20-figma-scale img {width:100%; height:100%; object-fit:fill; display:block;}
+.day20-figma-screen .day20-figma-lines {width:100%; height:30px; min-height:30px;
+  display:flex; justify-content:space-between; align-items:center; gap:7px; padding:0; margin:0;}
+.day20-figma-screen .day20-figma-lines .day19-control-heading {margin:0; flex:1; width:0;
+  font:700 clamp(26px,4.1dvh,33px)/1 'Caveat',cursive; color:#413a35;}
+.day20-figma-screen .day20-line-options {
+  flex:0 0 69.767%; width:69.767%; height:30px; min-width:0; margin:0;
+  display:grid; gap:0; grid-template-columns:repeat(3,minmax(0,1fr));
+  background:none;
+}
+.day20-figma-screen .day20-line-chip {
+  display:grid; place-items:center; box-sizing:border-box; padding:0;
+  min-height:30px; height:30px; min-width:0; width:100%; border:0;
+  font:700 clamp(17px,4.2vw,22px)/1 'Caveat',cursive; background:transparent; cursor:pointer;
+}
+.day20-figma-screen .day20-line-chip .day20-line-graphite {
+  display:none; z-index:1; position:absolute; width:66px; max-width:86%; height:24px;
+  inset:auto; object-fit:fill; opacity:.72; border-radius:0;
+}
+.day20-figma-screen .day20-line-chip.day20-line-selected .day20-line-graphite {display:block;}
+.day20-figma-screen .day20-figma-draw {
+  width:min(100%,264px); height:clamp(51px,8.45dvh,71px); min-height:0;
+  padding:0; margin:0 auto; display:block; border:0; background:transparent;
+  box-shadow:none; opacity:1; cursor:not-allowed;
+}
+.day20-figma-screen .day20-figma-draw img {position:static; display:block; width:100%; height:100%; object-fit:fill;}
+.day20-figma-screen .day20-figma-draw:disabled {opacity:1;filter:none;}
+@media(max-height:730px) {
+  .day20-figma-screen .day20-figma-controls {height:clamp(154px,25dvh,190px);}
+  .day20-figma-screen .day20-figma-detail label {height:28px;font-size:27px;}
+  .day20-figma-screen .day20-figma-draw {height:54px;}
+}
+
+/* v0.20.1 geometry and exact Figma lettering refinement. */
+.day20-figma-screen .day20-figma-content .day20-figma-polaroid {
+  box-sizing:border-box; justify-self:center; align-self:center;
+  width:min(100%,346px,calc((100dvh - 361px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))*0.9402174));
+  height:auto; max-height:100%; aspect-ratio:346 / 368;
+}
+.day20-figma-screen .day19-header h2.day20-visually-hidden {
+  position:absolute!important; width:1px!important; height:1px!important;
+  overflow:hidden!important; clip-path:inset(50%)!important;
+  white-space:nowrap!important; margin:0!important; padding:0!important;
+}
+.day20-figma-screen .day20-figma-controls {
+  position:relative; box-sizing:border-box; flex:none; width:min(100%,344px);
+  height:auto; aspect-ratio:344/205.16; min-height:0;
+  padding:0; margin:0; display:block; border:0; overflow:visible;
+}
+.day20-figma-controls-art {position:absolute; top:0; left:0; width:100%; height:100%; object-fit:fill; pointer-events:none;}
+.day20-figma-screen .day19-style-list.day20-figma-styles {
+  position:absolute; inset:0 auto auto 0; width:100%; height:21.45%;
+  display:block; background:none; padding:0; margin:0;
+}
+.day20-figma-screen .day19-style-list .day19-chip {
+  position:absolute; top:0; width:30.814%; height:100%; display:grid;
+  place-items:center; padding:0; margin:0; border:0;
+  background:transparent; cursor:pointer;
+}
+.day20-figma-screen .day19-style-list .day19-chip:nth-child(1) {left:0;}
+.day20-figma-screen .day19-style-list .day19-chip:nth-child(2) {left:34.593%;}
+.day20-figma-screen .day19-style-list .day19-chip:nth-child(3) {left:69.186%;}
+.day20-figma-screen .day19-style-list .day19-chip .day20-choice-graphite {
+  display:none; position:absolute; inset:6px 0 auto 0; margin:auto;
+  width:81%; max-width:81%; height:25px; object-fit:fill;
+  mix-blend-mode:multiply; opacity:.4; z-index:2; pointer-events:none;
+}
+.day20-figma-screen .day19-style-list .day19-chip.day19-chip-selected .day20-choice-graphite {display:block;}
+.day20-figma-screen .day20-figma-detail {
+  position:absolute; top:46.79%; left:2.325%; width:95.64%; height:15.11%;
+  margin:0; padding:0; display:block;
+}
+.day20-figma-screen .day20-figma-detail-track {position:relative; width:100%; height:100%; margin:0; padding:0;}
+.day20-figma-screen .day20-figma-slider-thumb {top:49%; width:29px; height:30px; left:calc(var(--day20-detail-progress,50%) + 3px);}
+.day20-figma-screen .day20-figma-detail-track #day19-detail-slider,
+.day20-figma-screen .day20-figma-detail-track #day19-detail-slider::-webkit-slider-runnable-track {height:100%;}
+.day20-figma-screen .day20-figma-lines {position:absolute; top:85.77%; left:29.07%;
+  width:69.767%; height:14.62%; min-height:0; margin:0; padding:0; display:block;}
+.day20-figma-screen .day20-line-options {width:100%; height:100%; display:block; background:none;}
+.day20-figma-screen .day20-line-chip {position:absolute; top:0; height:100%; min-height:0;
+  padding:0; margin:0; display:grid; place-items:center; background:transparent; cursor:pointer;}
+.day20-figma-screen .day20-line-chip:nth-child(1) {left:0; width:27.5%;}
+.day20-figma-screen .day20-line-chip:nth-child(2) {left:32.5%; width:32.917%;}
+.day20-figma-screen .day20-line-chip:nth-child(3) {left:70.417%; width:29.583%;}
+.day20-figma-screen .day20-line-chip .day20-line-graphite {
+  display:none; position:absolute; inset:3px 0 auto 0; margin:auto;
+  width:85%; height:24px; max-width:85%; mix-blend-mode:multiply;
+  object-fit:fill; opacity:.4; z-index:2; pointer-events:none;
+}
+.day20-figma-screen .day20-line-chip.day20-line-selected .day20-line-graphite {display:block;}
+.day20-figma-screen .day20-figma-content {grid-template-rows:minmax(0,1fr) auto auto;}
+@media (max-height:735px) {
+  .day20-figma-screen .day20-figma-controls {height:auto; aspect-ratio:344 /205.16;}
+}
+
+/* Comparison is gesture-only; no visible "Оригинал" badge in Figma UI. */
+.day20-figma-screen .day20-compare-indicator {display:none!important;}
+/* Keep the magnifier's pre-existing 15px corner placement on the new Figma Polaroid. */
+.day20-figma-screen .day19-preview-zoom {top:15px; right:15px;}
+/* The exact paper texture from Home_Screen (2).svg, without the phone bezel / island. */
+.day20-figma-screen {background:#fbfaf7 url('./ui/generator/figma-paper.svg') center / cover no-repeat;}
+.day20-figma-screen .day20-choice-graphite,
+.day20-figma-screen .day20-line-graphite {opacity:.65;}

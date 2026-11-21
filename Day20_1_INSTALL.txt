@@ -1,0 +1,26 @@
+SketchyAR v0.20.1 — Figma 1:1 layout hotfix
+
+Постави този changes-only ZIP върху съществуващата версия v0.20.0, в root ar-drawing.
+Не изтривай проектите и не изчиствай Safari/Home Screen данните.
+
+PowerShell (от ar-drawing):
+Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day20_1_Figma_UI_Hotfix_v0.20.1.zip" -DestinationPath . -Force
+cd app
+npm ci --include=dev
+npm run typecheck
+npm run build
+npm run test:day20
+cd ..
+python -m pytest python_engine -q
+git diff --check
+git status
+
+При зелени проверки, stage само код/дизайн/документация (вкл. оставащи Day20 файлове):
+git add app/src app/public/ui/generator app/tests app/package.json app/package-lock.json docs Day20_INSTALL.txt Day20_1_INSTALL.txt
+git diff --cached --check
+git diff --cached --stat
+git commit -m "fix(day20): match Figma generator layout and keep all controls in one screen"
+git push origin main
+
+Важно: не stage-вай лични фотографии или backup ZIP.
+За iPhone PASS виж docs/day20-figma-1to1-fix.md.

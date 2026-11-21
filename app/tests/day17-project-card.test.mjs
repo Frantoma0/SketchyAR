@@ -43,8 +43,8 @@ test('Day17: graphite icon and 44px separate touch targets preserve fixed layout
   assert.match(styles,/\.home-project-caption\s*\{[^}]*font:700 17px/s);
 });
 test('Day17: placeholder promises no processing; back and Escape return focus', () => {
-  assert.match(main,/id="day17-edit-heading">Промени скицата/);
-  assert.match(main,/Засега този екран не променя изображението или запазените настройки/);
+  assert.match(main,/id="day17-edit-heading"[^>]*>Редакция/);
+  assert.match(main,/Избраните настройки са визуални и не обработват снимката/);
   assert.match(editor,/screen\.hidden = false/);
   assert.match(editor,/screen\.hidden = true/);
   assert.match(editor,/if \(event\.key === 'Escape'\)/);

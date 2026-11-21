@@ -20,7 +20,7 @@ test('Day19.1: only the Generator preview has proportional full-image fit', () =
   assert.match(rule, /width\s*:\s*calc\(100%\s*-\s*16px\)\s*;/);
   assert.match(rule, /height\s*:\s*calc\(100%\s*-\s*16px\)\s*;/);
   assert.doesNotMatch(rule, /object-fit\s*:\s*cover/);
-  assert.match(main, /class="day19-preview-frame"/);
+  assert.match(main, /class="day19-preview-frame day20-figma-polaroid"/);
   assert.match(main, /id="day18-original-preview"/);
 });
 

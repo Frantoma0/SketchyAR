@@ -22,9 +22,10 @@ test('Day19: new Generator UI shell preserves edit and source preview IDs', () =
 });
 
 test('Day19→20: draft controls active but output cannot be saved', () => {
- assert.match(segment,/<fieldset[^>]+class="day19-controls day20-controls"/);
+ assert.match(segment,/<fieldset[^>]+class="day19-controls day20-controls/);
  assert.match(segment,/<button id="day19-draw"[^>]+disabled/);
- assert.match(segment,/Настройките са визуални|Изборите са само визуални/);
+ assert.match(segment,/Избраните настройки са визуални/);
+ assert.match(segment,/day20-visually-hidden/);
  assert.doesNotMatch(segment,/id="day19-(?:save|generate-now|apply)"/);
  assert.match(segment,/id="day19-detail-slider"[^>]+type="range"[^>]+min="1" max="5"/);
  assert.match(segment,/data-line="thin"/);
@@ -36,7 +37,7 @@ test('Day19: supplied SVG assets copied verbatim and referenced by the screen', 
   assert.equal(existsSync(path),true,name);
   const text = readFileSync(path,'utf8');
   assert.match(text,new RegExp(`<svg width="${w}" height="${h}"`));
-  if (name !== 'mini-control.svg') assert.ok(segment.includes(`./ui/generator/${name}`)); // kept for future noise controls
+  assert.ok(readFileSync(path,'utf8').includes('<svg')); // original assets retained for later controls
  }
 });
 

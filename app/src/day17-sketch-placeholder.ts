@@ -227,11 +227,14 @@ export function initDay17EditPlaceholder(): {
   screen.addEventListener('keydown', event => {
     if (event.key === 'Escape') { event.preventDefault(); close(); return; }
     if (event.key !== 'Tab') return;
-    const controls = [back, returnButton];
-    if (event.shiftKey && document.activeElement === controls[0]) {
-      event.preventDefault(); controls[1].focus();
-    } else if (!event.shiftKey && document.activeElement === controls[1]) {
-      event.preventDefault(); controls[0].focus();
+    const focusable = [...screen.querySelectorAll<HTMLButtonElement | HTMLInputElement>(
+      'button:not(:disabled):not([hidden]), input:not(:disabled):not([hidden])'
+    )].filter(el => el.offsetParent !== null);
+    if (!focusable.length) return;
+    if (event.shiftKey && document.activeElement === focusable[0]) {
+      event.preventDefault(); focusable[focusable.length - 1]?.focus();
+    } else if (!event.shiftKey && document.activeElement === focusable[focusable.length - 1]) {
+      event.preventDefault(); focusable[0]?.focus();
     }
   });
   return { open, close };

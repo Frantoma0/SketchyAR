@@ -51,7 +51,7 @@ test('D20: exact new user graphite SVGs retained verbatim',()=>{
   }
   assert.match(main,/src="\.\/ui\/generator\/selected-graphite-79\.svg"/);
   assert.match(main,/src="\.\/ui\/generator\/selected-graphite-66\.svg"/);
-  assert.match(main,/src="\.\/ui\/generator\/detail-graphite-stroke\.svg"/);
+  assert.match(main,/src="\.\/ui\/generator\/figma-controls-clean\.svg"/);
 });
 test('D20: buttons have accessible pressed state, selected graphite and detail slider',()=>{
   for(const s of ['sketch','manga','comic']) assert.match(main,new RegExp(`data-style="${s}"`));

@@ -115,69 +115,66 @@ document.getElementById('app')!.innerHTML = `
 </div>
 <!-- Day 19: truthful graphite Generator UI shell. Interactive Day 20 draft choices.
      No fake processing: Draw remains disabled until Generate -> Save -> Draw exists. -->
-<div id="day17-edit-screen" class="day17-edit-screen" role="dialog" aria-modal="true"
+<div id="day17-edit-screen" class="day17-edit-screen day20-figma-screen" role="dialog" aria-modal="true"
      aria-labelledby="day17-edit-heading" aria-describedby="day17-edit-info" hidden>
-  <div class="day19-editor" id="day19-generator-shell">
-    <header class="day17-edit-top day19-header">
-      <button id="day17-edit-back" type="button" class="day17-edit-back day19-icon-button"
-              aria-label="Върни се към старите проекти">
-        <img src="./ui/generator/square-control.svg" alt="" aria-hidden="true" />
-        <span aria-hidden="true" class="day19-back-symbol">←</span>
-      </button>
-      <h2 id="day17-edit-heading">Промени скицата</h2>
-      <div class="day19-header-end" aria-hidden="true">
-        <img src="./ui/generator/square-control.svg" alt="" />
-        <span>✎</span>
-      </div>
+  <div class="day19-editor day20-figma-layout" id="day19-generator-shell">
+    <header class="day17-edit-top day19-header day20-figma-header">
+      <img class="day20-figma-header-art" src="./ui/generator/figma-header-exact.svg" alt="" aria-hidden="true" />
+      <button id="day17-edit-back" type="button" class="day17-edit-back day19-icon-button day20-figma-back"
+              aria-label="Назад"></button>
+      <h2 id="day17-edit-heading" class="day20-visually-hidden">Редакция</h2>
     </header>
 
-    <div class="day17-edit-card day19-content">
-      <p class="day17-edit-project-label">Избран проект</p>
-      <p id="day17-edit-project-name" class="day17-edit-project-name"></p>
-      <div class="day19-preview-frame">
-        <div class="day17-edit-preview-placeholder" id="day18-preview-window" tabindex="0" role="img" aria-label="Преглед. Ако има запазена скица, задръж върху снимката за оригинала; отпусни за скицата.">
-          <span id="day18-preview-empty" aria-hidden="true">✎</span>
-          <img id="day18-original-preview" alt="Преглед на изображението на проекта" draggable="false" hidden />
+    <div class="day17-edit-card day19-content day20-figma-content">
+      <p class="day17-edit-project-label" hidden>Избран проект</p>
+      <p id="day17-edit-project-name" class="day17-edit-project-name" hidden></p>
+      <div class="day19-preview-frame day20-figma-polaroid">
+        <div class="day17-edit-preview-placeholder" id="day18-preview-window" tabindex="0" role="img"
+             aria-label="Преглед на скицата. При запазена скица задръж за оригинала и отпусни за скицата.">
+          <span id="day18-preview-empty" aria-hidden="true"></span>
+          <img id="day18-original-preview" alt="Снимка на проекта" draggable="false" hidden />
           <span id="day20-compare-indicator" class="day20-compare-indicator" aria-hidden="true" hidden>Оригинал</span>
         </div>
+        <img class="day20-figma-polaroid-art" src="./ui/generator/figma-polaroid.svg" alt="" aria-hidden="true" />
         <button id="day19-preview-zoom" class="day19-preview-zoom" type="button"
                 aria-label="Отвори цялото изображение" aria-controls="day19-image-lightbox"
                 aria-haspopup="dialog" disabled>
           <img src="./ui/generator/zoom-control.svg" alt="" aria-hidden="true" />
         </button>
       </div>
-      <p id="day18-preview-note" class="day18-preview-note" role="status" aria-live="polite">
+      <p id="day18-preview-note" class="day18-preview-note day20-visually-hidden" role="status" aria-live="polite">
         Зарежда се оригиналната снимка…
       </p>
 
-      <fieldset class="day19-controls day20-controls" aria-describedby="day17-edit-info">
-        <legend class="day19-controls-title">Визуален избор · без обработка</legend>
-        <div class="day19-control-heading" id="day19-style-heading">Стил</div>
-        <div class="day19-style-list" role="group" aria-labelledby="day19-style-heading">
-          <button type="button" class="day19-chip day19-chip-selected" data-style="sketch" aria-pressed="true"><img src="./ui/generator/pill-control.svg" alt="" aria-hidden="true" /><img class="day20-choice-graphite" src="./ui/generator/selected-graphite-79.svg" alt="" aria-hidden="true" /><span>Скица</span></button>
-          <button type="button" class="day19-chip" data-style="manga" aria-pressed="false"><img src="./ui/generator/pill-control.svg" alt="" aria-hidden="true" /><img class="day20-choice-graphite" src="./ui/generator/selected-graphite-79.svg" alt="" aria-hidden="true" /><span>Манга</span></button>
-          <button type="button" class="day19-chip" data-style="comic" aria-pressed="false"><img src="./ui/generator/pill-control.svg" alt="" aria-hidden="true" /><img class="day20-choice-graphite" src="./ui/generator/selected-graphite-79.svg" alt="" aria-hidden="true" /><span>Комикс</span></button>
+      <fieldset class="day19-controls day20-controls day20-figma-controls" aria-describedby="day17-edit-info">
+        <legend class="day20-visually-hidden">Настройки на скицата</legend>
+        <img class="day20-figma-controls-art" src="./ui/generator/figma-controls-clean.svg" alt="" aria-hidden="true" />
+        <div class="day19-style-list day20-figma-styles" role="group" aria-label="Стил">
+          <button type="button" class="day19-chip day19-chip-selected" data-style="sketch" aria-pressed="true" aria-label="Скица"><img class="day20-choice-graphite" src="./ui/generator/selected-graphite-79.svg" alt="" aria-hidden="true" /></button>
+          <button type="button" class="day19-chip" data-style="manga" aria-pressed="false" aria-label="Манга"><img class="day20-choice-graphite" src="./ui/generator/selected-graphite-79.svg" alt="" aria-hidden="true" /></button>
+          <button type="button" class="day19-chip" data-style="comic" aria-pressed="false" aria-label="Комикс"><img class="day20-choice-graphite" src="./ui/generator/selected-graphite-79.svg" alt="" aria-hidden="true" /></button>
         </div>
-        <div class="day19-slider-group day20-detail">
-          <label for="day19-detail-slider">Детайлност: <output id="day20-detail-value" for="day19-detail-slider">3 / 5</output></label>
-          <input id="day19-detail-slider" type="range" min="1" max="5" step="1" value="3" />
-          <img class="day20-detail-pencil" src="./ui/generator/detail-graphite-stroke.svg" alt="" aria-hidden="true" />
-          <div class="day19-scale" aria-hidden="true"><img src="./ui/generator/detail-scale-graphic.svg" alt="" /></div>
+        <div class="day19-slider-group day20-detail day20-figma-detail">
+          <label class="day20-visually-hidden" for="day19-detail-slider">Детайлност:<output id="day20-detail-value" for="day19-detail-slider">3 / 5</output></label>
+          <div class="day20-figma-detail-track" style="--day20-detail-progress:50%">
+            <img class="day20-figma-slider-thumb" src="./ui/camera/slider-thumb.svg" alt="" aria-hidden="true" />
+            <input id="day19-detail-slider" type="range" min="1" max="5" step="1" value="3" aria-label="Детайлност от 1 до 5" />
+          </div>
         </div>
-        <div class="day19-slider-group day20-lines">
-          <div class="day19-control-heading" id="day20-line-heading">Линии:</div>
-          <div class="day20-line-options" role="group" aria-labelledby="day20-line-heading">
-            <button type="button" class="day20-line-chip" data-line="thin" aria-pressed="false"><img src="./ui/generator/pill-control.svg" alt="" aria-hidden="true" /><img class="day20-line-graphite" src="./ui/generator/selected-graphite-66.svg" alt="" aria-hidden="true" /><span>Тънки</span></button>
-            <button type="button" class="day20-line-chip day20-line-selected" data-line="normal" aria-pressed="true"><img src="./ui/generator/pill-control.svg" alt="" aria-hidden="true" /><img class="day20-line-graphite" src="./ui/generator/selected-graphite-66.svg" alt="" aria-hidden="true" /><span>Нормални</span></button>
-            <button type="button" class="day20-line-chip" data-line="thick" aria-pressed="false"><img src="./ui/generator/pill-control.svg" alt="" aria-hidden="true" /><img class="day20-line-graphite" src="./ui/generator/selected-graphite-66.svg" alt="" aria-hidden="true" /><span>Дебели</span></button>
+        <div class="day20-lines day20-figma-lines">
+          <div class="day20-line-options" role="group" aria-label="Дебелина на линиите">
+            <button type="button" class="day20-line-chip" data-line="thin" aria-pressed="false" aria-label="Тънки"><img class="day20-line-graphite" src="./ui/generator/selected-graphite-66.svg" alt="" aria-hidden="true" /></button>
+            <button type="button" class="day20-line-chip day20-line-selected" data-line="normal" aria-pressed="true" aria-label="Нормални"><img class="day20-line-graphite" src="./ui/generator/selected-graphite-66.svg" alt="" aria-hidden="true" /></button>
+            <button type="button" class="day20-line-chip" data-line="thick" aria-pressed="false" aria-label="Дебели"><img class="day20-line-graphite" src="./ui/generator/selected-graphite-66.svg" alt="" aria-hidden="true" /></button>
           </div>
         </div>
       </fieldset>
-      <p id="day17-edit-info" class="day19-limits-note" role="status" aria-live="polite">Изборите са само визуални и не обработват снимката. За сравнение задръж върху снимката, когато има запазена скица. Засега този екран не променя изображението или запазените настройки. Генериране и „Рисувай“ предстоят.</p>
-      <button id="day19-draw" type="button" class="day19-draw-button" disabled aria-describedby="day17-edit-info">
-        <img src="./ui/generator/pill-control.svg" alt="" aria-hidden="true" /><span>+ Рисувай</span>
+      <p id="day17-edit-info" class="day19-limits-note day20-visually-hidden" role="status" aria-live="polite">Избраните настройки са визуални и не обработват снимката. Генерирането предстои.</p>
+      <button id="day19-draw" type="button" class="day19-draw-button day20-figma-draw" disabled
+              aria-label="Рисувай — генерирането още не е налично" aria-describedby="day17-edit-info">
+        <img src="./ui/generator/figma-draw.svg" alt="Рисувай" />
       </button>
-      <button id="day17-edit-return" type="button" class="day17-edit-return day19-return">Към проектите</button>
+      <button id="day17-edit-return" class="day17-edit-return day19-return" type="button" hidden>Към проектите</button>
     </div>
   </div>
 </div>
