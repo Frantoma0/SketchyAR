@@ -247,6 +247,20 @@ export async function getProjectImage(projectId: string): Promise<ProjectWithIma
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] };
 }
 
+/** Day 20: read-only newest saved PNG for the current ORIGINAL source.
+ * A Day 13 diagnostic processed asset can be compared, but UI choices do not reprocess it.
+ * Never silently use processed results from a replaced source.
+ */
+export async function getLatestProcessedPreview(projectId: string, sourceAssetId: string): Promise<AssetRecord | null> {
+  const db = await openProjectDB();
+  const found = await req<AssetRecord[]>(db.transaction('assets', 'readonly')
+    .objectStore('assets').index('byProjectRole').getAll(IDBKeyRange.only([projectId, 'processed'])));
+  return found.filter(a => a.projectId === projectId && a.role === 'processed' &&
+    a.sourceAssetId === sourceAssetId && a.mimeType === 'image/png' &&
+    a.blob instanceof Blob && a.blob.size > 0 && a.blob.size === a.byteSize)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null;
+}
+
 export async function listProjectThumbnails(): Promise<ProjectThumbnail[]> {
   const db = await openProjectDB();
   const projects = await req<ProjectRecord[]>(db.transaction('projects', 'readonly')

@@ -1,0 +1,25 @@
+SketchyAR DAY 20 — v0.20.0
+=========================
+Base: v0.19.2. Changes-only ZIP is rooted at `ar-drawing`'s root (contents app/, docs/).
+Do NOT delete app data or real projects. No IndexedDB migration.
+
+Windows PowerShell in ar-drawing folder:
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day20_Changes_Only_v0.20.0.zip" -DestinationPath . -Force
+  cd app
+  npm ci --include=dev
+  npm run typecheck
+  npm run build
+  npm run test:day20
+  cd ..
+  python -m pytest python_engine -q
+  git diff --check
+  git status
+
+If all pass and only Day20 files changed:
+  git add Day20_INSTALL.txt app/package.json app/package-lock.json app/src/main.ts app/src/styles.css app/src/day17-sketch-placeholder.ts app/src/day20-sketch-state.ts app/src/storage/project-store.ts app/public/ui/generator/selected-graphite-79.svg app/public/ui/generator/selected-graphite-66.svg app/public/ui/generator/detail-graphite-stroke.svg app/public/ui/generator/detail-scale-graphic.svg app/public/ui/generator/line-pill.svg app/tests/day20-generator-state.test.mjs app/tests/day19-generator-shell.test.mjs app/tests/day19-image-lightbox.test.mjs docs/day20.md
+  git commit -m "Day 20: interactive graphite choices and hold-to-compare preview"
+  git push origin main
+
+Check GitHub Pages build. In iPhone Home Screen check Version, zoom and hold,
+then force-close/relaunch; export diagnostic JSON. Do not run a real restore.
+The drawn/processed output does not change when choosing options yet.

@@ -38,7 +38,7 @@ test('Day19.2: dark full-viewport modal has close control and contain-only image
 
 test('Day19.2: opens only after source load, uses same Blob URL and never writes', () => {
   assert.match(editor, /if \(!previewURL \|\| preview\.hidden \|\| screen\.hidden/);
-  assert.match(editor, /zoomImage\.src = previewURL/);
+  assert.match(editor, /zoomImage\.src = currentImageURL\(\)!/);
   assert.match(editor, /zoomButton\.disabled = true/);
   assert.match(editor, /zoomButton\.disabled = false/);
   assert.match(editor, /screen\.inert = true/);

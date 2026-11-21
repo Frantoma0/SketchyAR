@@ -14,20 +14,20 @@ test('Day19: new Generator UI shell preserves edit and source preview IDs', () =
  assert.ok(segment); for (const id of [
   'day17-edit-screen','day17-edit-heading','day17-edit-back','day17-edit-return',
   'day17-edit-project-name','day18-original-preview','day18-preview-note','day18-preview-empty',
-  'day19-generator-shell','day19-detail-slider','day19-line-slider','day19-draw']) {
+  'day19-generator-shell','day19-detail-slider','day19-draw']) {
     assert.match(segment,new RegExp(`id="${id}"`),id);
   }
   assert.match(editor,/getProjectImage\(project\.id\)/);
   assert.match(editor,/URL\.revokeObjectURL/);
 });
 
-test('Day19: all processing controls are disabled and output cannot be saved', () => {
- assert.match(segment,/<fieldset[^>]+disabled/);
+test('Day19→20: draft controls active but output cannot be saved', () => {
+ assert.match(segment,/<fieldset[^>]+class="day19-controls day20-controls"/);
  assert.match(segment,/<button id="day19-draw"[^>]+disabled/);
- assert.match(segment,/оригиналната снимка, не генерирана скица/);
+ assert.match(segment,/Настройките са визуални|Изборите са само визуални/);
  assert.doesNotMatch(segment,/id="day19-(?:save|generate-now|apply)"/);
  assert.match(segment,/id="day19-detail-slider"[^>]+type="range"[^>]+min="1" max="5"/);
- assert.match(segment,/id="day19-line-slider"[^>]+type="range"[^>]+min="1" max="3"/);
+ assert.match(segment,/data-line="thin"/);
 });
 
 test('Day19: supplied SVG assets copied verbatim and referenced by the screen', () => {
@@ -36,7 +36,7 @@ test('Day19: supplied SVG assets copied verbatim and referenced by the screen', 
   assert.equal(existsSync(path),true,name);
   const text = readFileSync(path,'utf8');
   assert.match(text,new RegExp(`<svg width="${w}" height="${h}"`));
-  assert.ok(segment.includes(`./ui/generator/${name}`));
+  if (name !== 'mini-control.svg') assert.ok(segment.includes(`./ui/generator/${name}`)); // kept for future noise controls
  }
 });
 
@@ -44,7 +44,7 @@ test('Day19: CSS scoped to editor, responsive, and Home geometry unchanged', () 
  assert.match(css,/\.day19-header/);
  assert.match(css,/@media \(max-width:380px\)/);
  assert.match(css,/\.day17-edit-screen\[hidden\]/);
- assert.match(css,/\.day19-controls :disabled/);
+ assert.match(css,/\.day20-controls \.day19-chip/);
  assert.match(home,/initDay17EditPlaceholder/);
  assert.match(home,/sketchEditor\.open/);
  assert.match(main,/class="home-project-grid"/);
