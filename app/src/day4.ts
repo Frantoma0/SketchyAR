@@ -551,6 +551,44 @@ export async function applySketchToActiveCamera(projectId: string, sourceId: str
   }
 }
 
+/** Day 23.1: apply the ORIGINAL source in the already-running camera.
+ * All gesture and opacity state remain untouched; never start a second stream. */
+export async function applyOriginalToActiveCamera(projectId: string, sourceId: string,
+                                                  source: Blob): Promise<boolean> {
+  if (!drawingOpen || activeProjectId !== projectId || activeAssetId !== sourceId ||
+      !cameraEditTransition.editing) return false;
+  if (!source || source.size <= 0 || !source.type.startsWith('image/'))
+    throw new Error('Невалидна оригинална снимка');
+  // preparePreview handles large photographs without changing the stored Blob.
+  const prepared = await preparePreview(source);
+  const nextURL = prepared.url;
+  const image = el<HTMLImageElement>('drawing-user-image');
+  const oldURL = userImageUrl;
+  try {
+    image.src = nextURL;
+    await image.decode();
+    if (!drawingOpen || activeProjectId !== projectId || activeAssetId !== sourceId ||
+        !cameraEditTransition.editing) {
+      if (oldURL) image.src = oldURL;
+      else image.removeAttribute('src');
+      return false;
+    }
+    userImageUrl = nextURL;
+    if (oldURL) URL.revokeObjectURL(oldURL);
+    reflect();
+    D.log('info', 'day23.1', 'drawing.original.applied', { projectId, sourceId });
+    return true;
+  } catch (error) {
+    if (userImageUrl !== nextURL) {
+      if (oldURL) image.src = oldURL;
+      else image.removeAttribute('src');
+    }
+    throw error;
+  } finally {
+    if (userImageUrl !== nextURL) URL.revokeObjectURL(nextURL);
+  }
+}
+
 /** Called synchronously by the Homepage tap. The browser's native photo picker
  * opens FIRST; the Drawing view and camera open only after a valid image is chosen.
  * Cancelling the picker does not start a camera session or show the old demo grid.

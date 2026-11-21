@@ -47,7 +47,8 @@ test('G23: initial Figma graphics are unselected, and tap produces the real grap
   for (const l of ['thin','normal','thick'])
     assert.match(main,new RegExp(`class="day20-line-chip" data-line="${l}" aria-pressed="false"`));
   assert.match(main,/style-sketch-off\.svg" data-selected-src/);
-  assert.match(editor,/ui = DEFAULT_SKETCH_UI; showUI\(\)/);
+  assert.match(editor,/ui = DEFAULT_SKETCH_UI;/);
+  assert.match(editor,/style: storedProject\.editorStyle !== undefined/);
   assert.match(editor,/button\.setAttribute\('aria-pressed', String\(selected\)\)/);
   assert.match(editor,/selected \? art\?\.dataset\.selectedSrc : art\?\.dataset\.defaultSrc/);
 });
@@ -59,17 +60,20 @@ test('G23: original preview is the fallback for NONE/Manga/Comic and for all ung
   assert.match(editor,/savedProcessed = processed/);
   assert.doesNotMatch(editor,/preview\.src = savedURL/);
 });
-test('G23: Draw is enabled only for a real selected Sketch and writes only in the Draw handler',()=>{
+test('G23.1: preview is persisted on generation, Camera selection changes only on Draw',()=>{
   assert.match(main,/<button id="day19-draw"[^>]*disabled/);
-  assert.match(editor,/ui\.style === 'sketch' && Boolean\(processedURL\)/);
-  assert.match(editor,/drawButton\.disabled = !ready/);
+  assert.match(editor,/ui.style === null \|\| \(!sketchBuilding && ui.style === 'sketch'/);
+  assert.match(editor,/drawButton.disabled = !ready/);
   const before=editor.slice(0,editor.indexOf("drawButton.addEventListener('click'"));
-  assert.doesNotMatch(before,/saveProcessedPng\(/);
-  assert.match(editor,/await saveProcessedPng\(projectId, provenance,[\s\S]*?true\)/);
-  assert.match(editor,/await selectProcessedAsset\(projectId, sourceId, savedProcessed\.id\)/);
-  assert.match(editor,/await getProjectImage\(projectId\)/);
-  assert.match(editor,/if \(fresh\.source\.id !== sourceId/);
-  assert.match(editor,/drawBusy = true/);
+  assert.match(before,/await saveProcessedPng\(projectId, provenance,[\s\S]*?false\)/);
+  assert.match(before,/savedProcessed = stored/);
+  assert.match(before,/await styleWrites/);
+  const draw=editor.slice(editor.indexOf("drawButton.addEventListener('click'"));
+  assert.match(draw,/await selectOriginalForDrawing\(projectId, sourceId\)/);
+  assert.match(draw,/await selectProcessedAsset\(projectId, sourceId, savedProcessed.id\)/);
+  assert.match(draw,/await applyOriginalToActiveCamera\(projectId, sourceId, fresh.source.blob\)/);
+  assert.match(draw,/await applySketchToActiveCamera\(projectId, sourceId, savedProcessed.blob\)/);
+  assert.match(draw,/await openSavedDrawing\(projectId\)/);
 });
 test('G23: original source remains active; selected derivative checked for ownership',()=>{
   assert.match(store,/selectedProcessedAssetId\?: string/);

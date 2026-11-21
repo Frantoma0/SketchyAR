@@ -20,6 +20,9 @@ export function inspectBackupInput(projects: ProjectRecord[], assets: AssetRecor
   for (const project of projects) {
     const active = assetById.get(project.activeAssetId);
     if (active?.role !== 'source' || active.projectId !== project.id) throw new Error('Active source image missing');
+    if (project.editorStyle !== undefined && project.editorStyle !== null &&
+        !['sketch', 'manga', 'comic'].includes(project.editorStyle))
+      throw new Error('Invalid remembered editor style');
     if (project.selectedProcessedAssetId !== undefined) {
       const selected = assetById.get(project.selectedProcessedAssetId);
       if (selected?.role !== 'processed' || selected.projectId !== project.id ||

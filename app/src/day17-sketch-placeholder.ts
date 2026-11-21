@@ -3,9 +3,10 @@
  */
 import * as D from './diagnostics';
 import { planSketchRoute, SketchRouteMachine, choosePreviewRole } from './day18-navigation';
-import { getProjectImage, getLatestProcessedPreview, selectProcessedAsset, type AssetRecord, type ProjectRecord } from './storage/project-store';
+import { getProjectImage, getLatestProcessedPreview, selectProcessedAsset,
+  selectOriginalForDrawing, saveProjectEditorStyle, type AssetRecord, type ProjectRecord } from './storage/project-store';
 import { saveProcessedPng, type ProcessedProvenance } from './storage/day13-processed';
-import { openSavedDrawing, applySketchToActiveCamera } from './day4';
+import { openSavedDrawing, applySketchToActiveCamera, applyOriginalToActiveCamera } from './day4';
 import { generateSketchDraft, SketchDraftGate, SKETCH_V1_SETTINGS, type SketchDraftResult } from './day22-sketch-mode';
 import { DEFAULT_SKETCH_UI, setSketchUiDetail, setSketchUiLine, setSketchUiStyle,
   previewCanCompare, type SketchUiState } from './day20-sketch-state';
@@ -41,6 +42,8 @@ export function initDay17EditPlaceholder(): {
   let drawBusy = false;
   let draftResult: SketchDraftResult | null = null;
   let savedProcessed: AssetRecord | null = null;
+  let styleWrites: Promise<void> = Promise.resolve();
+  let userTouchedStyle = false;
   let editorIntent: 'edit-sketch' | 'edit-from-camera' = 'edit-sketch';
   const sketchGate = new SketchDraftGate();
   let comparisonHeld = false;
@@ -56,11 +59,13 @@ export function initDay17EditPlaceholder(): {
   const currentImageURL = (): string | null =>
     (comparisonHeld || ui.style !== 'sketch' || !processedURL) ? previewURL : processedURL;
   const updateDraw = (): void => {
-    const ready = !drawBusy && !sketchBuilding && ui.style === 'sketch' && Boolean(processedURL) &&
-      Boolean(sourceForSketch) && screen.hidden === false;
+    const sourceReady = Boolean(sourceForSketch) && screen.hidden === false;
+    const ready = !drawBusy && sourceReady &&
+      (ui.style === null || (!sketchBuilding && ui.style === 'sketch' &&
+        Boolean(processedURL) && Boolean(savedProcessed)));
     drawButton.disabled = !ready;
-    drawButton.setAttribute('aria-label', ready ? 'Рисувай с избраната скица' :
-      'Рисувай — избери Скица и изчакай истинския резултат');
+    drawButton.setAttribute('aria-label', !ready ? 'Рисувай — изчакай готово изображение' :
+      ui.style === null ? 'Рисувай с оригиналната снимка' : 'Рисувай с избраната скица');
     drawButton.setAttribute('aria-busy', String(drawBusy));
   };
   const showUI = (): void => {
@@ -80,6 +85,18 @@ export function initDay17EditPlaceholder(): {
     detail.parentElement?.style.setProperty('--day20-detail-progress', `${(ui.detail - 1) * 25}%`);
     if (previewURL && !comparisonHeld) preview.src = currentImageURL()!;
     updateDraw();
+  };
+  // Serialize style changes: very fast taps cannot write an older choice after a newer one.
+  // Preview selection and camera selection are intentionally distinct.
+  const rememberStyle = (): void => {
+    const source = sourceForSketch;
+    if (!source) return;
+    const next = ui.style;
+    styleWrites = styleWrites.catch(() => {}).then(() =>
+      saveProjectEditorStyle(source.projectId, source.sourceId, next));
+    void styleWrites.catch(error => {
+      D.log('error', 'day23.1', 'editor.style.save.failed', { message: String(error) });
+    });
   };
   // No Manga/Comic processing yet. A second style tap clears selection and shows original.
   // An already-completed Sketch draft is reusable until this editor closes.
@@ -103,20 +120,33 @@ export function initDay17EditPlaceholder(): {
         D.log('warn', 'day22', 'sketch.generate.stale-source', { projectId, sourceId });
         return;
       }
-      const url = URL.createObjectURL(result.png);
+      // Save a reusable preview as soon as Python finishes, BEFORE the user presses Draw.
+      // This does not select a processed bitmap for Camera. One original source stays active.
+      if (ui.style !== 'sketch') return;
+      await styleWrites; // do not persist an obsolete style after an earlier tap
+      if (!sketchGate.isCurrent(ticket, projectId, sourceId) || screen.hidden || ui.style !== 'sketch') return;
+      const provenance: ProcessedProvenance = {
+        sourceAssetId: sourceId, pipelineVersion: result.pipelineVersion,
+        params: { ...SKETCH_V1_SETTINGS, input: 'grayscale-u8', maxSide: 1024 },
+        modelId: 'none', backend: 'numpy-pyodide',
+      };
+      const stored = await saveProcessedPng(projectId, provenance,
+        result.png, result.width, result.height, false);
+      if (!sketchGate.isCurrent(ticket, projectId, sourceId) || screen.hidden) return;
+      const url = URL.createObjectURL(stored.blob);
       if (processedURL) URL.revokeObjectURL(processedURL);
       processedURL = url;
-      draftResult = result;
-      savedProcessed = null;
+      draftResult = null;
+      savedProcessed = stored;
       if (ui.style === 'sketch') preview.src = url;
-      previewNote.textContent = 'Реална скица · задръж върху изображението за оригинала.';
-      info.textContent = 'Скица: реален NumPy резултат. Детайлност и линии все още не променят PNG.';
+      previewNote.textContent = 'Запазена скица · задръж върху изображението за оригинала.';
+      info.textContent = 'Скицата е запазена за преглед. Детайлност и линии все още не променят PNG.';
       D.log('info', 'day22', 'sketch.generate.pass', {
         projectId, sourceId, width: result.width, height: result.height,
         inkPixels: result.inkPixels, pngBytes: result.png.size,
         pipelineVersion: result.pipelineVersion, requestId: result.requestId,
         processingMs: result.processingMs, workerRequestMs: result.workerRequestMs,
-        persisted: false,
+        persisted: true,
       });
       updateDraw();
     }).catch(error => {
@@ -137,7 +167,11 @@ export function initDay17EditPlaceholder(): {
   controls.forEach(button => button.addEventListener('click', () => {
     if (screen.hidden || drawBusy) return;
     resetComparison();
-    if (button.dataset.style) ui = setSketchUiStyle(ui, button.dataset.style);
+    if (button.dataset.style) {
+      ui = setSketchUiStyle(ui, button.dataset.style);
+      userTouchedStyle = true;
+      rememberStyle();
+    }
     if (button.dataset.line) ui = setSketchUiLine(ui, button.dataset.line);
     showUI();
     if (ui.style === 'sketch') requestSketch();
@@ -155,22 +189,41 @@ export function initDay17EditPlaceholder(): {
     ui = setSketchUiDetail(ui, Number(detail.value)); showUI();
     D.log('info', 'day20', 'generator.detail.visual-only', { detail: ui.detail });
   });
-  // Day 23: Draw is the only write gateway. Preview/deselect NEVER change IndexedDB.
-  // Save the real PNG and select it atomically. Unimplemented detail/line UI values
-  // are deliberately NOT recorded as having affected the generated pixels.
+  // Day 23.1: the preview is saved on generation, whereas ONLY Draw changes Camera selection.
+  // Detail and line remain visual and are never claimed to change the PNG.
   drawButton.addEventListener('click', () => {
-    if (drawBusy || screen.hidden || ui.style !== 'sketch' || sketchBuilding ||
-        !processedURL || !sourceForSketch) return;
+    if (drawBusy || screen.hidden || !sourceForSketch ||
+        (ui.style !== null && ui.style !== 'sketch') ||
+        (ui.style === 'sketch' && (sketchBuilding || !processedURL || !savedProcessed))) return;
     const { projectId, sourceId } = sourceForSketch;
     const png = draftResult?.png ?? savedProcessed?.blob;
-    if (!png) return;
+    if (ui.style === 'sketch' && !png) return;
     drawBusy = true;
     updateDraw();
     info.textContent = 'Записване на скицата и подготовка на камерата…';
     void (async () => {
+      await styleWrites;
+      const selectedStyle = ui.style;
       const fresh = await getProjectImage(projectId);
-      if (fresh.source.id !== sourceId || screen.hidden || ui.style !== 'sketch')
-        throw new Error('Оригиналът е сменен. Записът е отказан.');
+      if (fresh.source.id !== sourceId || screen.hidden ||
+          (selectedStyle !== null && selectedStyle !== 'sketch'))
+        throw new Error('Оригиналът или режимът е сменен. Записът е отказан.');
+      if (selectedStyle === null) {
+        // Draw with no selected style always uses the pristine original.
+        await selectOriginalForDrawing(projectId, sourceId);
+        D.log('info', 'day23.1', 'original.selected-for-drawing', { projectId, sourceId });
+        if (editorIntent === 'edit-from-camera') {
+          const applied = await applyOriginalToActiveCamera(projectId, sourceId, fresh.source.blob);
+          if (!applied) throw new Error('Камерата е сменена; оригиналът е избран за следващо отваряне.');
+          drawBusy = false;
+          close();
+        } else {
+          drawBusy = false;
+          close();
+          await openSavedDrawing(projectId);
+        }
+        return;
+      }
       if (draftResult) {
         const provenance: ProcessedProvenance = {
           sourceAssetId: sourceId, pipelineVersion: draftResult.pipelineVersion,
@@ -306,7 +359,10 @@ export function initDay17EditPlaceholder(): {
     editorIntent = intent;
     returnFocus = trigger;
     projectName.textContent = project.title; // textContent avoids title injection
-    ui = DEFAULT_SKETCH_UI; showUI(); // default: no selected style, full original photo
+    ui = DEFAULT_SKETCH_UI;
+    userTouchedStyle = false;
+    controls.forEach(button => { if (button.dataset.style) button.disabled = true; });
+    showUI(); // Before loading persisted metadata, show original without a premature choice.
     info.textContent = 'Избери стил. Скица генерира истински PNG; детайлност и линии предстоят.';
     previewNote.textContent = 'Зарежда се оригиналната снимка…';
     releasePreview();
@@ -320,7 +376,12 @@ export function initDay17EditPlaceholder(): {
     void (async () => {
       let url: string | null = null;
       try {
-        const { source } = await getProjectImage(project.id);
+        // If the user closed and immediately reopened, wait for the prior style write.
+        // No untrusted external async work is performed inside an IndexedDB transaction.
+        await styleWrites.catch(error => {
+          D.log('warn', 'day23.1', 'editor.style.previous-save.failed', { message: String(error) });
+        });
+        const { project: storedProject, source } = await getProjectImage(project.id);
         if (!route.isActive(token) || screen.hidden) return;
         // The current DB schema keeps activeAssetId pointing at the SOURCE.
         // Never imply that the source preview has been processed.
@@ -329,6 +390,11 @@ export function initDay17EditPlaceholder(): {
         if (!route.isActive(token) || screen.hidden) return;
         previewURL = url;
         sourceForSketch = { projectId: project.id, sourceId: source.id, blob: source.blob };
+        // Legacy v0.23 projects with an applied PNG had no editorStyle field.
+        // Explicit null means the user consciously switched back to Original.
+        if (!userTouchedStyle) ui = { ...ui,
+          style: storedProject.editorStyle !== undefined ? storedProject.editorStyle :
+            (storedProject.selectedProcessedAssetId ? 'sketch' : null) };
         url = null;
         preview.src = previewURL;
         preview.hidden = false;
@@ -347,10 +413,12 @@ export function initDay17EditPlaceholder(): {
             if (!route.isActive(token) || screen.hidden) { URL.revokeObjectURL(savedURL); return; }
             processedURL = savedURL;
             savedProcessed = processed;
-            // Opening via pencil always shows ORIGINAL with no style selected.
+            // Restore the last editor selection AND the independently saved preview.
+            // An explicitly deselected style still shows the original.
             showUI();
-            previewNote.textContent = 'Оригинална снимка · натисни „Скица“ за контура.';
-            info.textContent = 'Тази скица е запазена по-рано. Изборите по-долу са само визуални и още не я преизчисляват.';
+            previewNote.textContent = ui.style === 'sketch' ?
+              'Запазена скица · задръж за оригинала.' : 'Оригинална снимка.';
+            info.textContent = 'Запазен контур, достъпен при избор „Скица“. Детайлност и линии предстоят.';
             D.log('info', 'day20', 'compare.processed.available', { projectId: project.id,
               assetId: processed.id });
           }
@@ -359,8 +427,11 @@ export function initDay17EditPlaceholder(): {
         }
         // Day 22: when no saved PNG exists, produce a REAL temporary preview.
         // The original remains pristine; no IndexedDB or camera operation occurs.
-        if (route.isActive(token) && !screen.hidden && ui.style === 'sketch' && !processedURL)
-          requestSketch();
+        if (route.isActive(token) && !screen.hidden) {
+          controls.forEach(button => { if (button.dataset.style) button.disabled = false; });
+          showUI();
+          if (ui.style === 'sketch' && !processedURL) requestSketch();
+        }
       } catch (error) {
         if (route.isActive(token)) {
           previewNote.textContent = 'Оригиналът не можа да се покаже. Проектът не е променен.';

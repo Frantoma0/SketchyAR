@@ -18,6 +18,9 @@ export interface ProjectRecord {
   activeAssetId: string;
   /** Day 23: optional, source-owned derivative selected for Camera. Source stays active. */
   selectedProcessedAssetId?: string;
+  /** Persist editor selection independently of the image currently applied in Camera.
+   * null explicitly means Original, including for legacy projects with a selected PNG. */
+  editorStyle?: 'sketch' | 'manga' | 'comic' | null;
   lastOpenedAt?: string;
   guide?: GuidePlanV1;
 }
@@ -222,6 +225,7 @@ export async function replaceProjectSource(projectId: string, file: File,
   const timestamp = now();
   const project = { ...previous, activeAssetId: sourceId, updatedAt: timestamp, guide: undefined };
   delete project.selectedProcessedAssetId; // old derivative must not attach to the replacement source
+  delete project.editorStyle; // replacing the original also resets remembered editor mode
   const tx = db.transaction(['projects', 'assets', 'overlay_presets'], 'readwrite');
   const done = txDone(tx);
   tx.objectStore('projects').put(project);
@@ -291,6 +295,53 @@ export async function selectProcessedAsset(projectId: string, sourceId: string,
   };
   try { await finished; } catch (error) {
     if (invalid) throw new Error('Проектът или обработената скица са сменени; изборът е отказан.');
+    throw error;
+  }
+}
+
+/** Day 23.1: retain the last editor mode without changing Camera's selected PNG.
+ * No DB version bump: this is an optional field in the existing project store.
+ * null is meaningful for older projects: it prevents falling back to Sketch mode.
+ */
+export async function saveProjectEditorStyle(projectId: string, sourceId: string,
+                                            style: ProjectRecord['editorStyle']): Promise<void> {
+  if (style !== null && style !== 'sketch' && style !== 'manga' && style !== 'comic')
+    throw new Error('Невалиден режим на редактора');
+  const db = await openProjectDB();
+  const tx = db.transaction('projects', 'readwrite');
+  const done = txDone(tx);
+  let invalid = false;
+  const store = tx.objectStore('projects');
+  const get = store.get(projectId) as IDBRequest<ProjectRecord | undefined>;
+  get.onsuccess = () => {
+    const project = get.result;
+    if (!project || project.activeAssetId !== sourceId) { invalid = true; tx.abort(); return; }
+    store.put({ ...project, editorStyle: style });
+  };
+  try { await done; } catch (error) {
+    if (invalid) throw new Error('Проектът или оригиналът е сменен. Режимът не е записан.');
+    throw error;
+  }
+}
+
+/** Draw with Original: clear only the camera selection, never delete the old PNG.
+ * The source image and all overlay presets are preserved. */
+export async function selectOriginalForDrawing(projectId: string, sourceId: string): Promise<void> {
+  const db = await openProjectDB();
+  const tx = db.transaction('projects', 'readwrite');
+  const done = txDone(tx);
+  let invalid = false;
+  const store = tx.objectStore('projects');
+  const get = store.get(projectId) as IDBRequest<ProjectRecord | undefined>;
+  get.onsuccess = () => {
+    const project = get.result;
+    if (!project || project.activeAssetId !== sourceId) { invalid = true; tx.abort(); return; }
+    const updated = { ...project, editorStyle: null };
+    delete updated.selectedProcessedAssetId;
+    store.put(updated);
+  };
+  try { await done; } catch (error) {
+    if (invalid) throw new Error('Проектът или оригиналът е сменен. Връщането е отказано.');
     throw error;
   }
 }
@@ -387,6 +438,9 @@ export async function assertProjectIntegrity(projectId: string): Promise<void> {
   if (!project) throw new Error('Няма такъв проект');
   const byId = new Map(assets.map(a => [a.id, a]));
   if (byId.get(project.activeAssetId)?.role !== 'source') throw new Error('Невалидна активна снимка');
+  if (project.editorStyle !== undefined && project.editorStyle !== null &&
+      !['sketch', 'manga', 'comic'].includes(project.editorStyle))
+    throw new Error('Невалиден режим на редактора');
   if (project.selectedProcessedAssetId) {
     const selected = byId.get(project.selectedProcessedAssetId);
     if (selected?.role !== 'processed' || selected.projectId !== projectId ||
@@ -541,6 +595,8 @@ export async function auditProjectDatabase(): Promise<{
   const invalidProjectIds = projects.filter(p =>
     byAsset.get(p.activeAssetId)?.role !== 'source' ||
     byAsset.get(p.activeAssetId)?.projectId !== p.id ||
+    (p.editorStyle !== undefined && p.editorStyle !== null &&
+      !['sketch', 'manga', 'comic'].includes(p.editorStyle)) ||
     (p.selectedProcessedAssetId !== undefined &&
       (byAsset.get(p.selectedProcessedAssetId)?.role !== 'processed' ||
        byAsset.get(p.selectedProcessedAssetId)?.projectId !== p.id ||

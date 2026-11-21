@@ -336,3 +336,21 @@ test('Day23: backup-v1 refuses a missing or mismatched selected processed asset'
   const invalid=fixture(); invalid.projects[0].selectedProcessedAssetId='not-an-uuid';
   await assert.rejects(()=>verifyBackup(archive(invalid)),/project record/);
 });
+
+test('G23.1: editor style survives ZIP v1 verify; explicitly none is different from absent', async()=>{
+  for (const editorStyle of ['sketch','manga','comic',null]) {
+    const m=fixture();
+    m.projects[0].editorStyle=editorStyle;
+    const checked=await verifyBackup(archive(m));
+    assert.equal(checked.manifest.projects[0].editorStyle,editorStyle);
+    assert.equal(checked.manifest.projects[0].activeAssetId,SRC);
+  }
+  const legacy=await verifyBackup(archive(fixture()));
+  assert.equal(legacy.manifest.projects[0].editorStyle,undefined);
+});
+test('G23.1: backup rejects forged editor profile without touching original data', async()=>{
+  for (const editorStyle of ['other',22,{},false]) {
+    const m=fixture();m.projects[0].editorStyle=editorStyle;
+    await assert.rejects(()=>verifyBackup(archive(m)),/Невалиден project record/);
+  }
+});

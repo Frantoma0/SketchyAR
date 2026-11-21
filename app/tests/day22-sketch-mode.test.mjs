@@ -66,10 +66,10 @@ test('D22+23: original Figma shell, stored PNG comparison and zoom remain', () =
 test('D22+23: Draw enables only with real Sketch; detail and line remain visual' , () => {
   const editor=read('src/day17-sketch-placeholder.ts');
   const service=read('src/day22-sketch-mode.ts');
-  assert.match(editor,/persisted: false/);
+  assert.match(editor,/persisted: true/);
   assert.match(editor,/Детайлност и линии все още не променят PNG/);
   assert.doesNotMatch(service,/saveProcessedPng/);
   const pkg=JSON.parse(read('package.json'));
-  assert.equal(pkg.version,'0.23.0');
-  assert.match(editor,/ui\.style === 'sketch' && Boolean\(processedURL\)/);
+  assert.equal(pkg.version,'0.23.1');
+  assert.match(editor,/!sketchBuilding && ui\.style === 'sketch' &&[\s\S]*?Boolean\(processedURL\) && Boolean\(savedProcessed\)/);
 });

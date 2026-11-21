@@ -1,0 +1,38 @@
+SketchyAR Day 23.1 — Saved Sketch preview + remembered editor selection + Draw original
+Baseline: v0.23.0. Apply archive in existing repository root.
+
+PowerShell:
+cd "C:\Users\vikit\Desktop\AR Drawing Проект\Код\ar-drawing"
+Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day23_1_Sketch_Persistence_Hotfix_v0.23.1.zip" -DestinationPath . -Force
+cd app
+npm ci --include=dev
+npm run typecheck
+npm run build
+npm run test:day23
+cd ..
+python -m pytest python_engine -q
+git diff --check
+git status
+
+Review changed files. Ensure no personal photos / data backups are staged. Then:
+git add app/package.json app/package-lock.json
+git add app/src/day17-sketch-placeholder.ts app/src/day4.ts
+git add app/src/storage/project-store.ts app/src/storage/day13-backup-preflight.ts app/src/storage/day14-backup-service.ts
+git add app/tests/day14-service.test.mjs app/tests/day20-generator-state.test.mjs
+git add app/tests/day21-camera-navigation.test.mjs app/tests/day22-sketch-mode.test.mjs
+git add app/tests/day23-sketch-draw.test.mjs app/tests/day23-1-editor-persistence.test.mjs
+git add docs/day23-1-editor-persistence.md Day23_1_INSTALL.txt
+git diff --cached --check
+git diff --cached --stat
+git commit -m "fix(day23): persist Sketch preview and style, allow Draw original"
+git push origin main
+git log -1 --oneline
+
+G23.1 iPhone:
+[ ] Version v0.23.1, new commit, deployment successful.
+[ ] Sketch generates and is visible; Back WITHOUT Draw then pencil: Sketch remains selected, PNG shown.
+[ ] Second Sketch tap deselects and displays original; close/reopen: mode remains none.
+[ ] Draw with no style opens camera with ORIGINAL image (even after previously applied Sketch).
+[ ] Select Sketch, Draw applies PNG; reopens from gallery and after force-close.
+[ ] Manga and Comic selection remembers choice, but no fake processed preview or Draw.
+[ ] Position/opacity/lock/mirror remain; Day7 audit; ZIP Verify PASS.

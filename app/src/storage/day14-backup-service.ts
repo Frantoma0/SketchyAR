@@ -98,6 +98,8 @@ function validateMetadata(m: unknown): asserts m is BackupManifestV1 {
     if (!isObj(p) || !uuid(p.id) || !text(p.title, 100) || !p.title ||
         !stamp(p.createdAt) || !stamp(p.updatedAt) || !uuid(p.activeAssetId) ||
         (p.selectedProcessedAssetId !== undefined && !uuid(p.selectedProcessedAssetId)) ||
+        (p.editorStyle !== undefined && p.editorStyle !== null &&
+         !['sketch','manga','comic'].includes(String(p.editorStyle))) ||
         (p.lastOpenedAt !== undefined && !stamp(p.lastOpenedAt)) ||
         (p.guide !== undefined && !isGuidePlanV1(p.guide))) throw new Error('Невалиден project record');
   }
@@ -156,7 +158,7 @@ function omitUndefinedOptionals<T extends object>(row: T, keys: readonly string[
 }
 export function normalizeBackupManifestOptionals(m: BackupManifestV1): BackupManifestV1 {
   const projects = m.projects.map(p => {
-    const clean = omitUndefinedOptionals(p, ['lastOpenedAt', 'guide', 'selectedProcessedAssetId']);
+    const clean = omitUndefinedOptionals(p, ['lastOpenedAt', 'guide', 'selectedProcessedAssetId', 'editorStyle']);
     if (clean.guide) {
       clean.guide = omitUndefinedOptionals(clean.guide, ['generator']);
     }
