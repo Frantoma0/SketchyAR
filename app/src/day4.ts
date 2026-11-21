@@ -6,6 +6,7 @@ import { cameraController, type CameraSnapshot } from './camera-controller';
 import { isBusy } from './day2';
 import { createImageProject, replaceProjectSource, getProjectImage, assertProjectIntegrity, saveProjectOverlay, type OverlayPreset, type OverlaySnapshot } from './storage/project-store';
 import { makeThumbnail } from './storage/thumbnail';
+import { CameraEditTransition, sameDrawingPlacement, type CameraEditToken } from './day21-camera-navigation';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 let drawingOpen = false;
@@ -23,6 +24,33 @@ let artworkMirrored = false;
 let pendingNewDrawing = false;
 let activeProjectId: string | null = null;
 let activeAssetId: string | null = null;
+// Day 21: the editor overlays the existing camera; never call getUserMedia again on return.
+const cameraEditTransition = new CameraEditTransition();
+type CameraSketchEditOpener = (
+  projectId: string, trigger: HTMLButtonElement, stillCurrent: () => boolean,
+  onClosed: () => void
+) => Promise<boolean>;
+let cameraSketchEditOpener: CameraSketchEditOpener | null = null;
+let changeMenuOpen = false;
+function closeCameraChangeMenu(): void {
+  const menu = document.getElementById('sketch-camera-change-menu');
+  const trigger = document.getElementById('sketch-camera-change-image');
+  if (menu) menu.hidden = true;
+  if (trigger) trigger.setAttribute('aria-expanded', 'false');
+  changeMenuOpen = false;
+}
+function toggleCameraChangeMenu(): void {
+  if (!drawingOpen || entering || cameraEditTransition.currentPhase !== 'idle') return;
+  changeMenuOpen = !changeMenuOpen;
+  el<HTMLElement>('sketch-camera-change-menu').hidden = !changeMenuOpen;
+  el<HTMLButtonElement>('sketch-camera-change-image').setAttribute('aria-expanded', String(changeMenuOpen));
+  if (changeMenuOpen) el<HTMLButtonElement>('sketch-camera-menu-edit').focus();
+}
+
+export function registerCameraSketchEditor(openEditor: CameraSketchEditOpener): void {
+  cameraSketchEditOpener = openEditor;
+}
+
 
 /** Day 6: debounce continuous gestures, serialize IndexedDB transactions, and
  * flush at explicit user checkpoints. No new object store or network service.
@@ -339,7 +367,7 @@ function initArtworkGestures(): void {
     return { x: event.clientX - rect.left, y: event.clientY - rect.top };
   };
   stage.addEventListener('pointerdown', (event) => {
-    if (!drawingOpen || entering || artworkLocked || fingers.size >= 2) return;
+    if (!drawingOpen || entering || cameraEditTransition.currentPhase !== 'idle' || artworkLocked || fingers.size >= 2) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     event.preventDefault();
     fingers.set(event.pointerId, toLocal(event));
@@ -406,7 +434,10 @@ export async function openDrawing(): Promise<void> {
 }
 
 async function exit(): Promise<void> {
-  if (!drawingOpen || entering) return;
+  if (!drawingOpen || entering || cameraEditTransition.editing) return;
+  cameraEditTransition.end();
+  el<HTMLElement>('day4-screen').inert = false;
+  closeCameraChangeMenu();
   // Explicit Back/Save: persist outstanding gestures BEFORE clearing active IDs.
   // iOS can suspend a backgrounded tab; do not depend on pagehide alone.
   let saveError: unknown = null;
@@ -497,6 +528,58 @@ export function requestNewDrawing(): void {
     pendingNewDrawing = false;
     D.log('warn', 'day4', 'drawing.picker.failed', { message: String(error) });
     window.alert('Неуспешно отваряне на галерията. Опитай отново.');
+  }
+}
+
+/** Read-only camera -> sketch editor. Flush the exact current preset BEFORE navigation.
+ * The camera and drawing overlay stay mounted and keep the same stream/Blob URL.
+ * If saving or source loading fails, preserve the visible camera and old positioning.
+ */
+async function enterCameraSketchEditor(): Promise<void> {
+  closeCameraChangeMenu();
+  const token: CameraEditToken | null = cameraEditTransition.begin(activeProjectId, drawingOpen && !entering);
+  if (!token) {
+    el('sketch-camera-status').textContent = 'Избери изображение, преди да променяш скицата.';
+    return;
+  }
+  const sourceId = activeAssetId;
+  const before = snapshotOverlay();
+  const screen = el<HTMLElement>('day4-screen');
+  screen.inert = true; // block gestures and camera controls during async save + editor
+  clearFingers();
+  const stillCurrent = (): boolean => cameraEditTransition.isPending(token, activeProjectId, drawingOpen) &&
+    activeAssetId === sourceId;
+  const restore = (): void => {
+    screen.inert = false;
+    const same = sameDrawingPlacement(before, snapshotOverlay());
+    D.log(same ? 'info' : 'warn', 'day21', 'camera.editor.returned', {
+      projectId: token.projectId, placementUnchanged: same,
+      reusedCamera: true, sourceUnchanged: activeAssetId === sourceId,
+    });
+    cameraEditTransition.end();
+    // Reuse the existing video session; do not reacquire camera hardware.
+    el<HTMLButtonElement>('sketch-camera-change-image').focus();
+  };
+  try {
+    await flushPresetSave();
+    if (!stillCurrent()) return;
+    if (!cameraSketchEditOpener) throw new Error('Редакторът не е готов');
+    const opened = await cameraSketchEditOpener(token.projectId,
+      el<HTMLButtonElement>('sketch-camera-change-image'), stillCurrent, restore);
+    if (!stillCurrent()) return;
+    if (!opened || !cameraEditTransition.commit(token, activeProjectId, drawingOpen))
+      throw new Error('Редакторът не можа да бъде отворен');
+    D.log('info', 'day21', 'camera.editor.opened', { projectId: token.projectId,
+      assetId: sourceId, reusedCamera: true });
+  } catch (error) {
+    D.log('warn', 'day21', 'camera.editor.failed', { message: String(error) });
+    el('sketch-camera-status').textContent = 'Редакторът не можа да се отвори. Камерата и рисунката са запазени.';
+  } finally {
+    if (cameraEditTransition.currentPhase === 'pending') {
+      cameraEditTransition.end();
+      screen.inert = false;
+      el<HTMLButtonElement>('sketch-camera-change-image').focus();
+    }
   }
 }
 
@@ -655,16 +738,32 @@ export function initDay4(): void {
     D.log('info', 'day4', 'camera-capability-report', info);
   });
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && drawingOpen) void exit();
+    if (event.key !== 'Escape' || !drawingOpen) return;
+    if (cameraEditTransition.editing || cameraEditTransition.currentPhase === 'pending') return;
+    if (changeMenuOpen) { event.preventDefault(); closeCameraChangeMenu(); el<HTMLButtonElement>('sketch-camera-change-image').focus(); return; }
+    void exit();
   });
   // Day 5: Back closes the camera but leaves the source safely stored in IndexedDB.
   el<HTMLButtonElement>('sketch-camera-back').addEventListener('click', () => {
     void exit(); // Current temporary image is discarded when leaving Drawing.
   });
-  el<HTMLButtonElement>('sketch-camera-change-image').addEventListener('click', () => {
-    // Keep the same user-gesture picker and image-loading path used by the former left button.
-    // Cancelling leaves the current image and camera untouched.
+  // Day 21: two explicit actions; preserve the original native picker unchanged.
+  el<HTMLButtonElement>('sketch-camera-change-image').addEventListener('click', toggleCameraChangeMenu);
+  el<HTMLButtonElement>('sketch-camera-menu-edit').addEventListener('click', () => {
+    void enterCameraSketchEditor();
+  });
+  el<HTMLButtonElement>('sketch-camera-menu-source').addEventListener('click', () => {
+    closeCameraChangeMenu();
+    // Synchronous forwarding within the same user tap — required for the iOS file picker.
     el<HTMLButtonElement>('btn-day4-image').click();
+  });
+  document.addEventListener('pointerdown', event => {
+    if (!changeMenuOpen) return;
+    const target = event.target;
+    if (!(target instanceof Node)) return;
+    if (el<HTMLElement>('sketch-camera-change-menu').contains(target) ||
+        el<HTMLElement>('sketch-camera-change-image').contains(target)) return;
+    closeCameraChangeMenu();
   });
   el<HTMLButtonElement>('sketch-camera-grid').addEventListener('click', () => {
     el<HTMLButtonElement>('btn-day4-grid').click();

@@ -10,7 +10,8 @@ import { DEFAULT_SKETCH_UI, setSketchUiDetail, setSketchUiLine, setSketchUiStyle
   previewCanCompare, type SketchUiState } from './day20-sketch-state';
 
 export function initDay17EditPlaceholder(): {
-  open(project: Pick<ProjectRecord, 'id' | 'title'>, trigger: HTMLElement): void;
+  open(project: Pick<ProjectRecord, 'id' | 'title'>, trigger: HTMLElement,
+    intent?: 'edit-sketch' | 'edit-from-camera', onClosed?: () => void): boolean;
   close(): void;
 } {
   const screen = document.getElementById('day17-edit-screen') as HTMLElement;
@@ -107,6 +108,7 @@ export function initDay17EditPlaceholder(): {
   window.addEventListener('blur', resetComparison);
   document.addEventListener('visibilitychange', () => { if (document.hidden) resetComparison(); });
   let returnFocus: HTMLElement | null = null;
+  let afterClose: (() => void) | null = null;
   let previewURL: string | null = null;
 
   // Zoom reuses the already-loaded source Blob URL, never fetches or writes data.
@@ -149,14 +151,19 @@ export function initDay17EditPlaceholder(): {
     document.body.classList.remove('day17-edit-open');
     const focus = returnFocus;
     returnFocus = null;
+    const callback = afterClose;
+    afterClose = null;
+    callback?.(); // release camera inert before restoring focus
     if (focus?.isConnected) focus.focus();
     D.log('info', 'day17', 'sketch.edit.closed');
   };
-  const open = (project: Pick<ProjectRecord, 'id' | 'title'>, trigger: HTMLElement): void => {
-    if (!screen.hidden) return;
-    planSketchRoute('edit-sketch', project.id);
-    const token = route.openExisting('edit-sketch', project.id);
-    if (token === null) return;
+  const open = (project: Pick<ProjectRecord, 'id' | 'title'>, trigger: HTMLElement,
+    intent: 'edit-sketch' | 'edit-from-camera' = 'edit-sketch', onClosed?: () => void): boolean => {
+    if (!screen.hidden) return false;
+    planSketchRoute(intent, project.id);
+    const token = route.openExisting(intent, project.id);
+    if (token === null) return false;
+    afterClose = onClosed ?? null;
     returnFocus = trigger;
     projectName.textContent = project.title; // textContent avoids title injection
     ui = DEFAULT_SKETCH_UI; showUI(); // one UI draft per open; never persist unimplemented recipes
@@ -168,7 +175,7 @@ export function initDay17EditPlaceholder(): {
     document.body.classList.add('day17-edit-open');
     back.focus();
     D.log('info', 'day19', 'generator.shell.opened', { projectId: project.id, readOnly: true });
-    D.log('info', 'day18', 'route.enter', { intent: 'edit-sketch', projectId: project.id });
+    D.log('info', 'day18', 'route.enter', { intent, projectId: project.id });
     void (async () => {
       let url: string | null = null;
       try {
@@ -215,6 +222,7 @@ export function initDay17EditPlaceholder(): {
         if (url) URL.revokeObjectURL(url);
       }
     })();
+    return true;
   };
   zoomButton.addEventListener('click', openZoom);
   zoomClose.addEventListener('click', () => closeZoom());
@@ -229,7 +237,7 @@ export function initDay17EditPlaceholder(): {
   back.addEventListener('click', close);
   returnButton.addEventListener('click', close);
   screen.addEventListener('keydown', event => {
-    if (event.key === 'Escape') { event.preventDefault(); close(); return; }
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); return; }
     if (event.key !== 'Tab') return;
     const focusable = [...screen.querySelectorAll<HTMLButtonElement | HTMLInputElement>(
       'button:not(:disabled):not([hidden]), input:not(:disabled):not([hidden])'

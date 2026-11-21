@@ -1082,3 +1082,29 @@ body.day19-zoom-open { overflow:hidden; }
 .day20-figma-screen .day19-style-list.day20-figma-styles { transform:translateY(-6px); }
 .day20-figma-screen .day20-figma-lines { transform:translateY(4px); }
 .day20-figma-screen .day20-figma-draw { transform:translateY(5px); }
+
+
+/* Day 21 — tiny camera image menu. Original camera button/slider art stays intact.
+   The editor sits above the unchanged live camera (z-index 1800 > 1200).
+   The photo picker is still invoked synchronously from a user tap. */
+.sketch-camera-change-menu[hidden] { display:none !important; }
+.drawing-screen .sketch-camera-change-menu {
+  position:absolute; right:max(18px,env(safe-area-inset-right,0px));
+  top:calc(env(safe-area-inset-top,0px) + 65px);
+  width:min(240px,calc(100vw - 36px)); z-index:20;
+  display:grid; gap:5px; padding:9px;
+  background:#faf8f1 url('./ui/home-background.png') center / cover;
+  border:1.5px solid #534c45; border-radius:17px;
+  box-shadow:3px 5px 0 rgba(0,0,0,.32),0 12px 32px rgba(0,0,0,.28);
+  color:#38332e;
+}
+.drawing-screen .sketch-camera-change-menu button {
+  width:100%; min-height:47px; color:#342f29;
+  background:rgba(255,255,255,.84); border:1.5px solid #78716a;
+  border-radius:12px; font:700 22px/1.15 'Caveat',cursive;
+  text-align:center; padding:8px; touch-action:manipulation;
+}
+.drawing-screen .sketch-camera-change-menu button:active { background:#ddd7cd; }
+.drawing-screen .sketch-camera-change-menu button:focus-visible {
+  outline:3px solid #37302a; outline-offset:2px;
+}

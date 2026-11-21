@@ -330,9 +330,16 @@ document.getElementById('app')!.innerHTML = `
       <button class="sketch-camera-back" id="sketch-camera-back" type="button" aria-label="Назад към началната страница" title="Начална страница">
         <img src="./ui/camera/import.svg" alt="" />
       </button>
-      <button class="sketch-camera-change-image" id="sketch-camera-change-image" type="button" aria-label="Смени изображението от телефона" title="Избери друга снимка">
+      <button class="sketch-camera-change-image" id="sketch-camera-change-image" type="button"
+              aria-label="Изображение и скица — отвори меню" aria-controls="sketch-camera-change-menu"
+              aria-expanded="false" title="Снимка и скица">
         <img src="./ui/camera/change-image.svg" alt="" />
       </button>
+      <div id="sketch-camera-change-menu" class="sketch-camera-change-menu" role="group"
+           aria-label="Действия за текущата рисунка" hidden>
+        <button id="sketch-camera-menu-edit" type="button">Промени скицата</button>
+        <button id="sketch-camera-menu-source" type="button">Смени снимката</button>
+      </div>
     </div>
     <div class="drawing-bottom-controls sketch-camera-bottom">
       <div class="sketch-camera-slider-label-row">

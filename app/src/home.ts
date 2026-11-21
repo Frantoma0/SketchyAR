@@ -6,6 +6,8 @@ import * as D from './diagnostics';
 import { initOfflineStatus } from './offline-status';
 import { initDay16BackupUI } from './day16-backup-ui';
 import { initDay17EditPlaceholder } from './day17-sketch-placeholder';
+import { registerCameraSketchEditor } from './day4';
+import { getProjectImage } from './storage/project-store';
 import { listProjectThumbnails, openProjectDB, upgradeLegacyThumbnails, renameImageProject, deleteImageProject, type ProjectThumbnail } from './storage/project-store';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -227,6 +229,19 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
   let pictureURLs: string[] = [];
   let cachedCards: ProjectThumbnail[] = [];
   const sketchEditor = initDay17EditPlaceholder();
+  // Day 21: the active camera remains underneath the read-only Generator overlay.
+  // Fetch the project fresh from IndexedDB (the gallery cache may be outdated).
+  registerCameraSketchEditor(async (projectId, trigger, stillCurrent, onClosed) => {
+    try {
+      const { project } = await getProjectImage(projectId);
+      if (!stillCurrent()) return false;
+      return sketchEditor.open(project, trigger, 'edit-from-camera', onClosed);
+    } catch (error) {
+      D.log('warn', 'day21', 'camera.edit.source.failed', { projectId, message: String(error) });
+      return false;
+    }
+  });
+
   function placeholder(): HTMLElement {
     const tile = document.createElement('div');
     tile.className = 'home-project-tile';

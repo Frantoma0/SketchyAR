@@ -1,0 +1,31 @@
+SketchyAR Day 21 — v0.21.0 (camera -> edit / change source)
+==========================================================
+Prerequisite: your existing repository is already at v0.20.3.
+Do NOT delete your local projects, uninstall the PWA, or restore ZIP.
+
+Windows PowerShell (run from ar-drawing root):
+
+Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day21_Changes_Only_v0.21.0.zip" -DestinationPath . -Force
+cd app
+npm ci --include=dev
+npm run typecheck
+npm run build
+npm run test:day21
+cd ..
+python -m pytest python_engine -q
+git diff --check
+git status
+
+If ALL checks pass, and the staged files are expected:
+git add app/package.json app/package-lock.json app/src/day21-camera-navigation.ts app/src/day4.ts app/src/home.ts app/src/day17-sketch-placeholder.ts app/src/main.ts app/src/styles.css app/tests/day20-spacing-refinement.test.mjs app/tests/day21-camera-navigation.test.mjs docs/day21.md Day21_INSTALL.txt
+git diff --cached --check
+git diff --cached --stat
+git commit -m "Day 21: safe camera-to-sketch-editor route with source picker preserved"
+git push origin main
+git log -1 --oneline
+
+After successful GitHub Pages deployment: perform the iPhone G21 checks in docs/day21.md.
+
+Pass criteria: return from Editor does NOT reset x/y, scale, rotation,
+opacity, mirror, Lock, grid; original native picker still works; cancelled
+picker does not change current source; no second getUserMedia on normal return.
