@@ -1,0 +1,23 @@
+SketchyAR v0.19.0 — Ден 19 (Generator UI shell)
+============================================
+
+1) Отвори PowerShell в основната папка ar-drawing.
+2) Приложи ZIP-а с промените в основната папка:
+   Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day19_Changes_Only_v0.19.0.zip" -DestinationPath . -Force
+3) Windows:
+   cd app
+   npm ci --include=dev
+   npm run typecheck
+   npm run build
+   npm run test:day19
+   cd ..
+   python -m pytest python_engine -q
+   git diff --check
+   git status
+4) Провери промените. При PASS:
+   git add Day19_INSTALL.txt app/package.json app/package-lock.json app/src/main.ts app/src/styles.css app/src/day17-sketch-placeholder.ts app/public/ui/generator/square-control.svg app/public/ui/generator/pill-control.svg app/public/ui/generator/mini-control.svg app/tests/day19-generator-shell.test.mjs docs/day19.md
+   git commit -m "Day 19: graphite generator shell with supplied SVG controls"
+   git push origin main
+5) След GitHub Pages deploy: iPhone Home Screen -> моливче на полароид -> провери оригинален preview, статични настройки, disabled Рисувай, Back, камера, backup и force-close.
+
+IMPORTANT: Това е само UI shell. Няма активно генериране/запазване на скици. Не изтривай реални проекти.

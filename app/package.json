@@ -1,7 +1,7 @@
 {
   "name": "sketchyar",
   "private": true,
-  "version": "0.18.0",
+  "version": "0.19.0",
   "type": "module",
   "engines": {
     "node": ">=20.19"
@@ -15,7 +15,8 @@
     "test:day15": "node --experimental-strip-types --test tests/*.test.mjs",
     "test:day16": "node --experimental-strip-types --test tests/*.test.mjs",
     "test:day17": "node --experimental-strip-types --test tests/*.test.mjs",
-    "test:day18": "node --experimental-strip-types --test tests/*.test.mjs"
+    "test:day18": "node --experimental-strip-types --test tests/*.test.mjs",
+    "test:day19": "node --experimental-strip-types --test tests/*.test.mjs"
   },
   "devDependencies": {
     "typescript": "7.0.2",

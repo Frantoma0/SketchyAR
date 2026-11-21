@@ -1,4 +1,4 @@
-/** Day 18: read-only, truthful edit route on the existing Day 17 graphite shell.
+/** Days 18–19: read-only source preview in the new graphite Generator UI shell.
  * The original image is previewed from IndexedDB; no save, no mutation, no camera.
  * The separate typed router prepares the next stages without activating a fake
  * new-drawing Generator before Generate -> Save -> Draw is truly implemented.
@@ -50,9 +50,10 @@ export function initDay17EditPlaceholder(): {
     previewNote.textContent = 'Зарежда се оригиналната снимка…';
     releasePreview();
     screen.hidden = false;
+    screen.scrollTop = 0; // each project opens at the preview, not previous scroll position
     document.body.classList.add('day17-edit-open');
     back.focus();
-    D.log('info', 'day17', 'sketch.edit.placeholder', { projectId: project.id });
+    D.log('info', 'day19', 'generator.shell.opened', { projectId: project.id, readOnly: true });
     D.log('info', 'day18', 'route.enter', { intent: 'edit-sketch', projectId: project.id });
     void (async () => {
       let url: string | null = null;

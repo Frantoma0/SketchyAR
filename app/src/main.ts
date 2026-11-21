@@ -113,23 +113,85 @@ document.getElementById('app')!.innerHTML = `
     </div>
   </div>
 </div>
-<!-- Day 18: safe read-only source preview on the existing Day 17 placeholder. No IndexedDB writes. -->
-<div id="day17-edit-screen" class="day17-edit-screen" role="dialog" aria-modal="true" aria-labelledby="day17-edit-heading" aria-describedby="day17-edit-info" hidden>
-  <div class="day17-edit-top">
-    <button id="day17-edit-back" type="button" class="day17-edit-back" aria-label="Върни се към старите проекти">← Назад</button>
-    <h2 id="day17-edit-heading">Промени скицата</h2>
-  </div>
-  <div class="day17-edit-card">
-    <p class="day17-edit-project-label">Избран проект</p>
-    <p id="day17-edit-project-name" class="day17-edit-project-name"></p>
-    <div class="day17-edit-preview-placeholder" id="day18-preview-window">
-      <span id="day18-preview-empty" aria-hidden="true">✎</span>
-      <img id="day18-original-preview" alt="Оригинална снимка на проекта" hidden />
+<!-- Day 19: truthful graphite Generator UI shell. Existing edit route, read-only source preview.
+     User-supplied controls are native SVG assets. All processing controls are disabled
+     until a real engine, recipe persistence, and Generate -> Save -> Draw pass. -->
+<div id="day17-edit-screen" class="day17-edit-screen" role="dialog" aria-modal="true"
+     aria-labelledby="day17-edit-heading" aria-describedby="day17-edit-info" hidden>
+  <div class="day19-editor" id="day19-generator-shell">
+    <header class="day17-edit-top day19-header">
+      <button id="day17-edit-back" type="button" class="day17-edit-back day19-icon-button"
+              aria-label="Върни се към старите проекти">
+        <img src="./ui/generator/square-control.svg" alt="" aria-hidden="true" />
+        <span aria-hidden="true" class="day19-back-symbol">←</span>
+      </button>
+      <h2 id="day17-edit-heading">Промени скицата</h2>
+      <div class="day19-header-end" aria-hidden="true">
+        <img src="./ui/generator/square-control.svg" alt="" />
+        <span>✎</span>
+      </div>
+    </header>
+
+    <div class="day17-edit-card day19-content">
+      <p class="day17-edit-project-label">Избран проект</p>
+      <p id="day17-edit-project-name" class="day17-edit-project-name"></p>
+      <div class="day19-preview-frame">
+        <div class="day17-edit-preview-placeholder" id="day18-preview-window">
+          <span id="day18-preview-empty" aria-hidden="true">✎</span>
+          <img id="day18-original-preview" alt="Оригинална снимка на проекта — необработена" hidden />
+        </div>
+      </div>
+      <p id="day18-preview-note" class="day18-preview-note" role="status" aria-live="polite">
+        Зарежда се оригиналната снимка…
+      </p>
+
+      <fieldset class="day19-controls" disabled aria-describedby="day17-edit-info">
+        <legend class="day19-controls-title">Настройки на скицата — скоро</legend>
+        <div class="day19-control-heading" id="day19-style-heading">Стил</div>
+        <div class="day19-style-list" role="group" aria-labelledby="day19-style-heading">
+          <button type="button" class="day19-chip day19-chip-selected" aria-pressed="true">
+            <img src="./ui/generator/pill-control.svg" alt="" aria-hidden="true" /><span>Скица</span>
+          </button>
+          <button type="button" class="day19-chip" aria-pressed="false"><img src="./ui/generator/pill-control.svg" alt="" aria-hidden="true" /><span>Молив</span></button>
+          <button type="button" class="day19-chip" aria-pressed="false"><img src="./ui/generator/pill-control.svg" alt="" aria-hidden="true" /><span>Комикс</span></button>
+          <button type="button" class="day19-chip" aria-pressed="false"><img src="./ui/generator/pill-control.svg" alt="" aria-hidden="true" /><span>Манга</span></button>
+        </div>
+        <div class="day19-control-heading" id="day19-preset-heading">Режим</div>
+        <div class="day19-preset-list" role="group" aria-labelledby="day19-preset-heading">
+          <button type="button" class="day19-chip" aria-pressed="false"><img src="./ui/generator/pill-control.svg" alt="" aria-hidden="true" /><span>Точна</span></button>
+          <button type="button" class="day19-chip day19-chip-selected" aria-pressed="true"><img src="./ui/generator/pill-control.svg" alt="" aria-hidden="true" /><span>Опростена</span></button>
+          <button type="button" class="day19-chip" aria-pressed="false"><img src="./ui/generator/pill-control.svg" alt="" aria-hidden="true" /><span>Подробна</span></button>
+        </div>
+        <div class="day19-slider-group">
+          <label for="day19-detail-slider">Детайлност: <output for="day19-detail-slider">3 / 5</output></label>
+          <input id="day19-detail-slider" type="range" min="1" max="5" step="1" value="3" />
+          <div class="day19-scale" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+        </div>
+        <div class="day19-bottom-controls">
+          <div class="day19-filter-options" role="group" aria-label="Контурни настройки">
+            <button type="button" class="day19-filter-option">
+              <img src="./ui/generator/mini-control.svg" alt="" aria-hidden="true" />
+              <span aria-hidden="true" class="day19-filter-symbol">⊘</span><small>Без шум</small>
+            </button>
+            <button type="button" class="day19-filter-option">
+              <img src="./ui/generator/mini-control.svg" alt="" aria-hidden="true" />
+              <span aria-hidden="true" class="day19-filter-symbol">□</span><small>Контури</small>
+            </button>
+          </div>
+          <div class="day19-line-control day19-slider-group">
+            <label for="day19-line-slider">Линии: <output for="day19-line-slider">Нормални</output></label>
+            <input id="day19-line-slider" type="range" min="1" max="3" step="1" value="2" />
+            <div class="day19-line-labels" aria-hidden="true"><span>Тънки</span><span>Норм.</span><span>Дебели</span></div>
+          </div>
+        </div>
+      </fieldset>
+      <p id="day17-edit-info" class="day19-limits-note">Това е визуална подготовка. Виждаш оригиналната снимка, не генерирана скица.
+        Стиловете, детайлността и бутонът за рисуване ще станат активни, когато обработката е готова. Засега този екран не променя изображението или запазените настройки.</p>
+      <button id="day19-draw" type="button" class="day19-draw-button" disabled aria-describedby="day17-edit-info">
+        <img src="./ui/generator/pill-control.svg" alt="" aria-hidden="true" /><span>+ Рисувай</span>
+      </button>
+      <button id="day17-edit-return" type="button" class="day17-edit-return day19-return">Към проектите</button>
     </div>
-    <p id="day18-preview-note" class="day18-preview-note" role="status" aria-live="polite">Зарежда се оригиналната снимка…</p>
-    <h3>Редакторът е в подготовка</h3>
-    <p id="day17-edit-info">Скоро тук ще можеш да настройваш контурите, детайлността и стила. Засега този екран не променя изображението или запазените настройки.</p>
-    <button id="day17-edit-return" type="button" class="day17-edit-return">Към проектите</button>
   </div>
 </div>
 <!-- Day 16: Native file picker is never inside a hidden Home or developer container. -->
