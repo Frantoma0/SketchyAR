@@ -61,7 +61,7 @@ test('D20: buttons have accessible pressed state, selected graphite and detail s
   assert.match(controller,/button\.setAttribute\('aria-pressed', String\(selected\)\)/);
   assert.match(controller,/detail\.addEventListener\('input'/);
   assert.match(controller,/ui = DEFAULT_SKETCH_UI;/);
-  assert.match(controller,/storedProject\.editorStyle !== undefined/);
+  assert.match(controller,/storedProject\.selectedProcessedAssetId \? 'sketch' : null/);
 });
 test('D20: only matching processed PNG for current source may be compared',()=>{
   assert.match(storage,/getLatestProcessedPreview\(/);

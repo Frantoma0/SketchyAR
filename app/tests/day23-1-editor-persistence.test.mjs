@@ -80,6 +80,8 @@ class Database {
   }
 }
 let db=new Database();
+const liveDB=db; // cached by openProjectDB; reuse the SAME instance across tests
+function resetForG241(){ db=liveDB; liveDB.data=new Database().data; liveDB.failWrite=Infinity; }
 globalThis.window={indexedDB:{}};
 globalThis.indexedDB={open(){const q={result:db,error:null,onsuccess:null,onerror:null,onupgradeneeded:null};
   setTimeout(()=>q.onsuccess?.(),0);return q;}};
@@ -148,11 +150,93 @@ test('G23.1: simulated quota errors roll back editor mode and original restore',
 test('G23.1: actual editor restores saved style and source-owned preview',()=>{
   const editor=readFileSync(resolve(app,'src/day17-sketch-placeholder.ts'),'utf8');
   const appMain=readFileSync(resolve(app,'src/main.ts'),'utf8');
-  assert.match(editor,/style: storedProject.editorStyle !== undefined/);
-  assert.match(editor,/\(storedProject.selectedProcessedAssetId \? 'sketch' : null\)/);
+  assert.match(editor,/style: storedProject.selectedProcessedAssetId \? 'sketch' : null/);
+  assert.match(editor,/storedProject.selectedProcessedAssetId \? 'sketch' : null/);
   assert.match(editor,/if \(ui.style === 'sketch'\) preview.src = url/);
   assert.match(editor,/savedProcessed = processed/);
   assert.match(editor,/await saveProcessedPng\(projectId, provenance,[\s\S]*?false\)/);
   assert.match(editor,/await selectOriginalForDrawing\(projectId, sourceId\)/);
   assert.match(appMain,/day19-draw/);
+});
+
+test('G24.1: caching a newly generated preview cannot change applied editor style, Camera or Home', async()=>{
+  resetForG241();
+  db.data.projects.get(ID).editorStyle='manga'; // pre-hotfix draft-only value
+  const first = await saveProcessedPng(ID,provenance,png,64,64,false);
+  const saved = (await store.getProjectImage(ID)).project;
+  assert.equal(saved.editorStyle,'manga');
+  assert.equal(saved.selectedProcessedAssetId,undefined);
+  assert.equal(store.selectHomeSketchPreview(saved,[first]),undefined);
+  assert.equal(await store.getLatestProcessedPreview(ID,SRC).then(x=>x.id),first.id);
+  assert.equal(saved.activeAssetId,SRC);
+});
+
+test('G24.1: Draw commits exactly one applied PNG and the style together', async()=>{
+  resetForG241();
+  const first = await saveProcessedPng(ID,provenance,png,64,64,false);
+  await store.selectProcessedAsset(ID,SRC,first.id);
+  const saved = (await store.getProjectImage(ID)).project;
+  assert.equal(saved.editorStyle,'sketch');
+  assert.equal(saved.selectedProcessedAssetId,first.id);
+  assert.equal(store.selectHomeSketchPreview(saved,[first])?.id,first.id);
+  // Newer generated-but-unapplied preview must not replace the applied one.
+  const second = await saveProcessedPng(ID,provenance,new Blob(['new draft'],{type:'image/png'}),64,64,false);
+  assert.equal(store.selectHomeSketchPreview((await store.getProjectImage(ID)).project,[second,first])?.id,first.id);
+  assert.equal((await store.getSelectedProcessedAsset(saved,db.data.assets.get(SRC)))?.id,first.id);
+});
+
+test('G24.1: Draw Original commits null and clears selection without deleting cached PNG',async()=>{
+  resetForG241();
+  const first=await saveProcessedPng(ID,provenance,png,64,64,false);
+  await store.selectProcessedAsset(ID,SRC,first.id);
+  await store.selectOriginalForDrawing(ID,SRC);
+  const saved = (await store.getProjectImage(ID)).project;
+  assert.equal(saved.editorStyle,null);
+  assert.equal(saved.selectedProcessedAssetId,undefined);
+  assert.equal(store.selectHomeSketchPreview(saved,[first]),undefined);
+  assert.ok(db.data.assets.has(first.id));
+  assert.equal(saved.activeAssetId,SRC);
+});
+
+test('G24.1: quota and invalid source rollback BOTH applied image and applied mode', async()=>{
+  resetForG241();
+  const first=await saveProcessedPng(ID,provenance,png,64,64,false);
+  await store.selectProcessedAsset(ID,SRC,first.id);
+  const before=structuredClone(db.data.projects.get(ID));
+  const second=await saveProcessedPng(ID,provenance,new Blob(['v2'],{type:'image/png'}),64,64,false);
+  db.failWrite=1;
+  await assert.rejects(()=>store.selectProcessedAsset(ID,SRC,second.id),/QuotaExceededError/);
+  assert.deepEqual(db.data.projects.get(ID),before);
+  await assert.rejects(()=>store.selectOriginalForDrawing(ID,SRC),/QuotaExceededError/);
+  assert.deepEqual(db.data.projects.get(ID),before);
+  db.failWrite=Infinity;
+  await assert.rejects(()=>store.selectProcessedAsset(ID,'wrong-source',second.id),/отказан/);
+  assert.deepEqual(db.data.projects.get(ID),before);
+});
+
+test('G24.1: single-transaction Save+Apply commits editorStyle and PNG together',async()=>{
+  resetForG241();
+  const value=await saveProcessedPng(ID,provenance,png,64,64,true);
+  const saved=(await store.getProjectImage(ID)).project;
+  assert.equal(saved.editorStyle,'sketch');
+  assert.equal(saved.selectedProcessedAssetId,value.id);
+  assert.equal(store.selectHomeSketchPreview(saved,[value])?.id,value.id);
+  db.failWrite=1;
+  const snapshot=structuredClone(saved);
+  await assert.rejects(()=>saveProcessedPng(ID,provenance,png,64,64,true),/QuotaExceededError/);
+  assert.deepEqual(db.data.projects.get(ID),snapshot);
+  db.failWrite=Infinity;
+});
+
+test('G24.1: editing without Draw has no persistence call or implicit style save',()=>{
+  const editor=readFileSync(resolve(app,'src/day17-sketch-placeholder.ts'),'utf8');
+  const home=readFileSync(resolve(app,'src/storage/project-store.ts'),'utf8');
+  const edits=editor.slice(editor.indexOf('controls.forEach(button => button.addEventListener'),
+    editor.indexOf("drawButton.addEventListener('click'"));
+  assert.match(edits,/ui = setSketchUiStyle/);
+  assert.doesNotMatch(edits,/saveProjectEditorStyle|selectProcessedAsset|selectOriginalForDrawing|saveProcessedPng/);
+  assert.doesNotMatch(editor,/rememberStyle|styleWrites|saveProjectEditorStyle/);
+  assert.match(editor,/storedProject.selectedProcessedAssetId \? 'sketch' : null/);
+  assert.match(editor,/await getSelectedProcessedAsset\(storedProject, source\)/);
+  assert.match(home,/asset.id === project.selectedProcessedAssetId/);
 });

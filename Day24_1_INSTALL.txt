@@ -1,0 +1,22 @@
+SketchyAR v0.24.1 — applied style only after Draw
+
+1. Използвай малкия patch ZIP върху v0.24.0 от GitHub main (96a7fa379b81).
+2. От корена ar-drawing:
+   Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day24_1_Apply_Only_On_Draw_v0.24.1.zip" -DestinationPath . -Force
+   cd app
+   npm ci --include=dev
+   npm run typecheck
+   npm run build
+   npm run test:day24
+   cd ..
+   python -m pytest python_engine -q
+   git diff --check
+   git status
+3. Сравни списъка на файловете с docs/day24-1-applied-on-draw.md, после:
+   git add app/package.json app/package-lock.json app/src/day17-sketch-placeholder.ts app/src/storage/project-store.ts app/src/storage/day13-processed.ts app/tests/day20-generator-state.test.mjs app/tests/day21-camera-navigation.test.mjs app/tests/day22-sketch-mode.test.mjs app/tests/day23-sketch-draw.test.mjs app/tests/day23-1-editor-persistence.test.mjs app/tests/day24-home-thumbnail.test.mjs docs/day24-1-applied-on-draw.md Day24_1_INSTALL.txt
+   git diff --cached --check
+   git diff --cached --stat
+   git commit -m "fix(day24): apply Sketch style and Home preview only on Draw"
+   git push origin main
+4. Потвърди GitHub Pages deploy и v0.24.1 на iPhone; изпълни iPhone сценариите от docs/day24-1-applied-on-draw.md.
+ВАЖНО: не изтривай проекти, не използвай Production Restore за тази проверка.

@@ -53,7 +53,7 @@ export async function saveProcessedPng(projectId: string, provenance: ProcessedP
       assets.add(asset);
       // Day 23: the selected derivative pointer is stored with the new asset atomically.
       // Original source remains active and overlay presets remain attached to it.
-      if (selectForDrawing) projects.put({ ...project, selectedProcessedAssetId: asset.id });
+      if (selectForDrawing) projects.put({ ...project, selectedProcessedAssetId: asset.id, editorStyle: 'sketch' });
       // Keep the source as the project's active image and avoid changing gallery order.
     };
   };

@@ -18,8 +18,9 @@ export interface ProjectRecord {
   activeAssetId: string;
   /** Day 23: optional, source-owned derivative selected for Camera. Source stays active. */
   selectedProcessedAssetId?: string;
-  /** Persist editor selection independently of the image currently applied in Camera.
-   * null explicitly means Original, including for legacy projects with a selected PNG. */
+  /** Last APPLIED style, committed together with Camera selection by Draw.
+   * Old v0.23.1-v0.24.0 records may contain a preview-only draft here;
+   * selectedProcessedAssetId takes precedence until Draw reconciles the two. */
   editorStyle?: 'sketch' | 'manga' | 'comic' | null;
   lastOpenedAt?: string;
   guide?: GuidePlanV1;
@@ -127,9 +128,9 @@ export interface AppSetting {
   updatedAt: string;
 }
 export interface ProjectWithImage { project: ProjectRecord; source: AssetRecord; preset?: OverlayPreset }
-/** Home uses the persisted editor choice; it NEVER alters Camera selection.
- * `displayAsset` is an existing processed PNG, not a duplicated thumbnail.
- * The ordinary cropped source thumbnail remains available for fallback.
+/** Home reflects the bitmap last APPLIED with Draw, not unsaved editor choices.
+ * `displayAsset` is that exact processed PNG, never a duplicated thumbnail.
+ * The ordinary source thumbnail remains the fallback.
  */
 export interface ProjectThumbnail {
   project: ProjectRecord;
@@ -278,8 +279,9 @@ export async function getSelectedProcessedAsset(project: ProjectRecord, source: 
   return asset;
 }
 
-/** Select an existing validated PNG without copying it and without touching presets.
- * All source/project/processed identity checks are within the SAME write transaction.
+/** Apply Sketch with Draw: atomically commit both the chosen PNG and style.
+ * No duplicate bitmap or overlay preset writes. Project/source/PNG identities
+ * are checked inside the SAME readwrite transaction.
  */
 export async function selectProcessedAsset(projectId: string, sourceId: string,
                                             processedId: string): Promise<void> {
@@ -299,7 +301,7 @@ export async function selectProcessedAsset(projectId: string, sourceId: string,
       if (!a || a.projectId !== projectId || a.sourceAssetId !== sourceId ||
           a.role !== 'processed' || a.mimeType !== 'image/png' || a.blob?.type !== 'image/png' || !a.blob ||
           !a.blob.size || a.byteSize !== a.blob.size) { invalid = true; tx.abort(); return; }
-      projects.put({ ...project, selectedProcessedAssetId: a.id });
+      projects.put({ ...project, selectedProcessedAssetId: a.id, editorStyle: 'sketch' });
     };
   };
   try { await finished; } catch (error) {
@@ -308,9 +310,9 @@ export async function selectProcessedAsset(projectId: string, sourceId: string,
   }
 }
 
-/** Day 23.1: retain the last editor mode without changing Camera's selected PNG.
- * No DB version bump: this is an optional field in the existing project store.
- * null is meaningful for older projects: it prevents falling back to Sketch mode.
+/** Legacy v0.23.1 preview-style setter retained for compatibility and old tests.
+ * Do not call from current UI: Day 24.1 applies mode ONLY with Draw.
+ * The authoritative applied image is selectedProcessedAssetId.
  */
 export async function saveProjectEditorStyle(projectId: string, sourceId: string,
                                             style: ProjectRecord['editorStyle']): Promise<void> {
@@ -369,19 +371,18 @@ export async function getLatestProcessedPreview(projectId: string, sourceAssetId
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null;
 }
 
-/** Select the last valid Sketch bitmap for Home from the CURRENT source only.
- * Explicitly deselected/Manga/Comic -> show original. Old v0.23 projects
- * with an applied Sketch but without editorStyle retain their legacy preview.
- * No new assets, crop operation, schema change or IndexedDB write is needed.
+/** Day 24.1: Home mirrors EXACTLY the PNG committed by Draw, never the latest
+ * generated-but-not-applied editor preview. Existing v0.23 selections are
+ * authoritative even if a pre-hotfix preview-only editorStyle disagrees.
+ * No duplicate thumbnail, schema bump, or database write is required.
  */
 export function selectHomeSketchPreview(project: ProjectRecord, processed: readonly AssetRecord[]): AssetRecord | undefined {
-  if (project.editorStyle !== 'sketch' &&
-      !(project.editorStyle === undefined && project.selectedProcessedAssetId)) return undefined;
-  return processed.filter(asset => asset.projectId === project.id && asset.role === 'processed' &&
+  if (!project.selectedProcessedAssetId) return undefined;
+  return processed.find(asset => asset.id === project.selectedProcessedAssetId &&
+    asset.projectId === project.id && asset.role === 'processed' &&
     asset.sourceAssetId === project.activeAssetId && asset.mimeType === 'image/png' &&
     asset.blob instanceof Blob && asset.blob.type === 'image/png' &&
-    asset.blob.size > 0 && asset.byteSize === asset.blob.size)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))[0];
+    asset.blob.size > 0 && asset.byteSize === asset.blob.size);
 }
 
 export async function listProjectThumbnails(): Promise<ProjectThumbnail[]> {
@@ -397,8 +398,7 @@ export async function listProjectThumbnails(): Promise<ProjectThumbnail[]> {
     // Queue BOTH requests before awaiting: IndexedDB transactions can auto-close
     // after an unrelated await on iPhone Safari.
     const thumbsRequest = req<AssetRecord[]>(index.getAll(IDBKeyRange.only([project.id, 'thumbnail'])));
-    const wantsSketch = project.editorStyle === 'sketch' ||
-      (project.editorStyle === undefined && Boolean(project.selectedProcessedAssetId));
+    const wantsSketch = Boolean(project.selectedProcessedAssetId);
     const processedRequest = wantsSketch
       ? req<AssetRecord[]>(index.getAll(IDBKeyRange.only([project.id, 'processed'])))
       : Promise.resolve([] as AssetRecord[]);

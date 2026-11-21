@@ -32,37 +32,45 @@ function processed(id,createdAt=time, sourceAssetId=S) {
   return {id,projectId:P,sourceAssetId,role:'processed',blob:new Blob(['PNG!'],{type:'image/png'}),
     mimeType:'image/png',byteSize:4,createdAt,width:64,height:64};
 }
-function project(editorStyle='sketch') {
-  return {id:P,title:'Test',activeAssetId:S,createdAt:time,updatedAt:time,editorStyle};
+function project(editorStyle='sketch', selectedProcessedAssetId=undefined) {
+  return {id:P,title:'Test',activeAssetId:S,createdAt:time,updatedAt:time,
+    editorStyle, ...(selectedProcessedAssetId ? {selectedProcessedAssetId} : {})};
 }
-test('G24: remembered Sketch selects the last valid processed PNG, regardless of order',()=>{
+test('G24.1: Home displays the exact Draw-applied PNG, not a newer cached draft',()=>{
   const recent=processed('new','2026-11-21T11:00:00.000Z');
   const old=processed('old','2026-11-21T10:00:00.000Z');
-  assert.equal(store.selectHomeSketchPreview(project(),[old,recent])?.id,'new');
-  assert.equal(store.selectHomeSketchPreview(project(),[recent,old])?.id,'new');
+  assert.equal(store.selectHomeSketchPreview(project('sketch','old'),[old,recent])?.id,'old');
+  assert.equal(store.selectHomeSketchPreview(project('sketch','old'),[recent,old])?.id,'old');
+  assert.equal(store.selectHomeSketchPreview(project('sketch','new'),[old,recent])?.id,'new');
 });
-test('G24: Original / Manga / Comic never misrepresent Sketch as their own output',()=>{
-  for (const mode of [null,'manga','comic']) {
-    assert.equal(store.selectHomeSketchPreview(project(mode),[processed('valid')]),undefined);
+test('G24.1: switching any editor style without Draw leaves Home on Original',()=>{
+  for (const mode of [null,'sketch','manga','comic']) {
+    assert.equal(store.selectHomeSketchPreview(project(mode),[processed('draft')]),undefined);
   }
 });
-test('G24: legacy Day 23 selection is supported; explicit none suppresses legacy fallback',()=>{
-  const legacy={...project(undefined),selectedProcessedAssetId:'saved-png'};
-  assert.equal(store.selectHomeSketchPreview(legacy,[processed('saved-png')])?.id,'saved-png');
-  assert.equal(store.selectHomeSketchPreview({...legacy,editorStyle:null},[processed('saved-png')]),undefined);
+test('G24.1: legacy selected Sketch is authoritative over old preview-only editorStyle',()=>{
+  const applied={...project(null),selectedProcessedAssetId:'saved-png'};
+  assert.equal(store.selectHomeSketchPreview(applied,[processed('saved-png')])?.id,'saved-png');
+  for (const mode of ['sketch','manga','comic',undefined]) {
+    assert.equal(store.selectHomeSketchPreview({...applied,editorStyle:mode},[processed('saved-png')])?.id,'saved-png');
+  }
+  assert.equal(store.selectHomeSketchPreview({...applied, selectedProcessedAssetId:undefined},[processed('saved-png')]),undefined);
 });
-test('G24: reject processed blob from other project, obsolete source, invalid MIME and size',()=>{
+test('G24.1: reject a mismatched or invalid processed asset even if its ID was applied',()=>{
   const good=processed('good');
-  const invalid=[{...good,id:'elsewhere',projectId:'other-project'},
-    processed('old-source',time,'replaced-source'),
-    {...good,id:'not-png',mimeType:'image/jpeg'},
-    {...good,id:'bad-bytes',byteSize:234},
-    {...good,id:'bad-blob',blob:new Blob([], {type:'image/png'}),byteSize:0}];
-  assert.equal(store.selectHomeSketchPreview(project(),invalid),undefined);
-  assert.equal(store.selectHomeSketchPreview(project(),[...invalid,good])?.id,'good');
+  const invalid=[{...good,projectId:'other-project'},
+    {...good,sourceAssetId:'replaced-source'},
+    {...good,mimeType:'image/jpeg'},
+    {...good,byteSize:234},
+    {...good,blob:new Blob([], {type:'image/png'}),byteSize:0}];
+  for(const candidate of invalid) {
+    assert.equal(store.selectHomeSketchPreview(project('sketch','good'),[candidate]),undefined);
+  }
+  assert.equal(store.selectHomeSketchPreview(project('sketch','good'),[...invalid,good])?.id,'good');
 });
-test('G24: when generation has not completed, the Home preview uses source thumbnail',()=>{
-  assert.equal(store.selectHomeSketchPreview(project(),[]),undefined);
+test('G24.1: generation alone leaves Home on its previous applied selection',()=>{
+  assert.equal(store.selectHomeSketchPreview(project('sketch'),[processed('new')]),undefined);
+  assert.equal(store.selectHomeSketchPreview(project(null,'prior'),[processed('new')]),undefined);
 });
 
 class FakeDb {
@@ -105,7 +113,7 @@ globalThis.indexedDB={open(){const r={result:db,error:null,onsuccess:null,onerro
   setTimeout(()=>r.onsuccess?.(),0);return r;}};
 globalThis.IDBKeyRange={only:x=>x};
 test('G24: actual IndexedDB listing resolves Sketch vs photo, uses no writes',async()=>{
-  const a=project('sketch');
+  const a=project('sketch','saved-sketch');
   const b={...a,id:'project-B',title:'Original',editorStyle:null,activeAssetId:'source-B'};
   db=new FakeDb({projects:[a,b],assets:[sourceThumbnail,processed('saved-sketch'),
     {...sourceThumbnail,id:'thumbB',projectId:b.id,sourceAssetId:b.activeAssetId}]});
@@ -128,7 +136,7 @@ test('G24: Home uses real processed Blob and contain fit, existing source uses c
   assert.match(home,/displayKind === 'sketch'/);
   assert.match(css,/\.home-project-saved \.home-project-preview \{[\s\S]*?object-fit: cover/);
   assert.match(css,/\.home-project-preview\.home-project-preview-sketch \{\s*object-fit: contain/);
-  assert.match(editor,/styleWrites\.catch\(error => \{/);
+  assert.doesNotMatch(editor,/styleWrites|rememberStyle|saveProjectEditorStyle/);
   assert.match(editor,/sketchyar:projects:changed/);
   assert.doesNotMatch(home,/saveProcessedPng\(|createImageProject\(/);
 });

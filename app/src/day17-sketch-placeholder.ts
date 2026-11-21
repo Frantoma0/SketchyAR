@@ -1,10 +1,10 @@
-/** Day 23: first real Sketch -> Save -> Draw cycle for existing projects.
- * Original source remains active; the generated PNG is a separately selected derivative.
+/** Day 24.1: editor choices remain temporary until Draw commits an applied style.
+ * Preview PNGs may be cached, but Original, Camera and Home change only with Draw.
  */
 import * as D from './diagnostics';
 import { planSketchRoute, SketchRouteMachine, choosePreviewRole } from './day18-navigation';
-import { getProjectImage, getLatestProcessedPreview, selectProcessedAsset,
-  selectOriginalForDrawing, saveProjectEditorStyle, type AssetRecord, type ProjectRecord } from './storage/project-store';
+import { getProjectImage, getLatestProcessedPreview, getSelectedProcessedAsset, selectProcessedAsset,
+  selectOriginalForDrawing, type AssetRecord, type ProjectRecord } from './storage/project-store';
 import { saveProcessedPng, type ProcessedProvenance } from './storage/day13-processed';
 import { openSavedDrawing, applySketchToActiveCamera, applyOriginalToActiveCamera } from './day4';
 import { generateSketchDraft, SketchDraftGate, SKETCH_V1_SETTINGS, type SketchDraftResult } from './day22-sketch-mode';
@@ -42,7 +42,6 @@ export function initDay17EditPlaceholder(): {
   let drawBusy = false;
   let draftResult: SketchDraftResult | null = null;
   let savedProcessed: AssetRecord | null = null;
-  let styleWrites: Promise<void> = Promise.resolve();
   let userTouchedStyle = false;
   let editorIntent: 'edit-sketch' | 'edit-from-camera' = 'edit-sketch';
   const sketchGate = new SketchDraftGate();
@@ -86,18 +85,8 @@ export function initDay17EditPlaceholder(): {
     if (previewURL && !comparisonHeld) preview.src = currentImageURL()!;
     updateDraw();
   };
-  // Serialize style changes: very fast taps cannot write an older choice after a newer one.
-  // Preview selection and camera selection are intentionally distinct.
-  const rememberStyle = (): void => {
-    const source = sourceForSketch;
-    if (!source) return;
-    const next = ui.style;
-    styleWrites = styleWrites.catch(() => {}).then(() =>
-      saveProjectEditorStyle(source.projectId, source.sourceId, next));
-    void styleWrites.catch(error => {
-      D.log('error', 'day23.1', 'editor.style.save.failed', { message: String(error) });
-    });
-  };
+  // Day 24.1: changing a style is a draft. Only Draw commits the applied
+  // style and Camera selection in a single IndexedDB project transaction.
   // No Manga/Comic processing yet. A second style tap clears selection and shows original.
   // An already-completed Sketch draft is reusable until this editor closes.
   const requestSketch = (): void => {
@@ -123,7 +112,6 @@ export function initDay17EditPlaceholder(): {
       // Save a reusable preview as soon as Python finishes, BEFORE the user presses Draw.
       // This does not select a processed bitmap for Camera. One original source stays active.
       if (ui.style !== 'sketch') return;
-      await styleWrites; // do not persist an obsolete style after an earlier tap
       if (!sketchGate.isCurrent(ticket, projectId, sourceId) || screen.hidden || ui.style !== 'sketch') return;
       const provenance: ProcessedProvenance = {
         sourceAssetId: sourceId, pipelineVersion: result.pipelineVersion,
@@ -171,7 +159,6 @@ export function initDay17EditPlaceholder(): {
     if (button.dataset.style) {
       ui = setSketchUiStyle(ui, button.dataset.style);
       userTouchedStyle = true;
-      rememberStyle();
     }
     if (button.dataset.line) ui = setSketchUiLine(ui, button.dataset.line);
     showUI();
@@ -203,7 +190,6 @@ export function initDay17EditPlaceholder(): {
     updateDraw();
     info.textContent = 'Записване на скицата и подготовка на камерата…';
     void (async () => {
-      await styleWrites;
       const selectedStyle = ui.style;
       const fresh = await getProjectImage(projectId);
       if (fresh.source.id !== sourceId || screen.hidden ||
@@ -348,11 +334,9 @@ export function initDay17EditPlaceholder(): {
     afterClose = null;
     callback?.(); // release camera inert before restoring focus
     if (focus?.isConnected) focus.focus();
-    // Refresh the Home image only AFTER the editor releases its focus target.
-    // A just-saved Sketch and the last chosen style are already in IndexedDB.
-    void styleWrites.catch(error => {
-      D.log('warn', 'day24', 'home.preview.style-write.failed', { message: String(error) });
-    }).then(() => document.dispatchEvent(new Event('sketchyar:projects:changed')));
+    // Re-render Home using only the last APPLIED asset ID; an editor preview
+    // or a cached new PNG must never change the polaroid before Draw.
+    document.dispatchEvent(new Event('sketchyar:projects:changed'));
     D.log('info', 'day17', 'sketch.edit.closed');
   };
   const open = (project: Pick<ProjectRecord, 'id' | 'title'>, trigger: HTMLElement,
@@ -377,16 +361,11 @@ export function initDay17EditPlaceholder(): {
     screen.scrollTop = 0; // each project opens at the preview, not previous scroll position
     document.body.classList.add('day17-edit-open');
     back.focus();
-    D.log('info', 'day19', 'generator.shell.opened', { projectId: project.id, readOnly: true });
+    D.log('info', 'day19', 'generator.shell.opened', { projectId: project.id, readOnly: false });
     D.log('info', 'day18', 'route.enter', { intent, projectId: project.id });
     void (async () => {
       let url: string | null = null;
       try {
-        // If the user closed and immediately reopened, wait for the prior style write.
-        // No untrusted external async work is performed inside an IndexedDB transaction.
-        await styleWrites.catch(error => {
-          D.log('warn', 'day23.1', 'editor.style.previous-save.failed', { message: String(error) });
-        });
         const { project: storedProject, source } = await getProjectImage(project.id);
         if (!route.isActive(token) || screen.hidden) return;
         // The current DB schema keeps activeAssetId pointing at the SOURCE.
@@ -396,11 +375,11 @@ export function initDay17EditPlaceholder(): {
         if (!route.isActive(token) || screen.hidden) return;
         previewURL = url;
         sourceForSketch = { projectId: project.id, sourceId: source.id, blob: source.blob };
-        // Legacy v0.23 projects with an applied PNG had no editorStyle field.
-        // Explicit null means the user consciously switched back to Original.
+        // Restore only the style actually applied by Draw. Previous v0.24
+        // versions saved preview taps to editorStyle, so that field alone is
+        // NOT proof that Sketch was applied. The Camera asset ID is authoritative.
         if (!userTouchedStyle) ui = { ...ui,
-          style: storedProject.editorStyle !== undefined ? storedProject.editorStyle :
-            (storedProject.selectedProcessedAssetId ? 'sketch' : null) };
+          style: storedProject.selectedProcessedAssetId ? 'sketch' : null };
         url = null;
         preview.src = previewURL;
         preview.hidden = false;
@@ -412,7 +391,11 @@ export function initDay17EditPlaceholder(): {
         // A previously SAVED Day 13 PNG is the only genuine sketch we can compare yet.
         // It is NOT a result of the newly selected UI settings.
         try {
-          const processed = await getLatestProcessedPreview(project.id, source.id);
+          // If Draw already selected a PNG, preview that EXACT bitmap, not
+          // a newer cached draft that the user never applied.
+          const processed = storedProject.selectedProcessedAssetId
+            ? await getSelectedProcessedAsset(storedProject, source)
+            : await getLatestProcessedPreview(project.id, source.id);
           if (!route.isActive(token) || screen.hidden) return;
           if (processed) {
             const savedURL = URL.createObjectURL(processed.blob);
