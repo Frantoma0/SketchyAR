@@ -405,23 +405,33 @@ body.drawing-open { background: #090b0c !important; }
   border:0; background:transparent; cursor:pointer; touch-action:pan-y;
   -webkit-tap-highlight-color:transparent;
 }
-.home-project-open:focus-visible, .home-project-menu-trigger:focus-visible {
-  outline:2px solid #645c54; outline-offset:-1px;
-}
+/* Day 17: the title itself is a real button. Same caption baseline and Figma layout. */
+.home-project-open:focus-visible, .home-project-caption:focus-visible,
+.home-project-edit-trigger:focus-visible { outline: 2px solid #645c54; outline-offset: -1px; }
 .home-project-caption {
-  position:absolute; z-index:2; left:10%; right:29%; bottom:5.9%;
+  position:absolute; z-index:3; left:10%; right:8%; bottom:0;
+  display:block; width:auto; max-width:82%; height:44px; margin:0; padding:14px 0 0;
   color:#544e48; font:700 17px/1 'Caveat',cursive;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  pointer-events:none; text-shadow:0 1px 0 #fff;
+  text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  border:0; background:transparent; border-radius:5px;
+  cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+  text-shadow:0 1px 0 #fff;
 }
-.home-project-menu-trigger {
-  position:absolute; z-index:3; right:5%; bottom:1%;
-  width:35px; height:35px; padding:0 0 10px; border:0; border-radius:10px;
-  background:transparent; color:#514c48; font:700 27px/1 var(--font);
-  display:grid; place-items:center; cursor:pointer;
-  touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+.home-project-caption:active { background:rgba(85,79,74,.10); }
+/* Pencil and bin are SIBLING buttons above the picture. Their 44px touch targets
+   do not overlap, and the visible graphite icons are only 29px. */
+.home-project-edit-trigger {
+  position:absolute; z-index:4; top:4%; right:calc(4% + 46px);
+  width:44px; height:44px; margin:0; padding:0;
+  display:grid; place-items:center; border:0; border-radius:12px;
+  background:transparent; cursor:pointer; touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
 }
-.home-project-menu-trigger:active { background:rgba(85,79,74,.13); }
+.home-project-edit-trigger img {
+  display:block; width:29px; height:29px; object-fit:contain;
+  pointer-events:none; user-select:none; -webkit-user-drag:none;
+}
+.home-project-edit-trigger:active img { transform:scale(.96); }
 /* Day 7.1: user-supplied graphite bin in the top-right photo corner.
    44px touch target; the visible 27px icon stays inside the photo and avoids
    the frame border. This is a sibling of the open-project button. */
@@ -550,3 +560,38 @@ body.drawing-open { background: #090b0c !important; }
 .home-backup-actions button:disabled { opacity: .45; cursor: not-allowed; }
 .home-backup-actions .home-backup-restore { border-color: #5e574c; }
 .home-backup-panel .home-backup-limits { margin-top: 14px; color: #756d64; font-size: 11px; }
+
+/* Day 17: minimal edit-route placeholder. Later Generator UI work (Days 18–21)
+   replaces the contents, never the home-screen sizing or saved-project data. */
+.day17-edit-screen[hidden] { display:none !important; }
+.day17-edit-screen {
+  position:fixed; z-index:1800; inset:0; width:100%; height:100dvh;
+  overflow:auto; overscroll-behavior:contain; background:#f5f0e8;
+  color:#45403b; padding:calc(22px + env(safe-area-inset-top,0px))
+    calc(18px + env(safe-area-inset-right,0px))
+    calc(22px + env(safe-area-inset-bottom,0px))
+    calc(18px + env(safe-area-inset-left,0px));
+  background-image:repeating-linear-gradient(135deg,transparent 0px,transparent 7px,rgba(80,70,60,.015) 8px);
+}
+.day17-edit-top { display:flex; align-items:center; gap:12px; max-width:500px; margin:0 auto 30px; }
+.day17-edit-top h2 { margin:0; font:700 clamp(28px,7vw,39px)/1.05 'Caveat',cursive; }
+.day17-edit-back, .day17-edit-return {
+  min-height:44px; padding:6px 14px; border:2px solid #5f5751; border-radius:14px;
+  background:#fdfbf7; color:#49433d; font:700 19px/1.2 'Caveat',cursive;
+  box-shadow:2px 3px 0 rgba(75,66,57,.17); touch-action:manipulation;
+}
+.day17-edit-card {
+  max-width:500px; margin:auto; padding:24px 18px; border:2px solid #655d55;
+  border-radius:22px; background:rgba(255,255,255,.68); text-align:center;
+  box-shadow:3px 5px 0 rgba(76,65,54,.10);
+}
+.day17-edit-project-label { margin:0; font:600 14px/1.4 var(--font); color:#77706a; }
+.day17-edit-project-name { margin:2px 0 15px; overflow-wrap:anywhere; font:700 28px/1.2 'Caveat',cursive; }
+.day17-edit-preview-placeholder {
+  display:grid; place-items:center; height:150px; border:2px dashed #a59c92;
+  background:#fdfcf8; color:#7b7169; font:700 75px/1 'Caveat',cursive;
+  border-radius:15px;
+}
+.day17-edit-card h3 { margin:18px 0 6px; font:700 30px/1.1 'Caveat',cursive; }
+.day17-edit-card p#day17-edit-info { max-width:35ch; margin:0 auto 21px; line-height:1.5; }
+body.day17-edit-open { overflow:hidden; }

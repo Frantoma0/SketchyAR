@@ -1,0 +1,35 @@
+SKETCHYAR DAY 17 — v0.17.0 — Pencil, Rename by Title, Safe Edit Placeholder
+BASE: v0.16.1, commit 0db4c639
+
+1. Keep the original backup ZIP in iPhone Files. Never clear browser/app data.
+2. In PowerShell open repo root:
+   cd "C:\Users\vikit\Desktop\AR Drawing Проект\Код\ar-drawing"
+   git status
+   Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day17_Changes_Only_v0.17.0.zip" -DestinationPath . -Force
+
+3. Run Windows tests:
+   cd app
+   npm ci --include=dev
+   npm run typecheck
+   npm run build
+   npm run test:day17
+   cd ..
+   python -m pytest python_engine -q
+   git diff --check
+   git status
+
+   Expected: all TypeScript/Vite steps succeed, 42/42 Node and 144/144 Python tests pass.
+   If a step fails, DO NOT COMMIT; send the error output first.
+
+4. After PASS, review files and stage ONLY Day17 changes:
+   git add app/package.json app/package-lock.json app/src/home.ts app/src/main.ts app/src/styles.css app/src/day17-sketch-placeholder.ts app/public/ui/project-edit-pencil.svg app/tests/day17-project-card.test.mjs docs/day17.md Day17_INSTALL.txt
+   git commit -m "Day 17: polaroid pencil and rename by tapping project title"
+   git push origin main
+
+5. Wait for GitHub Pages deployment success; on iPhone Home Screen confirm v0.17.0 and new SHA.
+6. Follow G17 checklist in docs/day17.md. DO NOT DELETE PROJECTS as part of testing.
+7. Export diagnostics and report results; iPhone G17 remains PENDING until reviewed.
+
+UI semantics:
+  IMAGE -> saved drawing, TITLE -> rename form, PENCIL -> edit placeholder, BIN -> delete confirmation.
+  Placeholder explicitly says generator is not implemented yet.

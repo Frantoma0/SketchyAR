@@ -5,6 +5,7 @@
 import * as D from './diagnostics';
 import { initOfflineStatus } from './offline-status';
 import { initDay16BackupUI } from './day16-backup-ui';
+import { initDay17EditPlaceholder } from './day17-sketch-placeholder';
 import { listProjectThumbnails, openProjectDB, upgradeLegacyThumbnails, renameImageProject, deleteImageProject, type ProjectThumbnail } from './storage/project-store';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -20,7 +21,6 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
   const dialogTitle = el<HTMLElement>('project-dialog-title');
   const dialogDescription = el<HTMLElement>('project-dialog-description');
   const dialogError = el<HTMLElement>('project-dialog-error');
-  const actionsView = el<HTMLElement>('project-dialog-menu');
   const renameForm = el<HTMLFormElement>('project-rename-form');
   const renameInput = el<HTMLInputElement>('project-rename-input');
   const deleteView = el<HTMLElement>('project-delete-confirm');
@@ -30,21 +30,17 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
   let selected: ProjectThumbnail['project'] | null = null;
   let returnFocus: HTMLElement | null = null;
   let busy = false;
-  let menuMode: 'menu' | 'rename' | 'delete' = 'menu';
-  let deleteOpenedDirectly = false;
-  function setDialogMode(mode: typeof menuMode): void {
-    menuMode = mode;
-    actionsView.hidden = mode !== 'menu';
+  let focusAfterRenameId: string | null = null;
+  type DialogMode = 'rename' | 'delete';
+  function setDialogMode(mode: DialogMode): void {
     renameForm.hidden = mode !== 'rename';
     deleteView.hidden = mode !== 'delete';
     dialogError.hidden = true;
     dialogError.textContent = '';
-    dialogTitle.textContent = mode === 'rename' ? 'Преименуване' :
-      mode === 'delete' ? 'Изтриване на проект' : 'Управление на проект';
+    dialogTitle.textContent = mode === 'rename' ? 'Преименуване' : 'Изтриване на проект';
     dialogDescription.textContent = selected?.title ?? '';
     if (mode === 'rename') { renameInput.value = selected?.title ?? ''; renameInput.focus(); }
-    else if (mode === 'delete') deleteButton.focus();
-    else el<HTMLButtonElement>('project-action-rename').focus();
+    else deleteButton.focus();
   }
   function closeProjectDialog(): void {
     if (busy) return;
@@ -54,10 +50,9 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
     returnFocus = null;
     if (previousFocus?.isConnected) previousFocus.focus();
   }
-  function showProjectDialog(project: ProjectThumbnail['project'], trigger: HTMLElement, mode: 'menu' | 'delete' = 'menu'): void {
+  function showProjectDialog(project: ProjectThumbnail['project'], trigger: HTMLElement, mode: DialogMode): void {
     selected = project;
     returnFocus = trigger;
-    deleteOpenedDirectly = mode === 'delete';
     dialogBackdrop.hidden = false;
     setDialogMode(mode);
   }
@@ -76,13 +71,8 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
   });
-  el<HTMLButtonElement>('project-action-rename').addEventListener('click', () => setDialogMode('rename'));
-  el<HTMLButtonElement>('project-action-delete').addEventListener('click', () => setDialogMode('delete'));
-  el<HTMLButtonElement>('project-rename-cancel').addEventListener('click', () => setDialogMode('menu'));
-  el<HTMLButtonElement>('project-delete-cancel').addEventListener('click', () => {
-    if (deleteOpenedDirectly) closeProjectDialog();
-    else setDialogMode('menu');
-  });
+  el<HTMLButtonElement>('project-rename-cancel').addEventListener('click', closeProjectDialog);
+  el<HTMLButtonElement>('project-delete-cancel').addEventListener('click', closeProjectDialog);
   renameForm.addEventListener('submit', async event => {
     event.preventDefault();
     if (!selected || busy) return;
@@ -94,6 +84,7 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
       D.log('info', 'day7', 'project.renamed', { projectId: project.id });
       busy = false;
       closeProjectDialog();
+      focusAfterRenameId = project.id;
       document.dispatchEvent(new Event('sketchyar:projects:changed'));
       toast('Проектът е преименуван.');
     } catch (error) {
@@ -235,6 +226,7 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
   let migrationPromise: Promise<number> | null = null;
   let pictureURLs: string[] = [];
   let cachedCards: ProjectThumbnail[] = [];
+  const sketchEditor = initDay17EditPlaceholder();
   function placeholder(): HTMLElement {
     const tile = document.createElement('div');
     tile.className = 'home-project-tile';
@@ -287,19 +279,28 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
         frame.alt = '';
         open.append(frame);
         open.addEventListener('click', () => void openSaved(project.id));
-        const caption = document.createElement('span');
+        // Four independent sibling actions: photo=resume, title=rename, pencil=edit,
+        // bin=confirm delete. Never nest a button inside the photo button.
+        const caption = document.createElement('button');
+        caption.type = 'button';
         caption.className = 'home-project-caption';
+        caption.dataset.projectId = project.id;
         caption.textContent = project.title;
-        caption.setAttribute('aria-hidden', 'true');
-        const menu = document.createElement('button');
-        menu.type = 'button';
-        menu.className = 'home-project-menu-trigger';
-        menu.textContent = '···';
-        menu.title = `Преименуване на ${project.title}`;
-        menu.setAttribute('aria-label', `Управление на ${project.title}, включително преименуване`);
-        menu.addEventListener('click', () => showProjectDialog(project, menu));
-        // Separate sibling button (not nested in the open-project button).
-        // Confirm before deleting; original file, thumbnail and preset are removed atomically.
+        caption.title = `Преименувай ${project.title}`;
+        caption.setAttribute('aria-label', `Преименувай проекта ${project.title}`);
+        caption.addEventListener('click', () => showProjectDialog(project, caption, 'rename'));
+        const pencil = document.createElement('button');
+        pencil.type = 'button';
+        pencil.className = 'home-project-edit-trigger';
+        pencil.title = `Промени скицата за ${project.title}`;
+        pencil.setAttribute('aria-label', `Промени скицата за проекта ${project.title}`);
+        const pencilIcon = document.createElement('img');
+        pencilIcon.src = `${import.meta.env.BASE_URL}ui/project-edit-pencil.svg`;
+        pencilIcon.alt = '';
+        pencilIcon.setAttribute('aria-hidden', 'true');
+        pencil.append(pencilIcon);
+        pencil.addEventListener('click', () => sketchEditor.open(project, pencil));
+        // Confirm before deleting; dependent records are removed atomically.
         const trash = document.createElement('button');
         trash.type = 'button';
         trash.className = 'home-project-delete-trigger';
@@ -311,12 +312,18 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
         trashIcon.setAttribute('aria-hidden', 'true');
         trash.append(trashIcon);
         trash.addEventListener('click', () => showProjectDialog(project, trash, 'delete'));
-        tile.append(open, caption, menu, trash);
+        tile.append(open, caption, pencil, trash);
         fragment.append(tile);
       });
       for (let index = cards.length; index < 4; index++) fragment.append(placeholder());
       const previousScroll = gallery.scrollTop;
       gallery.replaceChildren(fragment);
+      if (focusAfterRenameId !== null) {
+        const id = focusAfterRenameId;
+        focusAfterRenameId = null;
+        [...gallery.querySelectorAll<HTMLButtonElement>('.home-project-caption')]
+          .find(button => button.dataset.projectId === id)?.focus();
+      }
       // The header and footer stay fixed; only the inner two-column gallery
       // is scrollable after a fifth project appears.
       gallery.dataset.scrollable = String(cards.length > 4);
@@ -342,7 +349,10 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
     document.documentElement.classList.toggle('sketchy-home-active', active);
     document.documentElement.style.minHeight = active ? `${window.screen.height}px` : '';
     if (active) { home.scrollTop = 0; scheduleFit(); void refreshGallery(); }
-    else if (!dialogBackdrop.hidden) closeProjectDialog();
+    else {
+      if (!dialogBackdrop.hidden) closeProjectDialog();
+      sketchEditor.close();
+    }
   };
   setHome(true);
 
@@ -370,6 +380,7 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
   document.addEventListener('sketchyar:drawing:opened', () => {
     closeOfflinePanel();
     backupUI.close();
+    sketchEditor.close();
     home.hidden = true;
     document.body.classList.remove('sketchy-home-active');
     document.documentElement.classList.remove('sketchy-home-active');

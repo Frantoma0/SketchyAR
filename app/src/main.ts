@@ -89,17 +89,13 @@ document.getElementById('app')!.innerHTML = `
     </div>
   </div>
 </div>
-<!-- Day 7: separate action sheet; never nest buttons inside the polaroid's open button. -->
+<!-- Day 17: title -> rename, image -> drawing, pencil -> edit, bin -> delete. -->
 <div id="home-project-dialog" class="project-dialog-backdrop" role="presentation" hidden>
   <div class="project-dialog" role="dialog" aria-modal="true" aria-labelledby="project-dialog-title" aria-describedby="project-dialog-description" tabindex="-1">
     <button id="project-dialog-close" class="project-dialog-close" type="button" aria-label="Затвори">×</button>
     <h2 id="project-dialog-title">Проект</h2>
     <p id="project-dialog-description"></p>
     <p id="project-dialog-error" class="project-dialog-error" role="alert" hidden></p>
-    <div id="project-dialog-menu" class="project-dialog-buttons">
-      <button id="project-action-rename" type="button">Преименувай</button>
-      <button id="project-action-delete" type="button" class="project-dialog-danger-link">Изтрий проекта</button>
-    </div>
     <form id="project-rename-form" hidden>
       <label for="project-rename-input">Име на рисунката</label>
       <input id="project-rename-input" type="text" maxlength="100" autocomplete="off" required />
@@ -115,6 +111,21 @@ document.getElementById('app')!.innerHTML = `
         <button id="project-delete-yes" type="button" class="project-dialog-danger">Изтрий окончателно</button>
       </div>
     </div>
+  </div>
+</div>
+<!-- Day 17: safe placeholder for the future Sketch Generator. It does not alter IndexedDB. -->
+<div id="day17-edit-screen" class="day17-edit-screen" role="dialog" aria-modal="true" aria-labelledby="day17-edit-heading" aria-describedby="day17-edit-info" hidden>
+  <div class="day17-edit-top">
+    <button id="day17-edit-back" type="button" class="day17-edit-back" aria-label="Върни се към старите проекти">← Назад</button>
+    <h2 id="day17-edit-heading">Промени скицата</h2>
+  </div>
+  <div class="day17-edit-card">
+    <p class="day17-edit-project-label">Избран проект</p>
+    <p id="day17-edit-project-name" class="day17-edit-project-name"></p>
+    <div class="day17-edit-preview-placeholder" aria-hidden="true">✎</div>
+    <h3>Редакторът е в подготовка</h3>
+    <p id="day17-edit-info">Скоро тук ще можеш да настройваш контурите, детайлността и стила. Засега този екран не променя изображението или запазените настройки.</p>
+    <button id="day17-edit-return" type="button" class="day17-edit-return">Към проектите</button>
   </div>
 </div>
 <!-- Day 16: Native file picker is never inside a hidden Home or developer container. -->
@@ -144,7 +155,7 @@ document.getElementById('app')!.innerHTML = `
     <h1>SketchyAR</h1>
     <button id="ver" class="ver" type="button" aria-label="Версия на приложението"></button>
   </header>
-  <p class="lead">Ден 16: продуктово Backup меню. Диагностиката за Дни 13–15 е запазена.</p>
+  <p class="lead">Ден 17: моливче, преименуване от името и директно отваряне. Backup и диагностика са запазени.</p>
   <section><h2>Build</h2><dl id="build"></dl></section>
   <section><h2>Среда</h2><dl id="env"><dt>Зареждане</dt><dd>…</dd></dl></section>
   <section><h2>Възможности на устройството</h2><ul id="caps" class="caps"></ul></section>
