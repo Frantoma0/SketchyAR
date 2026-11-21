@@ -1,0 +1,27 @@
+SketchyAR v0.20.3 — Деликатни вертикални отстояния във Figma Generator
+Основа: точно v0.20.2; НЕ прилагай върху по-стара версия без междинните промени.
+
+1) PowerShell в основната папка ar-drawing:
+cd "C:\Users\vikit\Desktop\AR Drawing Проект\Код\ar-drawing"
+Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day20_3_Spacing_Hotfix_v0.20.3.zip" -DestinationPath . -Force
+
+2) Windows проверки:
+cd app
+npm ci --include=dev
+npm run typecheck
+npm run build
+npm run test:day20
+cd ..
+python -m pytest python_engine -q
+git diff --check
+git status
+
+3) След преглед на промените и успешни тестове:
+git add app/package.json app/package-lock.json app/src/styles.css app/public/ui/generator/figma-controls-lettering.svg app/tests/day20-spacing-refinement.test.mjs docs/day20-3-spacing.md Day20_3_INSTALL.txt
+git diff --cached --check
+git diff --cached --stat
+git commit -m "fix(day20): refine vertical spacing in Figma sketch editor"
+git push origin main
+
+4) След успешен deployment сравни с v0.20.2 на iPhone.
+Не трий проекти; няма промяна в IndexedDB.

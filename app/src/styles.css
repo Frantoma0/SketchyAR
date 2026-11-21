@@ -1074,3 +1074,11 @@ body.day19-zoom-open { overflow:hidden; }
 .day20-figma-screen .day20-figma-content .day20-figma-polaroid {transform:translateY(-4px);}
 .day20-figma-screen .day20-figma-controls {transform:translateY(-5px);}
 .day20-figma-screen .day20-figma-draw {transform:translateY(2px);}
+
+
+/* Day 20.3: approved iPhone micro-spacing. No resize/repaint of Figma assets.
+   Move labels and the aligned interactive hit areas together; maintain one viewport. */
+.day20-figma-screen .day20-figma-controls { transform:translateY(-10px); }
+.day20-figma-screen .day19-style-list.day20-figma-styles { transform:translateY(-6px); }
+.day20-figma-screen .day20-figma-lines { transform:translateY(4px); }
+.day20-figma-screen .day20-figma-draw { transform:translateY(5px); }
