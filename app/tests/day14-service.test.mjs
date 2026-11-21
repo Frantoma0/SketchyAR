@@ -115,7 +115,7 @@ process.on('exit',()=>rmSync(dir,{recursive:true,force:true}));
 
 // An asynchronous, transactional IndexedDB stand-in for exercising the writer's
 // collision and rollback logic. The real WebKit implementation still needs G2.
-const { restoreVerifiedToDB }=require(join(dir,'storage/day14-backup-service.js'));
+const { restoreVerifiedToDB, mergeVerifiedToDB }=require(join(dir,'storage/day14-backup-service.js'));
 class MockIDB {
   constructor(existing={},failAt=Infinity) {
     this.data=new Map(['projects','assets','overlay_presets','app_settings'].map(name =>
@@ -226,4 +226,98 @@ test('Day15: duplicate metadata IDs are rejected before database transaction', a
   const m = fixture();
   m.projects.push(structuredClone(m.projects[0]));
   await assert.rejects(() => verifyBackup(archive(m)), /Duplicate projects/);
+});
+
+// Day16.1 safe additive merge: same ZIP can be selected repeatedly without
+// deleting any real project. No mocking of the planner: call production writer.
+test('Day16.1: merge inserts missing project with full dependency group',async()=>{
+  const verified=await verifyBackup(archive(fixture()));
+  const other={...verified.manifest.projects[0],id:'00000000-0000-4000-8000-000000000099'};
+  const db=new MockIDB({projects:[other]});
+  const result=await mergeVerifiedToDB(db,verified);
+  assert.deepEqual(result.projectIds,[ID]);
+  assert.equal(result.assetIds.length,3); assert.equal(result.presetIds.length,1);
+  assert.deepEqual(['projects','assets','overlay_presets','app_settings'].map(x=>db.count(x)),[2,3,1,1]);
+  assert.deepEqual(db.data.get('projects').get(other.id),other);
+});
+test('Day16.1: repeated merge is a no-op, does not overwrite edited project or preset',async()=>{
+  const verified=await verifyBackup(archive(fixture()));
+  const db=new MockIDB();
+  await mergeVerifiedToDB(db,verified);
+  db.data.get('projects').get(ID).title='Локално редактирано заглавие';
+  db.data.get('overlay_presets').get(PRESET).opacityPercent=93;
+  const result=await mergeVerifiedToDB(db,verified);
+  assert.equal(result.canRestore,false); assert.equal(result.alreadyPresentProjects,1);
+  assert.equal(db.data.get('projects').get(ID).title,'Локално редактирано заглавие');
+  assert.equal(db.data.get('overlay_presets').get(PRESET).opacityPercent,93);
+  assert.deepEqual(['projects','assets','overlay_presets','app_settings'].map(x=>db.count(x)),[1,3,1,1]);
+});
+test('Day16.1: existing project prevents orphaned partial asset/preset restoration',async()=>{
+  const verified=await verifyBackup(archive(fixture()));
+  const db=new MockIDB({projects:[verified.manifest.projects[0]]});
+  const result=await mergeVerifiedToDB(db,verified);
+  assert.equal(result.canRestore,false);
+  assert.deepEqual(['projects','assets','overlay_presets','app_settings'].map(x=>db.count(x)),[1,0,0,0]);
+});
+test('Day16.1: asset and preset collisions block new project as whole, without mutation',async()=>{
+  const verified=await verifyBackup(archive(fixture()));
+  for(const [name,row] of [['assets',verified.assets[0]],['overlay_presets',verified.manifest.presets[0]],
+    ['app_settings',verified.manifest.settings[0]]]){
+    const db=new MockIDB({[name]:[row]});
+    const result=await mergeVerifiedToDB(db,verified);
+    assert.equal(result.blockedNewProjects,1,name);
+    assert.equal(result.canRestore,false);
+    assert.equal(db.count('projects'),0,name);
+    assert.equal(db.count(name),1,name);
+  }
+});
+test('Day16.1: previously present global setting stays unchanged on merge',async()=>{
+  const verified=await verifyBackup(archive(fixture()));
+  const old={key:'sketchyar:ui-preference',value:'mine',updatedAt:date};
+  verified.manifest.settings.push({...old,value:'older-archive'});
+  const db=new MockIDB({app_settings:[old]});
+  const result=await mergeVerifiedToDB(db,verified);
+  assert.equal(result.projectIds.length,1);
+  assert.equal(db.data.get('app_settings').get(old.key).value,'mine');
+  assert.equal(db.count('app_settings'),2); // global existing + source hash baseline
+});
+test('Day16.1: quota failure rolls back all selected merge rows',async()=>{
+  const verified=await verifyBackup(archive(fixture()));
+  const existing={id:'00000000-0000-4000-8000-000000000099',title:'Keep'};
+  const db=new MockIDB({projects:[existing]},3);
+  await assert.rejects(()=>mergeVerifiedToDB(db,verified),/quota/);
+  assert.deepEqual(['projects','assets','overlay_presets','app_settings'].map(x=>db.count(x)),[1,0,0,0]);
+  assert.equal(db.data.get('projects').get(existing.id).title,'Keep');
+});
+
+test('Day16.1: archive with 2 projects adds ONLY missing second project and its children',async()=>{
+  const m=fixture();
+  const replacements=new Map([[ID,'00000000-0000-4000-8000-000000000010'],
+    [SRC,'00000000-0000-4000-8000-000000000011'],
+    [THUMB,'00000000-0000-4000-8000-000000000012'],
+    [PROCESSED,'00000000-0000-4000-8000-000000000013'],
+    [PRESET,'00000000-0000-4000-8000-000000000014']]);
+  const two=structuredClone(fixture());
+  const replacement=(s)=>typeof s==='string'?(replacements.get(s)??s):s;
+  const p=structuredClone(m.projects[0]);p.id=replacement(p.id);p.activeAssetId=replacement(p.activeAssetId);
+  const moreAssets=m.assets.map(a=>({...a,id:replacement(a.id),projectId:replacement(a.projectId),
+    ...(a.sourceAssetId?{sourceAssetId:replacement(a.sourceAssetId)}:{}),
+    path:a.path.replace(a.id,replacement(a.id))}));
+  const morePreset={...m.presets[0],id:replacement(PRESET),projectId:p.id,assetId:replacement(SRC)};
+  two.projects.push(p); two.assets.push(...moreAssets);two.presets.push(morePreset);
+  two.settings.push({...m.settings[0],key:`day5-source-sha256:${replacement(SRC)}`});
+  const allBytes={...bytes};for(const [key,value] of Object.entries(bytes))allBytes[replacement(key)]=value;
+  const verified=await verifyBackup(archive(two,allBytes));
+  const firstRows={projects:[verified.manifest.projects[0]],
+    assets:verified.assets.filter(a=>a.projectId===ID),
+    overlay_presets:[verified.manifest.presets[0]],
+    app_settings:[verified.manifest.settings[0]]};
+  firstRows.projects[0]={...firstRows.projects[0],title:'New local project title'};
+  const db=new MockIDB(firstRows);
+  const result=await mergeVerifiedToDB(db,verified);
+  assert.deepEqual(result.projectIds,[p.id]);
+  assert.equal(result.alreadyPresentProjects,1);assert.equal(result.blockedNewProjects,0);
+  assert.equal(result.assetIds.length,3);assert.equal(result.presetIds.length,1);
+  assert.deepEqual(['projects','assets','overlay_presets','app_settings'].map(x=>db.count(x)),[2,6,2,2]);
+  assert.equal(db.data.get('projects').get(ID).title,'New local project title');
 });

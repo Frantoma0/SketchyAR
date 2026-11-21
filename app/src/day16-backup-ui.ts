@@ -3,9 +3,9 @@
  * Keep the developer diagnostic UI independent and accessible.
  */
 import * as D from './diagnostics';
-import { BACKUP_STORE_NAMES, summarizeBackupConflicts,
-  type BackupConflicts, type ExistingBackupKeys } from './day16-backup-conflicts';
-import { createBackup, restoreBackupToCurrentDB, runDay14SandboxRestore, verifyBackup,
+import { BACKUP_STORE_NAMES, type ExistingBackupKeys } from './day16-backup-conflicts';
+import { planBackupMerge, type BackupMergePlan } from './day16-backup-merge';
+import { createBackup, mergeBackupToCurrentDB, runDay16SandboxMerge, verifyBackup,
   type BackupBuildResult, type VerifiedBackup } from './storage/day14-backup-service';
 import { openProjectDB } from './storage/project-store';
 
@@ -15,7 +15,7 @@ const find = <T extends HTMLElement>(id: string): T => {
   return node as T;
 };
 
-async function currentConflicts(verified: VerifiedBackup): Promise<BackupConflicts> {
+async function currentMergePlan(verified: VerifiedBackup): Promise<BackupMergePlan> {
   const db = await openProjectDB();
   const transaction = db.transaction([...BACKUP_STORE_NAMES], 'readonly');
   // Issue ALL requests synchronously while this transaction is active.
@@ -28,7 +28,7 @@ async function currentConflicts(verified: VerifiedBackup): Promise<BackupConflic
   BACKUP_STORE_NAMES.forEach((name, i) => {
     (existing as Record<string, readonly string[]>)[name] = values[i].map(String);
   });
-  return summarizeBackupConflicts(verified.manifest, existing);
+  return planBackupMerge(verified.manifest, existing);
 }
 
 function fallbackDownload(file: File): void {
@@ -66,7 +66,7 @@ export function initDay16BackupUI(openDiagnostics: () => void): { close: () => v
   let prepared: BackupBuildResult | null = null;
   let chosen: File | null = null;
   let verified: VerifiedBackup | null = null;
-  let conflicts: BackupConflicts | null = null;
+  let mergePlan: BackupMergePlan | null = null;
   let sandboxOk = false;
   let restoreCompleted = false;
   let lastFocus: HTMLElement | null = null;
@@ -79,7 +79,7 @@ export function initDay16BackupUI(openDiagnostics: () => void): { close: () => v
     prepare.disabled = running;
     share.disabled = running || !prepared || mode !== 'export';
     sandbox.disabled = running || !chosen || !verified || mode !== 'import';
-    restore.disabled = running || !chosen || !verified || !sandboxOk || !conflicts?.canRestore || restoreCompleted || mode !== 'import';
+    restore.disabled = running || !chosen || !verified || !sandboxOk || !mergePlan?.canRestore || restoreCompleted || mode !== 'import';
     close.disabled = running;
   };
   const hideMenu = (): void => {
@@ -90,7 +90,7 @@ export function initDay16BackupUI(openDiagnostics: () => void): { close: () => v
     if (running) return;
     backdrop.hidden = true;
     mode = null;
-    prepared = null; chosen = null; verified = null; conflicts = null; sandboxOk = false; restoreCompleted = false;
+    prepared = null; chosen = null; verified = null; mergePlan = null; sandboxOk = false; restoreCompleted = false;
     const target = lastFocus;
     lastFocus = null;
     if (target?.isConnected) target.focus();
@@ -100,14 +100,14 @@ export function initDay16BackupUI(openDiagnostics: () => void): { close: () => v
     if (!backdrop.hidden) closeDialog();
     lastFocus = trigger;
     mode = next;
-    prepared = null; chosen = null; verified = null; conflicts = null; sandboxOk = false; restoreCompleted = false;
+    prepared = null; chosen = null; verified = null; mergePlan = null; sandboxOk = false; restoreCompleted = false;
     title.textContent = next === 'export' ? 'Запази архив' : 'Зареди архив';
     details.textContent = next === 'export'
       ? 'Създай локален ZIP архив на проектите и оригиналните изображения. След подготовката го запази във Files.'
       : 'Избери ZIP от Files. Първо ще проверим SHA-256 и ще тестваме възстановяването във временна база.';
     warning.textContent = next === 'export'
       ? 'Архивът не е запазен, докато не го съхраниш във Files. Провери файла след записването.'
-      : 'Няма презаписване. При съвпадащи ID или ключове в текущата база истинският импорт е блокиран.';
+      : 'Добавяме само липсващите ЦЕЛИ проекти. Съществуващите проекти, снимки и настройки никога не се презаписват. Проекти с конфликтни asset/preset ID се пропускат.';
     exportActions.hidden = next !== 'export';
     importActions.hidden = next !== 'import';
     setStatus(next === 'export' ? 'ZIP още не е създаден.' : 'Избиране на ZIP…');
@@ -194,7 +194,7 @@ export function initDay16BackupUI(openDiagnostics: () => void): { close: () => v
   async function examine(file: File): Promise<void> {
     if (running) return;
     running = true;
-    verified = null; conflicts = null; sandboxOk = false;
+    verified = null; mergePlan = null; sandboxOk = false;
     setStatus('Проверявам ZIP, manifest, CRC-32 и SHA-256…');
     updateControls();
     try {
@@ -202,17 +202,22 @@ export function initDay16BackupUI(openDiagnostics: () => void): { close: () => v
       const result = await verifyBackup(file); // read-only: never writes production DB
       verified = result;
       details.textContent = `SHA-256 PASS · ${result.manifest.projects.length} проекта · ${result.manifest.assets.length} assets · ${result.manifest.presets.length} presets · ${(result.archiveBytes / 1024 / 1024).toFixed(2)} MiB. Код: ${result.archiveSha256.slice(0, 16)}…`;
-      conflicts = await currentConflicts(result); // another read-only operation
-      if (conflicts.total) {
-        setStatus(`Архивът е валиден, но има ${conflicts.total} конфликта в съществуващите ID/ключове. Импортът е блокиран, за да запазим проектите.`);
+      mergePlan = await currentMergePlan(result); // read-only; writer will recalculate atomically
+      const p = mergePlan;
+      details.textContent += ` За добавяне: ${p.projectIds.length} проекта, ${p.assetIds.length} assets, ${p.presetIds.length} presets. Налични: ${p.alreadyPresentProjects}. Пропуснати по конфликт: ${p.blockedNewProjects}.`;
+      if (p.canRestore) {
+        setStatus(`SHA-256 PASS · ще бъдат добавени ${p.projectIds.length} липсващи проекта. Съществуващите няма да се променят. Първо изпълни безопасния тест.`);
+      } else if (p.blockedNewProjects) {
+        setStatus(`ZIP е валиден, но ${p.blockedNewProjects} нови проекта имат конфликтни зависимости. Нищо няма да се записва.`, true);
       } else {
-        setStatus('SHA-256 PASS. Няма установени конфликти. Стартирай безопасния тест, преди да възстановиш.');
+        setStatus('SHA-256 PASS · Всички проекти от архива вече присъстват. Няма нищо ново за добавяне.');
       }
       D.log('info', 'day16.verify', 'pass-read-only', {
         archiveSha256: result.archiveSha256, projects: result.manifest.projects.length,
-        assets: result.assets.length, conflicts: conflicts.total,
+        assets: result.assets.length, newProjects: p.projectIds.length,
+        presentProjects: p.alreadyPresentProjects, blockedProjects: p.blockedNewProjects,
       });
-    } catch (error) { verified = null; conflicts = null; failure('verify', error); }
+    } catch (error) { verified = null; mergePlan = null; failure('verify', error); }
     finally { running = false; updateControls(); }
   }
   sandbox.addEventListener('click', () => {
@@ -221,35 +226,35 @@ export function initDay16BackupUI(openDiagnostics: () => void): { close: () => v
     running = true; sandboxOk = false;
     setStatus('Тествам възстановяване в отделна IndexedDB база. Реалните проекти не се променят…');
     updateControls();
-    void runDay14SandboxRestore(file).then(result => {
+    void runDay16SandboxMerge(file).then(result => {
       sandboxOk = true;
-      setStatus(conflicts?.total
-        ? `SANDBOX RESTORE PASS. Реалният импорт остава блокиран заради ${conflicts.total} конфликта.`
-        : 'SANDBOX RESTORE PASS. Може да продължиш с изрично потвърждение.');
-      D.log('info', 'day16.sandbox_restore', 'pass', {
-        archiveSha256: result.archiveSha256, projects: result.projects,
-        assets: result.assets,
+      setStatus(mergePlan?.canRestore
+        ? `SANDBOX MERGE PASS. Възможно е добавянето на ${mergePlan.projectIds.length} липсващи проекта след потвърждение.`
+        : 'SANDBOX MERGE PASS. Всички проекти вече присъстват или имат конфликтни зависимости. Няма нови проекти за добавяне.');
+      D.log('info', 'day16.sandbox_merge', 'pass', {
+        archiveSha256: result.archiveSha256, recoveredProjects: result.recoveredProjects,
+        unchangedProjects: result.unchangedProjects,
       });
     }).catch(error => { sandboxOk = false; failure('sandbox_restore', error); })
       .finally(() => { running = false; updateControls(); });
   });
   restore.addEventListener('click', () => {
-    if (!chosen || !verified || !sandboxOk || !conflicts?.canRestore || running) return;
-    if (!window.confirm('Добавяне към истинската база? Само НОВИ проекти/записи, без презаписване. При ID конфликт цялата транзакция се отказва. Продължи?')) return;
+    if (!chosen || !verified || !sandboxOk || !mergePlan?.canRestore || running) return;
+    if (!window.confirm(`Да добавя ли ${mergePlan.projectIds.length} ЛИПСВАЩИ проекта към тази база?\n\nНаличните проекти се пропускат без промяна. Проекти с конфликтни зависимости няма да бъдат добавени. Няма изтриване или презаписване.`)) return;
     running = true;
     const file = chosen;
-    setStatus('Проверявам архива повторно и добавям записите атомарно…');
+    setStatus('Проверявам ZIP повторно и добавям само липсващите цели проекти атомарно…');
     updateControls();
-    void restoreBackupToCurrentDB(file).then(result => {
-      setStatus(`RESTORE PASS: добавени ${result.manifest.projects.length} проекта, ${result.assets.length} assets и ${result.manifest.presets.length} presets.`);
-      D.log('info', 'day16.production_restore', 'pass', {
+    void mergeBackupToCurrentDB(file).then(({ verified: result, added }) => {
+      setStatus(`MERGE PASS: добавени ${added.projectIds.length} проекта, ${added.assetIds.length} assets и ${added.presetIds.length} presets. Пропуснати налични: ${added.alreadyPresentProjects}; блокирани по зависимост: ${added.blockedNewProjects}.`);
+      D.log('info', 'day16.production_merge', 'pass', {
         archiveSha256: result.archiveSha256,
-        projects: result.manifest.projects.length, assets: result.assets.length,
+        projectsAdded: added.projectIds.length, assetsAdded: added.assetIds.length,
+        existingProjectsKept: added.alreadyPresentProjects, blockedProjects: added.blockedNewProjects,
       });
-      // A successful add-only restore must not be re-submitted from this dialog.
-      restoreCompleted = true;
-      document.dispatchEvent(new Event('sketchyar:projects:changed'));
-    }).catch(error => failure('production_restore', error))
+      restoreCompleted = true; // Refuse duplicate submission from same dialog.
+      if (added.projectIds.length) document.dispatchEvent(new Event('sketchyar:projects:changed'));
+    }).catch(error => failure('production_merge', error))
       .finally(() => { running = false; updateControls(); });
   });
 

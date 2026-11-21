@@ -3,6 +3,8 @@
  * Real restore is add-only: ANY collision rejects the ENTIRE transaction.
  */
 import { isGuidePlanV1 } from '../domain/guide';
+import { planBackupMerge, type BackupMergePlan } from '../day16-backup-merge';
+import { BACKUP_STORE_NAMES, type ExistingBackupKeys } from '../day16-backup-conflicts';
 import type { BackupManifestV1, BackupAssetV1 } from './backup-contract';
 import { inspectBackupInput, manifestRecordFromVerifiedAsset } from './day13-backup-preflight';
 import { openProjectDB, type AppSetting, type AssetRecord, type OverlayPreset,
@@ -295,6 +297,60 @@ export async function restoreBackupToCurrentDB(file: Blob): Promise<VerifiedBack
   await restoreVerifiedToDB(await openProjectDB(), verified);
   return verified;
 }
+/** Safe additive restore for the user-facing Day 16 archive menu.
+ * Preserve the original strict restore function above for Day 14/15 regression.
+ * The merge plan is calculated INSIDE this single transaction so it cannot
+ * race with another tab changing IndexedDB between preview and confirmation.
+ */
+export async function mergeVerifiedToDB(db: IDBDatabase, verified: VerifiedBackup): Promise<BackupMergePlan> {
+  const m = verified.manifest;
+  inspectBackupInput(m.projects, verified.assets, m.presets, m.settings);
+  const tx = db.transaction([...BACKUP_STORE_NAMES], 'readwrite');
+  const finished = done(tx);
+  const allKeys: IDBValidKey[][] = [];
+  let pending = BACKUP_STORE_NAMES.length;
+  let plan: BackupMergePlan | null = null;
+  for (let i = 0; i < BACKUP_STORE_NAMES.length; i++) {
+    const store = tx.objectStore(BACKUP_STORE_NAMES[i]);
+    const request = store.getAllKeys();
+    request.onsuccess = () => {
+      allKeys[i] = request.result;
+      if (--pending !== 0) return;
+      const existing = {} as ExistingBackupKeys;
+      BACKUP_STORE_NAMES.forEach((name, j) => {
+        (existing as Record<string, readonly string[]>)[name] = allKeys[j].map(String);
+      });
+      plan = planBackupMerge(m, existing);
+      if (!plan.canRestore) return; // Same archive twice is an intentional no-op.
+      const selectedProjects = new Set(plan.projectIds);
+      const selectedAssets = new Set(plan.assetIds);
+      const selectedPresets = new Set(plan.presetIds);
+      const selectedSettings = new Set(plan.settingKeys);
+      // Synchronous request queue: no await between reads and writes.
+      for (const project of m.projects) if (selectedProjects.has(project.id))
+        tx.objectStore('projects').add(project);
+      for (const asset of verified.assets) if (selectedAssets.has(asset.id))
+        tx.objectStore('assets').add(asset);
+      for (const preset of m.presets) if (selectedPresets.has(preset.id))
+        tx.objectStore('overlay_presets').add(preset);
+      for (const setting of m.settings) if (selectedSettings.has(setting.key))
+        tx.objectStore('app_settings').add(setting);
+    };
+    request.onerror = () => { tx.abort(); };
+  }
+  await finished; // Transaction abort rolls back ALL additions, not just one project.
+  if (!plan) throw new Error('Неуспешно прочитане на IndexedDB ключовете за merge.');
+  return plan;
+}
+export async function mergeBackupToCurrentDB(file: Blob): Promise<{
+  verified: VerifiedBackup; added: BackupMergePlan;
+}> {
+  // A fresh SHA-256/manifest check is required even after the read-only preview.
+  const verified = await verifyBackup(file);
+  const added = await mergeVerifiedToDB(await openProjectDB(), verified);
+  return { verified, added };
+}
+
 const SANDBOX = 'sketchyar-day14-restore-sandbox';
 function createTestDB(name = SANDBOX): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -363,6 +419,70 @@ export async function runDay14SandboxRestore(file: Blob): Promise<Day14DrillResu
   }
 }
 
+
+/** Verify merge semantics in a completely separate temporary database.
+ * Restore the whole archive, verify a second merge is a no-op, deliberately
+ * remove ONE project group in the sandbox, then merge only this group back.
+ * NEVER delete or write production data during this drill.
+ */
+const DAY16_MERGE_SANDBOX = 'sketchyar-day16-merge-sandbox';
+export interface Day16MergeDrillResult {
+  status: 'SANDBOX MERGE PASS'; archiveSha256: string;
+  repeatedAdded: number; recoveredProjects: number; unchangedProjects: number;
+}
+export async function runDay16SandboxMerge(file: Blob): Promise<Day16MergeDrillResult> {
+  const verified = await verifyBackup(file);
+  await deleteTestDB(DAY16_MERGE_SANDBOX);
+  const db = await createTestDB(DAY16_MERGE_SANDBOX);
+  try {
+    await restoreVerifiedToDB(db, verified);
+    const complete = await snapshot(db);
+    const repeated = await mergeVerifiedToDB(db, verified);
+    if (repeated.canRestore || repeated.projectIds.length ||
+        (await snapshot(db)).projects.length !== complete.projects.length)
+      throw new Error('Повторен merge не е идемпотентен');
+    if (!complete.projects.length) return {
+      status: 'SANDBOX MERGE PASS', archiveSha256: verified.archiveSha256,
+      repeatedAdded: 0, recoveredProjects: 0, unchangedProjects: 0,
+    };
+    const missing = complete.projects[0];
+    const children = complete.assets.filter(a => a.projectId === missing.id);
+    const layouts = complete.presets.filter(p => p.projectId === missing.id);
+    const removedSources = new Set(children.filter(a => a.role === 'source').map(a => a.id));
+    const removeTx = db.transaction([...BACKUP_STORE_NAMES], 'readwrite');
+    const removed = done(removeTx);
+    removeTx.objectStore('projects').delete(missing.id);
+    for (const child of children) removeTx.objectStore('assets').delete(child.id);
+    for (const preset of layouts) removeTx.objectStore('overlay_presets').delete(preset.id);
+    for (const setting of complete.settings) {
+      if (setting.key.startsWith('day5-source-sha256:') &&
+          removedSources.has(setting.key.slice('day5-source-sha256:'.length)))
+        removeTx.objectStore('app_settings').delete(setting.key);
+    }
+    await removed;
+    const restored = await mergeVerifiedToDB(db, verified);
+    if (restored.projectIds.length !== 1 || restored.projectIds[0] !== missing.id ||
+        restored.assetIds.length !== children.length ||
+        restored.presetIds.length !== layouts.length)
+      throw new Error('Merge не възстанови точно липсващия проект');
+    const after = await snapshot(db);
+    if (after.projects.length !== complete.projects.length ||
+        after.assets.length !== complete.assets.length ||
+        after.presets.length !== complete.presets.length ||
+        after.settings.length !== complete.settings.length)
+      throw new Error('Merge sandbox записите не съвпадат');
+    for (const asset of after.assets.filter(a => a.projectId === missing.id)) {
+      const baseline = verified.manifest.assets.find(a => a.id === asset.id);
+      if (!baseline || baseline.sha256 !== await sha256(new Uint8Array(await asset.blob.arrayBuffer())))
+        throw new Error('Merge sandbox SHA-256 mismatch');
+    }
+    return { status: 'SANDBOX MERGE PASS', archiveSha256: verified.archiveSha256,
+      repeatedAdded: 0, recoveredProjects: 1, unchangedProjects: complete.projects.length - 1 };
+  } finally {
+    db.close();
+    await deleteTestDB(DAY16_MERGE_SANDBOX);
+  }
+}
 
 /** Day 15 — non-destructive G2 hardening drill. Production access is read-only.
  * Deliberately malformed ZIP and repeated restore are tested ONLY in the sandbox.
