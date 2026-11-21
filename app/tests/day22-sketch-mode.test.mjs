@@ -27,7 +27,7 @@ test('D22: editor close invalidates result and cannot resurrect preview', () => 
 test('D22: only the existing validated Python bridge generates the real image', () => {
   const code = read('src/day22-sketch-mode.ts');
   assert.match(code,/decodeReducedGray\(source\)/);
-  assert.match(code,/runPythonImage\(\{ \.\.\.gray, \.\.\.SKETCH_V1_SETTINGS \}\)/);
+  assert.match(code,/runPythonImage\(\{ \.\.\.gray, \.\.\.SKETCH_V4_SETTINGS \}\)/);
   assert.match(code,/encodeTransparentPng\(result\.mask, result\.width, result\.height\)/);
   assert.match(code,/sigma: 1, low: 0\.04, high: 0\.10/);
   assert.doesNotMatch(code,/saveProcessedPng\s*\(|openSavedDrawing\s*\(|\.put\s*\(/);
@@ -70,6 +70,6 @@ test('D22+23: Draw enables only with real Sketch; detail and line remain visual'
   assert.match(editor,/Детайлност и линии все още не променят PNG/);
   assert.doesNotMatch(service,/saveProcessedPng/);
   const pkg=JSON.parse(read('package.json'));
-  assert.equal(pkg.version,'0.25.0');
+  assert.equal(pkg.version,'0.28.0');
   assert.match(editor,/!sketchBuilding && ui\.style === 'sketch' &&[\s\S]*?Boolean\(processedURL\) && Boolean\(savedProcessed\)/);
 });

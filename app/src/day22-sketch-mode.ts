@@ -1,4 +1,4 @@
-/** Day 22: the first REAL Sketch contour preview, using the tested Day 13 pipeline.
+/** Day 28: the real Sketch preview now uses flow-coherent Sketch V4.
  * Detail/line/style variants are intentionally NOT applied yet.
  * The PNG is a temporary draft; no DB write or camera routing occurs in this module.
  */
@@ -7,9 +7,16 @@ import { runPythonImage } from './python-client';
 export { SketchDraftGate } from './day22-sketch-gate';
 
 /** Version is checked when reading a cached draft; old applied drawings stay valid. */
-export const SKETCH_QUALITY_VERSION = 'day25-sketch-quality-v1';
+export const SKETCH_QUALITY_VERSION = 'day28-flow-coherent-v4';
 
+// Historical V1 settings remain for reproducible Day 12/25 comparisons.
 export const SKETCH_V1_SETTINGS = Object.freeze({ sigma: 1, low: 0.04, high: 0.10 });
+/** Inactive historical V2 settings retained for reproducible comparisons. */
+export const SKETCH_V2_SETTINGS = Object.freeze({ sigma: 1, low: 0.04, high: 0.10 });
+/** The inactive historical Sketch V3 Worker pipeline. */
+export const SKETCH_V3_SETTINGS = Object.freeze({ sigma: 1, low: 0.04, high: 0.10 });
+/** Only production settings for the active Sketch V4 Worker pipeline. */
+export const SKETCH_V4_SETTINGS = Object.freeze({ sigma: 1, low: 0.04, high: 0.10 });
 
 export interface SketchDraftResult {
   png: Blob;
@@ -28,7 +35,7 @@ export interface SketchDraftResult {
 export async function generateSketchDraft(source: Blob): Promise<SketchDraftResult> {
   if (!source || source.size === 0) throw new Error('Няма оригинална снимка за обработка.');
   const gray = await decodeReducedGray(source);
-  const result = await runPythonImage({ ...gray, ...SKETCH_V1_SETTINGS });
+  const result = await runPythonImage({ ...gray, ...SKETCH_V4_SETTINGS });
   if (result.inkPixels === 0) throw new Error('Не бяха открити контури в избраното изображение.');
   const png = await encodeTransparentPng(result.mask, result.width, result.height);
   if (!png.size) throw new Error('Получена е празна PNG скица.');

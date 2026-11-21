@@ -1,0 +1,49 @@
+SketchyAR v0.27.0 — Day 27: ACTIVE SKETCH V3 (Importance-Aware Multiscale)
+
+PATCH PREREQUISITES:
+ - SketchyAR_Day27_Sketch_V3_Patch_v0.27.0.zip: for existing v0.26.0 only.
+ - SketchyAR_Day25_to_Day27_Combined_Patch_v0.27.0.zip: for existing v0.25.0 (contains both Day 26 + Day 27).
+ - Full ZIP: source backup; do not extract over a Git repo unless deliberately replacing all files.
+
+1) PowerShell, from the root of your repository:
+cd "C:\Users\vikit\Desktop\AR Drawing Проект\Код\ar-drawing"
+Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day27_Sketch_V3_Patch_v0.27.0.zip" -DestinationPath . -Force
+# OR, if still on Day25, use the COMBINED patch in the command above instead.
+cd app
+npm ci --include=dev
+npm run typecheck
+npm run build
+npm run test:day27
+cd ..
+python -m pytest python_engine -q
+git diff --check
+git status
+
+2) IMPORTANT: review git status and do not commit personal images, diagnostics,
+   project backups, app/public/pyodide, node_modules, or dist.
+
+# Stage all SOURCE/TEST changes, whether patching v0.26 or v0.25:
+git add app/package.json app/package-lock.json
+git add app/src/python-worker.ts app/src/day22-sketch-mode.ts app/src/day17-sketch-placeholder.ts
+git add app/tests/day21-camera-navigation.test.mjs app/tests/day22-sketch-mode.test.mjs
+git add app/tests/day25-sketch-quality.test.mjs app/tests/day26-multiscale.test.mjs
+git add app/tests/day27-importance.test.mjs
+git add python_engine/ar_drawing/day26_multiscale.py python_engine/tests/test_day26_multiscale.py
+git add python_engine/ar_drawing/day27_importance.py python_engine/tests/test_day27_importance.py
+git add scripts/day26_benchmark_private.py scripts/day27_benchmark_private.py
+git add docs/day26-multiscale-sketch-v2.md docs/day26-anonymized-metrics.csv
+git add docs/day27-sketch-v3.md docs/day27-anonymized-metrics.csv
+git add Day26_INSTALL.txt Day27_INSTALL.txt
+
+git diff --cached --check
+git diff --cached --stat
+git commit -m "Day 27: activate importance-aware Sketch V3, preserve V2 baseline"
+git push origin main
+git log -1 --oneline
+git status
+
+3) Complete the iPhone G27 test in docs/day27-sketch-v3.md.
+
+THE OLD ENGINE: V1, Day25 and V2 remain on disk for comparison, but V3 is the
+ONLY product Sketch pipeline. The editor UI and 'apply only on Draw' remain.
+Local tests PASS; Windows TypeScript 7/Vite and real iPhone tests are PENDING.

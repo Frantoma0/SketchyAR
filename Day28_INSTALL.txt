@@ -1,0 +1,42 @@
+SketchyAR Day 28 — Sketch V4 / v0.28.0
+=======================================
+Choose ONE ZIP:
+  (A) SketchyAR_Day28_V4_Only_Patch_v0.28.0.zip  if your local repo already has Day27 V3.
+  (B) SketchyAR_Day25_to_Day28_Combined_Patch_v0.28.0.zip  if your local repo is still Day25.
+Do NOT expand the full-project ZIP over your active repo.
+
+PowerShell:
+cd "C:\Users\vikit\Desktop\AR Drawing Проект\Код\ar-drawing"
+Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day28_V4_Only_Patch_v0.28.0.zip" -DestinationPath . -Force
+# For local Day25, replace the ZIP name above with: SketchyAR_Day25_to_Day28_Combined_Patch_v0.28.0.zip
+
+cd app
+npm ci --include=dev
+npm run typecheck
+npm run build
+npm run test:day28
+cd ..
+python -m pytest python_engine -q
+git diff --check
+git status
+
+AFTER checking what changed (and only if all tests passed):
+git add app/package.json app/package-lock.json
+git add app/src/python-worker.ts app/src/day22-sketch-mode.ts app/src/day17-sketch-placeholder.ts
+git add app/tests/*.test.mjs
+git add python_engine/ar_drawing/day26_multiscale.py python_engine/ar_drawing/day27_importance.py python_engine/ar_drawing/day28_flow_coherent.py
+git add python_engine/tests/test_day26_multiscale.py python_engine/tests/test_day27_importance.py python_engine/tests/test_day28_flow_coherent.py
+git add scripts/day26_benchmark_private.py scripts/day27_benchmark_private.py scripts/day28_benchmark_private.py
+git add docs/day26-multiscale-sketch-v2.md docs/day26-anonymized-metrics.csv
+git add docs/day27-sketch-v3.md docs/day27-anonymized-metrics.csv
+git add docs/day28-sketch-v4.md docs/day28-anonymized-metrics.csv
+git add Day26_INSTALL.txt Day27_INSTALL.txt Day28_INSTALL.txt
+git diff --cached --check
+git diff --cached --stat
+git status
+# Ensure no personal pictures, data backups, node_modules or dist are staged.
+git commit -m "Day 28: activate flow-coherent Sketch V4 and retain V1-V3 baselines"
+git push origin main
+
+Do not delete or restore your IndexedDB projects. Keep an existing backup separately.
+Real iPhone acceptance is still required; CPython numbers do not prove Safari speed or portrait quality.

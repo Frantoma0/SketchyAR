@@ -7,7 +7,7 @@ import { getProjectImage, getLatestProcessedPreview, getSelectedProcessedAsset, 
   selectOriginalForDrawing, type AssetRecord, type ProjectRecord } from './storage/project-store';
 import { saveProcessedPng, type ProcessedProvenance } from './storage/day13-processed';
 import { openSavedDrawing, applySketchToActiveCamera, applyOriginalToActiveCamera } from './day4';
-import { generateSketchDraft, SketchDraftGate, SKETCH_V1_SETTINGS, SKETCH_QUALITY_VERSION, type SketchDraftResult } from './day22-sketch-mode';
+import { generateSketchDraft, SketchDraftGate, SKETCH_V4_SETTINGS, SKETCH_QUALITY_VERSION, type SketchDraftResult } from './day22-sketch-mode';
 import { DEFAULT_SKETCH_UI, setSketchUiDetail, setSketchUiLine, setSketchUiStyle,
   previewCanCompare, type SketchUiState } from './day20-sketch-state';
 
@@ -115,7 +115,7 @@ export function initDay17EditPlaceholder(): {
       if (!sketchGate.isCurrent(ticket, projectId, sourceId) || screen.hidden || ui.style !== 'sketch') return;
       const provenance: ProcessedProvenance = {
         sourceAssetId: sourceId, pipelineVersion: result.pipelineVersion,
-        params: { ...SKETCH_V1_SETTINGS, input: 'grayscale-u8', maxSide: 1024 },
+        params: { ...SKETCH_V4_SETTINGS, input: 'grayscale-u8', maxSide: 1024 },
         modelId: 'none', backend: 'numpy-pyodide',
       };
       const stored = await saveProcessedPng(projectId, provenance,
@@ -162,7 +162,7 @@ export function initDay17EditPlaceholder(): {
     }
     if (button.dataset.line) ui = setSketchUiLine(ui, button.dataset.line);
     // An already APPLIED pre-Day25 sketch is still valid in Camera/Home.
-    // If the user deselects then reselects Sketch, generate the improved v2
+    // If the user deselects then reselects Sketch, generate the new importance-aware V3
     // preview rather than silently recycling an older pipeline's bitmap.
     // This only changes the draft; applied selection changes on Draw.
     if (ui.style === 'sketch' && savedProcessed &&
@@ -224,7 +224,7 @@ export function initDay17EditPlaceholder(): {
       if (draftResult) {
         const provenance: ProcessedProvenance = {
           sourceAssetId: sourceId, pipelineVersion: draftResult.pipelineVersion,
-          params: { ...SKETCH_V1_SETTINGS, input: 'grayscale-u8', maxSide: 1024 },
+          params: { ...SKETCH_V4_SETTINGS, input: 'grayscale-u8', maxSide: 1024 },
           modelId: 'none', backend: 'numpy-pyodide',
         };
         savedProcessed = await saveProcessedPng(projectId, provenance,

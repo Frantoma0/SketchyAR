@@ -1,0 +1,37 @@
+SketchyAR Day 26 — ACTIVE MULTISCALE SKETCH V2 v0.26.0
+Base: v0.25.0 (patch). Full ZIP includes the complete working source.
+
+1) PowerShell from existing repository:
+cd "C:\Users\vikit\Desktop\AR Drawing Проект\Код\ar-drawing"
+Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day26_Multiscale_Sketch_V2_Patch_v0.26.0.zip" -DestinationPath . -Force
+cd app
+npm ci --include=dev
+npm run typecheck
+npm run build
+npm run test:day26
+cd ..
+python -m pytest python_engine -q
+git diff --check
+git status
+
+2) Only after successful checks and reviewing git status:
+git add app/package.json app/package-lock.json
+git add app/src/python-worker.ts app/src/day22-sketch-mode.ts app/src/day17-sketch-placeholder.ts
+git add app/tests/day21-camera-navigation.test.mjs app/tests/day22-sketch-mode.test.mjs
+git add app/tests/day25-sketch-quality.test.mjs app/tests/day26-multiscale.test.mjs
+git add python_engine/ar_drawing/day26_multiscale.py python_engine/tests/test_day26_multiscale.py
+git add scripts/day26_benchmark_private.py
+git add docs/day26-multiscale-sketch-v2.md docs/day26-anonymized-metrics.csv Day26_INSTALL.txt
+git diff --cached --check
+git diff --cached --stat
+git commit -m "Day 26: activate multiscale Sketch V2, retain V1 baseline"
+git push origin main
+git log -1 --oneline
+git status
+
+3) Test on iPhone per docs/day26-multiscale-sketch-v2.md.
+
+IMPORTANT: Do not delete existing PWA/projects or restore a production backup to test.
+V1 stays available in Python but is NOT active on tapping Sketch.
+Only Draw applies a newly generated V2 PNG to Home & Camera.
+Windows build and iPhone tests have NOT been performed in this environment.

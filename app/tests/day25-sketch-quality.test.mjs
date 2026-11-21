@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const get=p=>readFileSync(new URL(`../${p}`,import.meta.url),'utf8');
 
-test('G25: Worker loads the same bundled Day25 Python module for real image requests',()=>{
+test('G25 regression: historical quality Python module remains installed, while V4 is active',()=>{
   const worker=get('src/python-worker.ts');
   const engine=get('../python_engine/ar_drawing/day25_quality.py');
-  assert.match(worker,/import day25Source from '\.\.\/\.\.\/python_engine\/ar_drawing\/day25_quality\.py\?raw'/);
+  assert.doesNotMatch(worker,/import day25Source/);
   assert.match(worker,/ensureDay12Module\(pyodide\)/);
-  assert.match(worker,/sys\.modules\["ar_drawing\.day25_quality"\]/);
-  assert.match(worker,/_sketchyar_day25\.process_gray8_quality\(/);
+  assert.doesNotMatch(worker,/sys\.modules\["ar_drawing\.day25_quality"\]/);
+  assert.match(worker,/_sketchyar_day28\.process_gray8_flow\(/);
+  assert.doesNotMatch(worker,/_sketchyar_day13_result = _sketchyar_day25\.process_gray8_quality\(/);
   assert.match(engine,/SKETCH_QUALITY_VERSION = 'day25-sketch-quality-v1'/);
   assert.doesNotMatch(engine,/import scipy|import cv2|import PIL/);
 });
@@ -18,7 +19,7 @@ test('G25: versioned previews do not silently reuse old Python output',()=>{
   const store=get('src/storage/project-store.ts');
   const editor=get('src/day17-sketch-placeholder.ts');
   const service=get('src/day22-sketch-mode.ts');
-  assert.match(service,/export const SKETCH_QUALITY_VERSION = 'day25-sketch-quality-v1'/);
+  assert.match(service,/export const SKETCH_QUALITY_VERSION = 'day28-flow-coherent-v4'/);
   assert.match(store,/pipelineVersion\?: string/);
   assert.match(store,/pipelineVersion === undefined \|\| a\.pipelineVersion === pipelineVersion/);
   assert.match(editor,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION\)/);
@@ -47,5 +48,5 @@ test('G25: no change to graphite SVGs, image size, detail/line or camera geometr
   assert.match(engine,/SKETCH_V1_SETTINGS = Object\.freeze\(\{ sigma: 1, low: 0\.04, high: 0\.10 \}\)/);
   assert.match(editor,/generator\.detail\.visual-only/);
   assert.match(editor,/Манга и Комикс предстоят/);
-  assert.equal(JSON.parse(get('package.json')).version,'0.25.0');
+  assert.equal(JSON.parse(get('package.json')).version,'0.28.0');
 });
