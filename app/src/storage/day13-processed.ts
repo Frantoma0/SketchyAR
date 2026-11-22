@@ -6,7 +6,7 @@ import { openProjectDB, type AssetRecord, type ProjectRecord } from './project-s
 export interface ProcessedProvenance {
   sourceAssetId: string;
   pipelineVersion: string;
-  params: { sigma: number; low: number; high: number; input: 'grayscale-u8'; maxSide: 1024; detail?: 1 | 2 | 3 | 4 | 5 };
+  params: { sigma: number; low: number; high: number; input: 'grayscale-u8'; maxSide: 1024; detail?: 1 | 2 | 3 | 4 | 5; line?: 'thin' | 'normal' | 'thick' };
   modelId: 'none';
   backend: 'numpy-pyodide';
 }

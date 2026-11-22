@@ -362,7 +362,7 @@ export async function selectOriginalForDrawing(projectId: string, sourceId: stri
  * Never silently use processed results from a replaced source.
  */
 export async function getLatestProcessedPreview(projectId: string, sourceAssetId: string,
-                                                pipelineVersion?: string, detail?: number): Promise<AssetRecord | null> {
+                                                pipelineVersion?: string, detail?: number, line?: 'thin' | 'normal' | 'thick'): Promise<AssetRecord | null> {
   const db = await openProjectDB();
   const found = await req<AssetRecord[]>(db.transaction('assets', 'readonly')
     .objectStore('assets').index('byProjectRole').getAll(IDBKeyRange.only([projectId, 'processed'])));
@@ -370,6 +370,7 @@ export async function getLatestProcessedPreview(projectId: string, sourceAssetId
     a.sourceAssetId === sourceAssetId && a.mimeType === 'image/png' &&
     (pipelineVersion === undefined || a.pipelineVersion === pipelineVersion) &&
     (detail === undefined || a.params?.detail === detail) &&
+    (line === undefined || a.params?.line === line) &&
     a.blob instanceof Blob && a.blob.size > 0 && a.blob.size === a.byteSize)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null;
 }

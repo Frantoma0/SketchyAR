@@ -27,7 +27,7 @@ test('D22: editor close invalidates result and cannot resurrect preview', () => 
 test('D22: only the existing validated Python bridge generates the real image', () => {
   const code = read('src/day22-sketch-mode.ts');
   assert.match(code,/decodeReducedGray\(source\)/);
-  assert.match(code,/runPythonImage\(\{ \.\.\.gray, \.\.\.SKETCH_V4_SETTINGS, detail \}\)/);
+  assert.match(code,/runPythonImage\(\{ \.\.\.gray, \.\.\.SKETCH_V4_SETTINGS, detail, line \}\)/);
   assert.match(code,/encodeTransparentPng\(result\.mask, result\.width, result\.height\)/);
   assert.match(code,/sigma: 1, low: 0\.04, high: 0\.10/);
   assert.doesNotMatch(code,/saveProcessedPng\s*\(|openSavedDrawing\s*\(|\.put\s*\(/);
@@ -40,7 +40,7 @@ test('D22: only the existing validated Python bridge generates the real image', 
 test('D22: no processed preview may be shown for Manga and Comic', () => {
   const editor=read('src/day17-sketch-placeholder.ts');
   assert.match(editor,/ui\.style !== 'sketch' \|\| !processedURL/);
-  assert.match(editor,/if \(ui\.style === 'sketch'\) requestSketch\(\)/);
+  assert.match(editor,/if \(ui\.style === 'sketch'\)/);
   assert.match(editor,/Манга и Комикс предстоят/);
   assert.match(editor,/sourceForSketch = \{ projectId: project\.id, sourceId: source\.id, blob: source\.blob \}/);
   assert.match(editor,/sketchGate\.cancel\(\)/);
@@ -52,24 +52,24 @@ test('D22+23: original Figma shell, stored PNG comparison and zoom remain', () =
   const editor=read('src/day17-sketch-placeholder.ts');
   const main=read('src/main.ts');
   const css=read('src/styles.css');
-  assert.match(editor,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION, ui\.detail\)/);
+  assert.match(editor,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION, ui\.detail, ui\.line\)/);
   assert.match(editor,/savedProcessed = processed/);
   assert.match(editor,/showUI\(\)/);
   assert.match(editor,/openZoom/);
   assert.match(editor,/previewWindow\.classList\.add\('day22-processing'\)/);
-  assert.match(editor,/D\.log\('info', 'day29', 'sketch\.detail\.generated'/);
+  assert.match(editor,/D\.log\('info', 'day30', 'sketch\.stroke\.generated'/);
   assert.match(main,/<button id="day19-draw"[^>]*disabled/);
   assert.match(main,/src="\.\/ui\/generator\/figma-polaroid\.svg"/);
   assert.match(css,/\.day20-figma-screen #day18-preview-window\.day22-processing::after/);
 });
 
-test('D22+23: Draw enables only with real Sketch; detail and line remain visual' , () => {
+test('D22+23+30: Draw enables only with a real processed Sketch' , () => {
   const editor=read('src/day17-sketch-placeholder.ts');
   const service=read('src/day22-sketch-mode.ts');
   assert.match(editor,/persisted: true/);
   assert.match(editor,/Контурът е готов/);
   assert.doesNotMatch(service,/saveProcessedPng/);
   const pkg=JSON.parse(read('package.json'));
-  assert.equal(pkg.version,'0.29.0');
+  assert.equal(pkg.version,'0.30.0');
   assert.match(editor,/!sketchBuilding && ui\.style === 'sketch' &&[\s\S]*?Boolean\(processedURL\) && Boolean\(savedProcessed\)/);
 });

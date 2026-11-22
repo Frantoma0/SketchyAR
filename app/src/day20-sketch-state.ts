@@ -1,4 +1,4 @@
-/** Day 20: temporary Generator UI choices. No effect on source/processed assets yet. */
+/** Day 30: Sketch detail and stroke are real; Manga/Comic remain placeholders. */
 export type SketchUiStyle = 'sketch' | 'manga' | 'comic';
 export type SketchUiSelection = SketchUiStyle | null;
 export type SketchUiLine = 'thin' | 'normal' | 'thick';
@@ -6,10 +6,10 @@ export type SketchUiLineSelection = SketchUiLine | null;
 export type SketchUiState = Readonly<{
   style: SketchUiSelection;
   detail: 1 | 2 | 3 | 4 | 5;
-  line: SketchUiLineSelection;
+  line: SketchUiLine;
 }>;
 export const DEFAULT_SKETCH_UI: SketchUiState = Object.freeze({
-  style: null, detail: 3, line: null,
+  style: null, detail: 3, line: 'normal',
 });
 export function setSketchUiStyle(state: SketchUiState, style: string): SketchUiState {
   if (style !== 'sketch' && style !== 'manga' && style !== 'comic') throw new Error('Unknown style');

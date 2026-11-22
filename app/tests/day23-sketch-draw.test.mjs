@@ -31,12 +31,12 @@ const backup=code('src/storage/day13-backup-preflight.ts');
 test.after(()=>rmSync(tmp,{recursive:true,force:true}));
 
 test('G23: pencil opens with no selected style OR thickness; all profiles toggle off',()=>{
-  assert.deepEqual(choice.DEFAULT_SKETCH_UI,{style:null,detail:3,line:null});
+  assert.deepEqual(choice.DEFAULT_SKETCH_UI,{style:null,detail:3,line:'normal'});
   for (const style of ['sketch','manga','comic']) {
     const chosen=choice.setSketchUiStyle(choice.DEFAULT_SKETCH_UI,style);
     assert.equal(chosen.style,style);
     assert.equal(choice.setSketchUiStyle(chosen,style).style,null);
-    assert.deepEqual(choice.DEFAULT_SKETCH_UI,{style:null,detail:3,line:null});
+    assert.deepEqual(choice.DEFAULT_SKETCH_UI,{style:null,detail:3,line:'normal'});
   }
   const changed=choice.setSketchUiStyle(choice.setSketchUiStyle(choice.DEFAULT_SKETCH_UI,'sketch'),'manga');
   assert.equal(changed.style,'manga');

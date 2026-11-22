@@ -10,6 +10,7 @@ export interface ImageProcessRequest {
   low: number;
   high: number;
   detail?: 1 | 2 | 3 | 4 | 5;
+  line?: 'thin' | 'normal' | 'thick';
 }
 export interface ImageProcessResult {
   requestId: string;
@@ -131,11 +132,11 @@ export function resetPythonWorker(): void {
  * A consumer must also check source identity before saving or displaying results.
  */
 export function runPythonImage(request: ImageProcessRequest): Promise<ImageProcessResult> {
-  const { gray, width, height, sigma, low, high, detail = 3 } = request;
+  const { gray, width, height, sigma, low, high, detail = 3, line = 'normal' } = request;
   if (!Number.isInteger(width) || !Number.isInteger(height) || width < 3 || height < 3 ||
       width > 1024 || height > 1024 || width * height > 1024 * 1024 || gray.byteLength !== width * height)
     return Promise.reject(new Error('Невалиден 8-bit grayscale буфер'));
-  if (!Number.isInteger(detail) || detail < 1 || detail > 5 || ![sigma, low, high].every(Number.isFinite) || sigma < .15 || sigma > 12 || low < 0 || high <= 0 || low > high)
+  if (!['thin', 'normal', 'thick'].includes(line) || !Number.isInteger(detail) || detail < 1 || detail > 5 || ![sigma, low, high].every(Number.isFinite) || sigma < .15 || sigma > 12 || low < 0 || high <= 0 || low > high)
     return Promise.reject(new Error('Невалидни параметри на обработката'));
   const w = ensureWorker();
   const id = newRequestId();
@@ -152,7 +153,7 @@ export function runPythonImage(request: ImageProcessRequest): Promise<ImageProce
     }, 180_000);
     pendingImages.set(id, { resolve, reject, timeout });
     try {
-      w.postMessage({ id, command: 'day13-process', width, height, gray: input, sigma, low, high, detail }, [input.buffer]);
+      w.postMessage({ id, command: 'day13-process', width, height, gray: input, sigma, low, high, detail, line }, [input.buffer]);
     } catch (error) {
       clearTimeout(timeout);
       pendingImages.delete(id);

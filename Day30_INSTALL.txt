@@ -1,0 +1,47 @@
+SketchyAR — DAY 30 / v0.30.0 — REAL THIN / NORMAL / THICK SKETCH STROKES
+
+BASELINE: SketchyAR_Day29_Full_Project_v0.29.0.zip
+
+IMPORTANT: preserve the .git folder, projects and Home Screen PWA data.
+Never remove/reinstall the PWA as a quick fix without a VERIFIED backup.
+
+OPTION A (recommended): use SketchyAR_Day30_Patch_v0.30.0.zip
+  1) Copy/download the patch ZIP into your Windows Downloads folder.
+  2) Open PowerShell in your existing ar-drawing repository folder.
+  3) Run:
+
+    Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day30_Patch_v0.30.0.zip" -DestinationPath . -Force
+    cd app
+    npm ci --include=dev
+    npm run typecheck
+    npm run build
+    npm run test:day30
+    cd ..
+    python -m pytest python_engine -q
+    git diff --check
+    git status
+
+OPTION B: extract the FULL v0.30.0 ZIP and copy its ar-drawing/* OVER the
+matching source paths in your existing Git repository, never over .git or local data.
+
+Before committing: check git diff and git status for private photos, tests/private,
+HEIC files, backups, original diagnostics, node_modules, dist and assets/private.
+Only add intended source/tests/docs, then:
+
+    git add app/package.json app/package-lock.json app/src python_engine/ar_drawing/day30_stroke.py
+    git add python_engine/tests/test_day30_stroke.py app/tests docs README.md Day30_INSTALL.txt
+    git diff --cached --check
+    git diff --cached --stat
+    git commit -m "Day 30: activate real Sketch V4 thin normal thick line widths"
+    git push origin main
+
+LOCAL AUTHOR VERIFICATION: Node 175/175, Python 257/257, TypeScript
+5.8.3 typecheck PASS with temporary local vite/client declaration.
+NOT VERIFIED YET: Windows npm ci+Vite 8 build using TypeScript 7.0.2, iPhone
+Safari / Home Screen, Pyodide performance, offline cold-start, G30 UX acceptance.
+
+G30 QUICK CHECK: New portrait -> Sketch D3 -> Thin/Normal/Thick -> distinct real PNG.
+Change to D4 Thick -> leave without Draw -> Home/Camera UNCHANGED.
+Return -> D4 Thick -> Draw -> Home and Camera exact PNG. Restart -> D4 Thick.
+Older D29 applied asset must remain intact, default UI stroke Normal.
+Original source is preserved; schemaVersion and DB schema remain v1.

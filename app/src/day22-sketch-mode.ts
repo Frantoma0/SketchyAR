@@ -1,13 +1,14 @@
-/** Day 29: Sketch V4 plus five real nested detail tiers.
- * Line thickness / Manga / Comic remain future work.
+/** Day 30: Sketch V4 with five detail tiers and three real line widths.
+ * Manga / Comic remain future work.
  * The PNG is a temporary draft; no DB write or camera routing occurs in this module.
  */
 import { decodeReducedGray, encodeTransparentPng } from './day13-image-bridge';
 import { runPythonImage } from './python-client';
+import type { SketchUiLine } from './day20-sketch-state';
 export { SketchDraftGate } from './day22-sketch-gate';
 
 /** Version is checked when reading a cached draft; old applied drawings stay valid. */
-export const SKETCH_QUALITY_VERSION = 'day29-v4-detail-v1';
+export const SKETCH_QUALITY_VERSION = 'day30-v4-stroke-v1';
 
 // Historical V1 settings remain for reproducible Day 12/25 comparisons.
 export const SKETCH_V1_SETTINGS = Object.freeze({ sigma: 1, low: 0.04, high: 0.10 });
@@ -37,7 +38,8 @@ const grayCache = new WeakMap<Blob, Promise<Awaited<ReturnType<typeof decodeRedu
 /** White-composited source -> grayscale <=1024px -> real Python edges -> alpha PNG.
  * Does not alter the original or save a processed asset: explicit save follows later.
  */
-export async function generateSketchDraft(source: Blob, detail: 1 | 2 | 3 | 4 | 5 = 3): Promise<SketchDraftResult> {
+export async function generateSketchDraft(source: Blob, detail: 1 | 2 | 3 | 4 | 5 = 3,
+                                          line: SketchUiLine = 'normal'): Promise<SketchDraftResult> {
   if (!source || source.size === 0) throw new Error('Няма оригинална снимка за обработка.');
   let decoded = grayCache.get(source);
   if (!decoded) {
@@ -48,7 +50,7 @@ export async function generateSketchDraft(source: Blob, detail: 1 | 2 | 3 | 4 | 
     grayCache.set(source, decoded);
   }
   const gray = await decoded;
-  const result = await runPythonImage({ ...gray, ...SKETCH_V4_SETTINGS, detail });
+  const result = await runPythonImage({ ...gray, ...SKETCH_V4_SETTINGS, detail, line });
   if (result.inkPixels === 0) throw new Error('Не бяха открити контури в избраното изображение.');
   const png = await encodeTransparentPng(result.mask, result.width, result.height);
   if (!png.size) throw new Error('Получена е празна PNG скица.');

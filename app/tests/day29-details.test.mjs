@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { appliedDetail, isDetailLevel, matchesDetailVariant } from '../src/day29-detail-variants.ts';
 const read = p => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
-const V='day29-v4-detail-v1', SOURCE='source-a';
+const V='day30-v4-stroke-v1', SOURCE='source-a';
 const asset = (detail,sourceId=SOURCE,version=V)=>({role:'processed',params:{detail},sourceAssetId:sourceId,pipelineVersion:version});
 
 test('G29: detail levels are only integers 1 through 5',()=>{
@@ -32,10 +32,10 @@ test('G29: cached variants must match source, engine, role AND exact detail leve
   assert.equal(matchesDetailVariant(null,SOURCE,3,V),false);
 });
 
-test('G29: only day29 process_gray8_detail is active, V4 engine is the cached scoring dependency',()=>{
+test('G29 preserved: Day29 selector remains available; Day30 runs on V4 with width',()=>{
   const worker=read('src/python-worker.ts');
   assert.match(worker,/import day29Source from '\.\.\/\.\.\/python_engine\/ar_drawing\/day29_detail\.py\?raw'/);
-  assert.match(worker,/_sketchyar_day29\.process_gray8_detail\(/);
+  assert.match(worker,/_sketchyar_day30\.process_gray8_stroke\(/);
   assert.match(worker,/detail=\$\{detail\}/);
   assert.match(worker,/_sketchyar_day28_source/);
   for(const old of ['_sketchyar_day27.process_gray8_importance(', '_sketchyar_day26.process_gray8_multiscale(', '_sketchyar_day28.process_gray8_flow('])
@@ -46,11 +46,11 @@ test('G29: only day29 process_gray8_detail is active, V4 engine is the cached sc
 test('G29: UI invalidates previous variant and never applies it before a new real PNG is ready',()=>{
   const editor=read('src/day17-sketch-placeholder.ts');
   assert.match(editor,/detail\.addEventListener\('input'/);
-  assert.match(editor,/invalidateDetailPreview\(\)/);
+  assert.match(editor,/invalidateVariantPreview\(\)/);
   assert.match(editor,/sketchGate\.cancel\(\)/);
-  assert.match(editor,/generateSketchDraft\(blob, requestedDetail\)/);
-  assert.match(editor,/getLatestProcessedPreview\(projectId, sourceId,\s*SKETCH_QUALITY_VERSION, requestedDetail\)/);
-  assert.match(editor,/matchesDetailVariant\(cached, sourceId, requestedDetail, SKETCH_QUALITY_VERSION\)/);
+  assert.match(editor,/generateSketchDraft\(blob, requestedDetail, requestedLine\)/);
+  assert.match(editor,/getLatestProcessedPreview\(projectId, sourceId,\s*SKETCH_QUALITY_VERSION, requestedDetail, requestedLine\)/);
+  assert.match(editor,/matchesStrokeVariant\(cached, sourceId, requestedDetail, requestedLine, SKETCH_QUALITY_VERSION\)/);
   assert.match(editor,/if \(!isCurrent\(\)\) return/);
   assert.match(editor,/detailDebounce = setTimeout\(/);
   assert.match(editor,/await selectProcessedAsset\(projectId, sourceId, savedProcessed\.id\)/);
@@ -68,15 +68,15 @@ test('G29: new cached preview carries the exact level, but selection happens onl
   assert.match(store,/asset\.id === project\.selectedProcessedAssetId/);
 });
 
-test('G29: only detail changes image processing, width remains future work, Figma graphics untouched',()=>{
+test('G29+30: real detail and line width use the same Figma graphics',()=>{
   const draft=read('src/day22-sketch-mode.ts');
   assert.match(draft,/generateSketchDraft\(source: Blob, detail:/);
-  assert.match(draft,/runPythonImage\(\{ \.\.\.gray, \.\.\.SKETCH_V4_SETTINGS, detail \}\)/);
+  assert.match(draft,/runPythonImage\(\{ \.\.\.gray, \.\.\.SKETCH_V4_SETTINGS, detail, line \}\)/);
   assert.match(draft,/grayCache = new WeakMap/);
   const editor=read('src/day17-sketch-placeholder.ts');
-  assert.match(editor,/if \(button\.dataset\.line\) ui = setSketchUiLine/);
+  assert.match(editor,/if \(button\.dataset\.line\)/);
   assert.doesNotMatch(editor,/generator\.detail\.visual-only/);
   assert.match(editor,/fitImageInAperture/);
   assert.match(read('src/styles.css'),/day20-figma-slider-fill/);
-  assert.equal(JSON.parse(read('package.json')).version,'0.29.0');
+  assert.equal(JSON.parse(read('package.json')).version,'0.30.0');
 });
