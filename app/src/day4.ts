@@ -4,7 +4,7 @@
 import * as D from './diagnostics';
 import { cameraController, type CameraSnapshot } from './camera-controller';
 import { isBusy } from './day2';
-import { createImageProject, replaceProjectSource, getProjectImage, getSelectedProcessedAsset, assertProjectIntegrity, saveProjectOverlay, type OverlayPreset, type OverlaySnapshot } from './storage/project-store';
+import { createImageProject, replaceProjectSource, getProjectImage, getSelectedProcessedAsset, assertProjectIntegrity, saveProjectOverlay, type ProjectRecord, type OverlayPreset, type OverlaySnapshot } from './storage/project-store';
 import { makeThumbnail } from './storage/thumbnail';
 import { CameraEditTransition, sameDrawingPlacement, type CameraEditToken } from './day21-camera-navigation';
 
@@ -31,6 +31,11 @@ type CameraSketchEditOpener = (
   onClosed: () => void
 ) => Promise<boolean>;
 let cameraSketchEditOpener: CameraSketchEditOpener | null = null;
+// New photo -> editor before ever opening/asking permission for the camera.
+let newDrawingEditorOpener: ((project: Pick<ProjectRecord, 'id' | 'title'>) => boolean) | null = null;
+export function registerNewDrawingEditor(openEditor: (project: Pick<ProjectRecord, 'id' | 'title'>) => boolean): void {
+  newDrawingEditorOpener = openEditor;
+}
 let changeMenuOpen = false;
 function closeCameraChangeMenu(): void {
   const menu = document.getElementById('sketch-camera-change-menu');
@@ -590,7 +595,7 @@ export async function applyOriginalToActiveCamera(projectId: string, sourceId: s
 }
 
 /** Called synchronously by the Homepage tap. The browser's native photo picker
- * opens FIRST; the Drawing view and camera open only after a valid image is chosen.
+ * opens FIRST; the new project enters Edit before Camera is started.
  * Cancelling the picker does not start a camera session or show the old demo grid.
  */
 export function requestNewDrawing(): void {
@@ -745,15 +750,30 @@ export function initDay4(): void {
       await flushPresetSave();
       let savedProjectId = activeProjectId;
       let savedSourceId: string | null = null;
+      let createdProject: ProjectRecord | null = null;
       if (isNewDrawing || !savedProjectId) {
         const project = await createImageProject(file, { width: prepared.sourceWidth, height: prepared.sourceHeight }, thumbnail);
         savedProjectId = project.id;
         savedSourceId = project.activeAssetId;
+        createdProject = project;
         D.log('info', 'day5', 'project.created', { projectId: project.id, sourceBytes: file.size });
       } else {
         const project = await replaceProjectSource(savedProjectId, file, { width: prepared.sourceWidth, height: prepared.sourceHeight }, thumbnail);
         savedSourceId = project.activeAssetId;
         D.log('info', 'day5', 'project.source.replaced', { projectId: savedProjectId, sourceBytes: file.size });
+      }
+      if (isNewDrawing && createdProject) {
+        // The temporary preview only created the thumbnail. Do not change the
+        // active camera image/preset and do not call openDrawing/getUserMedia.
+        if (previousUrl) img.src = previousUrl;
+        else img.removeAttribute('src');
+        if (nextUrl) { URL.revokeObjectURL(nextUrl); nextUrl = null; }
+        document.dispatchEvent(new Event('sketchyar:projects:changed'));
+        if (!newDrawingEditorOpener?.(createdProject)) {
+          D.log('warn', 'day30.1', 'new-project.editor.unavailable', { projectId: createdProject.id });
+          window.alert('Рисунката е записана. Отвори нейния молив от началния екран, за да редактираш.');
+        } else D.log('info', 'day30.1', 'new-project.editor.opened', { projectId: createdProject.id });
+        return;
       }
       activeProjectId = savedProjectId;
       activeAssetId = savedSourceId;
@@ -773,7 +793,7 @@ export function initDay4(): void {
       artworkLocked = false;
       artworkMirrored = false;
       reflect();
-      if (isNewDrawing) await openDrawing();
+      // New drawings enter Edit above; replacing a camera photo stays on Camera.
       sceneSize = cameraSceneSize();
       schedulePresetSave();
       void flushPresetSave().catch(() => {});

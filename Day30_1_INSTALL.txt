@@ -1,0 +1,38 @@
+SketchyAR — DAY 30.1 HOTFIX / v0.30.1
+
+BASELINE: SketchyAR_Day30_Full_Project_v0.30.0.zip
+
+DO NOT delete the installed Home Screen PWA, its local data or .git directory.
+Before a potentially risky release, export and verify the local ZIP backup.
+
+OPTION A — PATCH into your CURRENT ar-drawing repository (RECOMMENDED):
+  Extract SketchyAR_Day30_1_Patch_v0.30.1.zip directly into the repo root.
+  ZIP paths begin with app/, python_engine/, docs/, README.md and Day30_1_INSTALL.txt.
+
+  PowerShell example (from the repo ROOT):
+    Expand-Archive -Path "$env:USERPROFILE\Downloads\SketchyAR_Day30_1_Patch_v0.30.1.zip" -DestinationPath . -Force
+    cd app
+    npm ci --include=dev
+    npm run typecheck
+    npm run build
+    npm run test:day30
+    cd ..
+    python -m pytest python_engine -q
+
+OPTION B — FULL v0.30.1 archive:
+  Extract SketchyAR_Day30_1_Full_Project_v0.30.1.zip.
+  Copy ar-drawing/* OVER corresponding source paths in the SAME Git repository.
+  Preserve .git and any personal/local file data; do not overwrite with an old commit.
+
+Commit only intended source/tests/docs, then push after checking diffs and tests.
+
+QUICK TEST ON IPHONE:
+  New Drawing -> photo -> EDIT screen (not camera).
+  No style or thickness selected. Tap Normal twice -> nothing highlighted.
+  Tap Sketch -> Normal contours. Draw -> CAMERA.
+  Open Edit again -> deselected thickness remains deselected.
+  Thick is lighter than Day30; check D1 and D5 on a portrait.
+  Old saved projects, Home polaroid fit, camera gestures, ZIP backup unaffected.
+
+LOCAL: 183/183 Node, 257/257 Python, TypeScript typecheck PASS.
+NOT VERIFIED HERE: npm ci + Vite 8 production build; real iPhone acceptance.

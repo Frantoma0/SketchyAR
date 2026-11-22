@@ -6,7 +6,7 @@ import * as D from './diagnostics';
 import { initOfflineStatus } from './offline-status';
 import { initDay16BackupUI } from './day16-backup-ui';
 import { initDay17EditPlaceholder } from './day17-sketch-placeholder';
-import { registerCameraSketchEditor } from './day4';
+import { registerCameraSketchEditor, registerNewDrawingEditor } from './day4';
 import { getProjectImage } from './storage/project-store';
 import { listProjectThumbnails, openProjectDB, upgradeLegacyThumbnails, renameImageProject, deleteImageProject, type ProjectThumbnail } from './storage/project-store';
 
@@ -229,6 +229,8 @@ export function initHome(openDrawing: () => Promise<void>, openSaved: (id: strin
   let pictureURLs: string[] = [];
   let cachedCards: ProjectThumbnail[] = [];
   const sketchEditor = initDay17EditPlaceholder();
+  registerNewDrawingEditor(project => sketchEditor.open(project,
+    el<HTMLButtonElement>('home-new-project'), 'edit-sketch'));
   // Day 21: the active camera remains underneath the read-only Generator overlay.
   // Fetch the project fresh from IndexedDB (the gallery cache may be outdated).
   registerCameraSketchEditor(async (projectId, trigger, stillCurrent, onClosed) => {

@@ -26,12 +26,14 @@ const controller = readFileSync(resolve(app,'src/day17-sketch-placeholder.ts'),'
 const storage = readFileSync(resolve(app,'src/storage/project-store.ts'),'utf8');
 test.after(()=>rmSync(tmp,{recursive:true,force:true}));
 test('D20: selections are immutable, validated and reset to known defaults',()=>{
-  assert.deepEqual(state.DEFAULT_SKETCH_UI,{style:null,detail:3,line:'normal'});
+  assert.deepEqual(state.DEFAULT_SKETCH_UI,{style:null,detail:3,line:null});
   const selected=state.setSketchUiStyle(state.DEFAULT_SKETCH_UI,'manga');
   assert.equal(selected.style,'manga');
   assert.equal(state.DEFAULT_SKETCH_UI.style,null);
   assert.equal(state.setSketchUiStyle(selected,'manga').style,null);
   assert.equal(state.setSketchUiLine(selected,'thick').line,'thick');
+  assert.equal(state.setSketchUiLine(state.setSketchUiLine(selected,'thick'),'thick').line,null);
+  assert.equal(state.effectiveSketchLine(null),'normal');
   assert.equal(state.setSketchUiDetail(selected,5).detail,5);
 });
 test('D20: rejects invalid choices, steps, and injected style names',()=>{
@@ -67,7 +69,7 @@ test('D20: only matching processed PNG for current source may be compared',()=>{
   assert.match(storage,/getLatestProcessedPreview\(/);
   assert.match(storage,/a\.sourceAssetId === sourceAssetId/);
   assert.match(storage,/a\.role === 'processed'/);
-  assert.match(controller,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION, ui\.detail, ui\.line\)/);
+  assert.match(controller,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION, ui\.detail, actualLine\(\)\)/);
   assert.match(controller,/processedURL = savedURL/);
   assert.match(controller,/savedProcessed = processed/);
   assert.match(controller,/showUI\(\)/); // original until user explicitly selects Sketch

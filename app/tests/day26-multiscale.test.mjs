@@ -11,7 +11,7 @@ test('G26 regression: V2 stays available as a baseline while V4 is active',()=>{
   assert.match(worker,/sys\.modules\["ar_drawing\.day28_flow_coherent"\]/);
   assert.match(worker,/_sketchyar_day13_result = _sketchyar_day30\.process_gray8_stroke\(/);
   assert.doesNotMatch(worker,/_sketchyar_day13_result = _sketchyar_day25\.process_gray8_quality\(/);
-  assert.match(draft,/export const SKETCH_QUALITY_VERSION = 'day30-v4-stroke-v1'/);
+  assert.match(draft,/export const SKETCH_QUALITY_VERSION = 'day30-v4-stroke-v2'/);
   assert.match(draft,/runPythonImage\(\{ \.\.\.gray, \.\.\.SKETCH_V4_SETTINGS, detail, line \}\)/);
   assert.match(editor,/if \(ui\.style === 'sketch'\)/);
   assert.match(editor,/!matchesStrokeVariant\(savedProcessed, sourceForSketch\?\.sourceId \?\? '', ui\.detail,/);
@@ -35,16 +35,16 @@ test('G26: actual generated PNG remains a draft until Draw; Home only displays a
   const editor=read('src/day17-sketch-placeholder.ts');
   const store=read('src/storage/project-store.ts');
   assert.match(editor,/result\.width, result\.height, false\)/);
-  assert.match(editor,/await selectProcessedAsset\(projectId, sourceId, savedProcessed\.id\)/);
+  assert.match(editor,/await selectProcessedAsset\(projectId, sourceId, savedProcessed\.id, ui\.line\)/);
   assert.match(editor,/await selectOriginalForDrawing\(projectId, sourceId\)/);
   assert.match(store,/asset\.id === project\.selectedProcessedAssetId/);
-  assert.match(editor,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION, ui\.detail, ui\.line\)/);
+  assert.match(editor,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION, ui\.detail, actualLine\(\)\)/);
   assert.match(editor,/sketchGate\.isCurrent\(ticket, projectId, sourceId\)/);
   assert.match(editor,/fresh\.source\.id !== sourceId/);
 });
 
 test('G26: version is bumped and all existing visual assets remain untouched',()=>{
-  assert.equal(JSON.parse(read('package.json')).version,'0.30.0');
+  assert.equal(JSON.parse(read('package.json')).version,'0.30.1');
   assert.match(read('src/day13-image-bridge.ts'),/encodeTransparentPng/);
   assert.match(read('src/day17-sketch-placeholder.ts'),/generator\.detail\.requested/);
 });

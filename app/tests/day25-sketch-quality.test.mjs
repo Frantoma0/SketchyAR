@@ -19,10 +19,10 @@ test('G25: versioned previews do not silently reuse old Python output',()=>{
   const store=get('src/storage/project-store.ts');
   const editor=get('src/day17-sketch-placeholder.ts');
   const service=get('src/day22-sketch-mode.ts');
-  assert.match(service,/export const SKETCH_QUALITY_VERSION = 'day30-v4-stroke-v1'/);
+  assert.match(service,/export const SKETCH_QUALITY_VERSION = 'day30-v4-stroke-v2'/);
   assert.match(store,/pipelineVersion\?: string/);
   assert.match(store,/pipelineVersion === undefined \|\| a\.pipelineVersion === pipelineVersion/);
-  assert.match(editor,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION, ui\.detail, ui\.line\)/);
+  assert.match(editor,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION, ui\.detail, actualLine\(\)\)/);
   assert.match(editor,/!matchesStrokeVariant\(savedProcessed, sourceForSketch\?\.sourceId \?\? '', ui\.detail,/);
   assert.match(editor,/processedURL = null;\s*savedProcessed = null;/);
   assert.match(editor,/if \(ui\.style === 'sketch'\)/);
@@ -33,7 +33,7 @@ test('G25: exact applied PNG stays authoritative until Draw, even after generato
   const store=get('src/storage/project-store.ts');
   assert.match(editor,/storedProject\.selectedProcessedAssetId\s*\? await getSelectedProcessedAsset\(storedProject, source\)/);
   assert.match(store,/asset\.id === project\.selectedProcessedAssetId/);
-  assert.match(editor,/await selectProcessedAsset\(projectId, sourceId, savedProcessed\.id\)/);
+  assert.match(editor,/await selectProcessedAsset\(projectId, sourceId, savedProcessed\.id, ui\.line\)/);
   assert.match(editor,/await selectOriginalForDrawing\(projectId, sourceId\)/);
   // The generation path caches without applying it.
   assert.match(editor,/result\.width, result\.height, false\)/);
@@ -48,5 +48,5 @@ test('G25: no change to graphite SVGs, image size, detail/line or camera geometr
   assert.match(engine,/SKETCH_V1_SETTINGS = Object\.freeze\(\{ sigma: 1, low: 0\.04, high: 0\.10 \}\)/);
   assert.match(editor,/generator\.detail\.requested/);
   assert.match(editor,/Манга и Комикс предстоят/);
-  assert.equal(JSON.parse(get('package.json')).version,'0.30.0');
+  assert.equal(JSON.parse(get('package.json')).version,'0.30.1');
 });

@@ -24,13 +24,13 @@ def test_exact_stroke_geometry_center_and_borders():
     thin = d30.widen_contours(mask, 'thin')
     normal = d30.widen_contours(mask, 'normal')
     thick = d30.widen_contours(mask, 'thick')
-    assert (thin.sum(), normal.sum(), thick.sum()) == (1, 5, 13)
+    assert (thin.sum(), normal.sum(), thick.sum()) == (1, 5, 9)
     assert np.all(thin <= normal) and np.all(normal <= thick)
     assert np.array_equal(thin, mask)
     mask[:] = False
     mask[0, 0] = True
     edge = d30.widen_contours(mask, 'thick')
-    assert edge.sum() == 6 and not edge[-1, -1]
+    assert edge.sum() == 4 and not edge[-1, -1]
 
 
 @pytest.mark.parametrize('detail', range(1,6))

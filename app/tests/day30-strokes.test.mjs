@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { appliedDetail } from '../src/day29-detail-variants.ts';
 import { appliedStroke, strokeVariantKey, matchesStrokeVariant, isSketchStroke } from '../src/day30-stroke-variants.ts';
 const read = file => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
-const VERSION = 'day30-v4-stroke-v1';
+const VERSION = 'day30-v4-stroke-v2';
 const createAsset = (detail, line, sourceAssetId = 'original', pipelineVersion = VERSION) => ({
   sourceAssetId, pipelineVersion, role: 'processed', params: { detail, line },
 });
@@ -62,8 +62,8 @@ test('G30: the Worker runs Day30 on the shared V4/Day29 stages, no extra legacy 
   assert.match(py,/select_detail_contours\(/);
   assert.match(py,/widen_contours\(selected, line\)/);
   assert.doesNotMatch(py,/^\s*(?:from|import) (?:cv2|scipy|tensorflow|torch)\b/m);
-  assert.equal(JSON.parse(read('package.json')).version,'0.30.0');
-  assert.equal(JSON.parse(read('package-lock.json')).version,'0.30.0');
+  assert.equal(JSON.parse(read('package.json')).version,'0.30.1');
+  assert.equal(JSON.parse(read('package-lock.json')).version,'0.30.1');
 });
 
 test('G30: editor reacts to stroke taps with invalidation, source guard and a brief debounce', () => {
@@ -73,9 +73,9 @@ test('G30: editor reacts to stroke taps with invalidation, source guard and a br
   assert.match(editor,/if \(next\.line !== ui\.line\)/);
   assert.match(editor,/invalidateVariantPreview\(\)/);
   assert.match(editor,/sketchGate\.cancel\(\)/);
-  assert.match(editor,/strokeVariants\.get\(strokeVariantKey\(ui\.detail, ui\.line\)\)/);
+  assert.match(editor,/strokeVariants\.get\(strokeVariantKey\(ui\.detail, actualLine\(\)\)\)/);
   assert.match(editor,/detailDebounce = setTimeout\(\(\) => \{ detailDebounce = null; requestSketch\(\); \}, 170\)/);
-  assert.match(editor,/ui\.detail === requestedDetail && ui\.line === requestedLine/);
+  assert.match(editor,/ui\.detail === requestedDetail && ui\.line === requestedSelection/);
   assert.match(editor,/sketchGate\.isCurrent\(ticket, projectId, sourceId\)/);
   assert.match(editor,/fresh\.source\.id !== sourceId/);
 });
@@ -83,13 +83,13 @@ test('G30: editor reacts to stroke taps with invalidation, source guard and a br
 test('G30: the editor restores only applied stroke, never auto-applies a cached preview', () => {
   const editor=read('src/day17-sketch-placeholder.ts');
   const store=read('src/storage/project-store.ts');
-  assert.match(editor,/ui = setSketchUiLine\(ui, appliedStroke\(processed\)\)/);
-  assert.match(editor,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION, ui\.detail, ui\.line\)/);
+  assert.match(editor,/storedProject\.editorLine === undefined \? appliedStroke\(processed\) : storedProject\.editorLine/);
+  assert.match(editor,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION, ui\.detail, actualLine\(\)\)/);
   assert.match(editor,/getLatestProcessedPreview\(projectId, sourceId,[\s\S]*?requestedDetail, requestedLine\)/);
   assert.match(editor,/params: \{ \.\.\.SKETCH_V4_SETTINGS, detail: requestedDetail, line: requestedLine,/);
-  assert.match(editor,/params: \{ \.\.\.SKETCH_V4_SETTINGS, detail: ui\.detail, line: ui\.line,/);
+  assert.match(editor,/params: \{ \.\.\.SKETCH_V4_SETTINGS, detail: ui\.detail, line: actualLine\(\),/);
   assert.match(editor,/result\.png, result\.width, result\.height, false\)/);
-  assert.match(editor,/await selectProcessedAsset\(projectId, sourceId, savedProcessed\.id\)/);
+  assert.match(editor,/await selectProcessedAsset\(projectId, sourceId, savedProcessed\.id, ui\.line\)/);
   assert.match(editor,/await selectOriginalForDrawing\(projectId, sourceId\)/);
   assert.match(store,/\(line === undefined \|\| a\.params\?\.line === line\)/);
   assert.match(store,/asset\.id === project\.selectedProcessedAssetId/);

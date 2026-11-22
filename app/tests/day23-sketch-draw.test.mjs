@@ -31,12 +31,12 @@ const backup=code('src/storage/day13-backup-preflight.ts');
 test.after(()=>rmSync(tmp,{recursive:true,force:true}));
 
 test('G23: pencil opens with no selected style OR thickness; all profiles toggle off',()=>{
-  assert.deepEqual(choice.DEFAULT_SKETCH_UI,{style:null,detail:3,line:'normal'});
+  assert.deepEqual(choice.DEFAULT_SKETCH_UI,{style:null,detail:3,line:null});
   for (const style of ['sketch','manga','comic']) {
     const chosen=choice.setSketchUiStyle(choice.DEFAULT_SKETCH_UI,style);
     assert.equal(chosen.style,style);
     assert.equal(choice.setSketchUiStyle(chosen,style).style,null);
-    assert.deepEqual(choice.DEFAULT_SKETCH_UI,{style:null,detail:3,line:'normal'});
+    assert.deepEqual(choice.DEFAULT_SKETCH_UI,{style:null,detail:3,line:null});
   }
   const changed=choice.setSketchUiStyle(choice.setSketchUiStyle(choice.DEFAULT_SKETCH_UI,'sketch'),'manga');
   assert.equal(changed.style,'manga');
@@ -70,7 +70,7 @@ test('G23.1: preview is persisted on generation, Camera selection changes only o
   assert.doesNotMatch(before,/saveProjectEditorStyle\(|rememberStyle\(|styleWrites/);
   const draw=editor.slice(editor.indexOf("drawButton.addEventListener('click'"));
   assert.match(draw,/await selectOriginalForDrawing\(projectId, sourceId\)/);
-  assert.match(draw,/await selectProcessedAsset\(projectId, sourceId, savedProcessed.id\)/);
+  assert.match(draw,/await selectProcessedAsset\(projectId, sourceId, savedProcessed.id, ui\.line\)/);
   assert.match(draw,/await applyOriginalToActiveCamera\(projectId, sourceId, fresh.source.blob\)/);
   assert.match(draw,/await applySketchToActiveCamera\(projectId, sourceId, savedProcessed.blob\)/);
   assert.match(draw,/await openSavedDrawing\(projectId\)/);
@@ -83,7 +83,7 @@ test('G23: original source remains active; selected derivative checked for owner
   assert.match(store,/asset\.sourceAssetId !== source\.id/);
   assert.match(store,/delete project\.selectedProcessedAssetId/);
   const actual=code('src/storage/day13-processed.ts');
-  assert.match(actual,/if \(selectForDrawing\) projects\.put\(\{ \.\.\.project, selectedProcessedAssetId: asset\.id, editorStyle: 'sketch' \}\)/);
+  assert.match(actual,/if \(selectForDrawing\) projects\.put\(\{ \.\.\.project, selectedProcessedAssetId: asset\.id, editorStyle: 'sketch',/);
   assert.match(backup,/project\.selectedProcessedAssetId !== undefined/);
   assert.match(code('src/storage/day14-backup-service.ts'),/selectedProcessedAssetId/);
 });

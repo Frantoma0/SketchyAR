@@ -22,6 +22,9 @@ export interface ProjectRecord {
    * Old v0.23.1-v0.24.0 records may contain a preview-only draft here;
    * selectedProcessedAssetId takes precedence until Draw reconciles the two. */
   editorStyle?: 'sketch' | 'manga' | 'comic' | null;
+  /** Last APPLIED line-button selection. null means no button is highlighted;
+   * actual raster width is still Normal. Optional for v0.30.0 compatibility. */
+  editorLine?: 'thin' | 'normal' | 'thick' | null;
   lastOpenedAt?: string;
   guide?: GuidePlanV1;
 }
@@ -236,6 +239,7 @@ export async function replaceProjectSource(projectId: string, file: File,
   const project = { ...previous, activeAssetId: sourceId, updatedAt: timestamp, guide: undefined };
   delete project.selectedProcessedAssetId; // old derivative must not attach to the replacement source
   delete project.editorStyle; // replacing the original also resets remembered editor mode
+  delete project.editorLine;
   const tx = db.transaction(['projects', 'assets', 'overlay_presets'], 'readwrite');
   const done = txDone(tx);
   tx.objectStore('projects').put(project);
@@ -284,7 +288,8 @@ export async function getSelectedProcessedAsset(project: ProjectRecord, source: 
  * are checked inside the SAME readwrite transaction.
  */
 export async function selectProcessedAsset(projectId: string, sourceId: string,
-                                            processedId: string): Promise<void> {
+                                            processedId: string,
+                                            selectedLine?: 'thin' | 'normal' | 'thick' | null): Promise<void> {
   const db = await openProjectDB();
   const tx = db.transaction(['projects', 'assets'], 'readwrite');
   const finished = txDone(tx);
@@ -301,7 +306,8 @@ export async function selectProcessedAsset(projectId: string, sourceId: string,
       if (!a || a.projectId !== projectId || a.sourceAssetId !== sourceId ||
           a.role !== 'processed' || a.mimeType !== 'image/png' || a.blob?.type !== 'image/png' || !a.blob ||
           !a.blob.size || a.byteSize !== a.blob.size) { invalid = true; tx.abort(); return; }
-      projects.put({ ...project, selectedProcessedAssetId: a.id, editorStyle: 'sketch' });
+      projects.put({ ...project, selectedProcessedAssetId: a.id, editorStyle: 'sketch',
+        ...(selectedLine === undefined ? {} : { editorLine: selectedLine }) });
     };
   };
   try { await finished; } catch (error) {
@@ -347,7 +353,7 @@ export async function selectOriginalForDrawing(projectId: string, sourceId: stri
   get.onsuccess = () => {
     const project = get.result;
     if (!project || project.activeAssetId !== sourceId) { invalid = true; tx.abort(); return; }
-    const updated = { ...project, editorStyle: null };
+    const updated = { ...project, editorStyle: null, editorLine: null };
     delete updated.selectedProcessedAssetId;
     store.put(updated);
   };
@@ -480,6 +486,9 @@ export async function assertProjectIntegrity(projectId: string): Promise<void> {
   if (project.editorStyle !== undefined && project.editorStyle !== null &&
       !['sketch', 'manga', 'comic'].includes(project.editorStyle))
     throw new Error('Невалиден режим на редактора');
+  if (project.editorLine !== undefined && project.editorLine !== null &&
+      !['thin','normal','thick'].includes(project.editorLine))
+    throw new Error('Невалиден запазен избор за дебелина');
   if (project.selectedProcessedAssetId) {
     const selected = byId.get(project.selectedProcessedAssetId);
     if (selected?.role !== 'processed' || selected.projectId !== projectId ||
@@ -636,6 +645,8 @@ export async function auditProjectDatabase(): Promise<{
     byAsset.get(p.activeAssetId)?.projectId !== p.id ||
     (p.editorStyle !== undefined && p.editorStyle !== null &&
       !['sketch', 'manga', 'comic'].includes(p.editorStyle)) ||
+    (p.editorLine !== undefined && p.editorLine !== null &&
+      !['thin', 'normal', 'thick'].includes(p.editorLine)) ||
     (p.selectedProcessedAssetId !== undefined &&
       (byAsset.get(p.selectedProcessedAssetId)?.role !== 'processed' ||
        byAsset.get(p.selectedProcessedAssetId)?.projectId !== p.id ||

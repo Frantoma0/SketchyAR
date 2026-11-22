@@ -303,7 +303,7 @@ document.getElementById('app')!.innerHTML = `
   </section>
   <section id="day4">
     <h2>Ден 4 — Drawing основа</h2>
-    <p class="hint">Камерата е отделна от рисунката. „Нова рисунка“ първо отваря избор на снимка; мрежата 3×3 служи само за подравняване на камерата.</p>
+    <p class="hint">Камерата е отделна от рисунката. „Нова рисунка“ първо отваря избор на снимка, после „Редакция“;  мрежата 3×3 служи само за подравняване на камерата.</p>
     <div class="actions">
       <button class="act" id="btn-day4-open" type="button">Отвори Drawing</button>
       <button class="act" id="btn-day4-capabilities" type="button">Провери камерата</button>

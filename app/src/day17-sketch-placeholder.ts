@@ -12,7 +12,7 @@ import { fitImageInAperture } from './day28-1-polaroid-fit';
 import { appliedDetail } from './day29-detail-variants';
 import { appliedStroke, matchesStrokeVariant, strokeVariantKey } from './day30-stroke-variants';
 import { DEFAULT_SKETCH_UI, setSketchUiDetail, setSketchUiLine, setSketchUiStyle,
-  previewCanCompare, type SketchUiState } from './day20-sketch-state';
+  previewCanCompare, effectiveSketchLine, type SketchUiState } from './day20-sketch-state';
 
 export function initDay17EditPlaceholder(): {
   open(project: Pick<ProjectRecord, 'id' | 'title'>, trigger: HTMLElement,
@@ -120,17 +120,18 @@ export function initDay17EditPlaceholder(): {
   };
   // Day 30: exact detail + line tuple represents a real derived PNG.
   // Changing either invalidates previous Draw eligibility; applied stays intact.
-  const strokeLabel = (line: SketchUiState['line']): string =>
+  const strokeLabel = (line: NonNullable<SketchUiState['line']>): string =>
     ({ thin: 'тънки', normal: 'нормални', thick: 'дебели' })[line];
+  const actualLine = (): 'thin' | 'normal' | 'thick' => effectiveSketchLine(ui.line);
   const useProcessed = (asset: AssetRecord): void => {
     if (processedURL) URL.revokeObjectURL(processedURL);
     processedURL = URL.createObjectURL(asset.blob);
     savedProcessed = asset;
     draftResult = null;
     if (matchesStrokeVariant(asset, sourceForSketch?.sourceId ?? '', ui.detail,
-        ui.line, SKETCH_QUALITY_VERSION)) strokeVariants.set(strokeVariantKey(ui.detail, ui.line), asset);
+        actualLine(), SKETCH_QUALITY_VERSION)) strokeVariants.set(strokeVariantKey(ui.detail, actualLine()), asset);
     if (!comparisonHeld && ui.style === 'sketch') preview.src = processedURL;
-    previewNote.textContent = `Детайлност ${ui.detail}/5 · ${strokeLabel(ui.line)} линии · задръж за оригинала.`;
+    previewNote.textContent = `Детайлност ${ui.detail}/5 · ${strokeLabel(actualLine())} линии · задръж за оригинала.`;
     info.textContent = 'Контурът е готов. „Рисувай“ прилага избраното ниво към камерата и Home.';
     updateDraw();
   };
@@ -151,7 +152,8 @@ export function initDay17EditPlaceholder(): {
     if (sketchBuilding || !sourceForSketch || screen.hidden || ui.style !== 'sketch' || processedURL) return;
     const { projectId, sourceId, blob } = sourceForSketch;
     const requestedDetail = ui.detail;
-    const requestedLine = ui.line;
+    const requestedLine = actualLine();
+    const requestedSelection = ui.line;
     const key = strokeVariantKey(requestedDetail, requestedLine);
     const cached = strokeVariants.get(key);
     if (matchesStrokeVariant(cached, sourceId, requestedDetail, requestedLine, SKETCH_QUALITY_VERSION)) {
@@ -160,7 +162,7 @@ export function initDay17EditPlaceholder(): {
     }
     const ticket = sketchGate.begin(projectId, sourceId);
     const isCurrent = (): boolean => sketchGate.isCurrent(ticket, projectId, sourceId) &&
-      !screen.hidden && ui.style === 'sketch' && ui.detail === requestedDetail && ui.line === requestedLine;
+      !screen.hidden && ui.style === 'sketch' && ui.detail === requestedDetail && ui.line === requestedSelection;
     sketchBuilding = true;
     updateDraw();
     previewWindow.classList.remove('day22-failed');
@@ -238,11 +240,11 @@ export function initDay17EditPlaceholder(): {
         ui = next;
         if (ui.style === 'sketch') {
           invalidateVariantPreview();
-          const cached = strokeVariants.get(strokeVariantKey(ui.detail, ui.line));
+          const cached = strokeVariants.get(strokeVariantKey(ui.detail, actualLine()));
           if (matchesStrokeVariant(cached, sourceForSketch?.sourceId ?? '', ui.detail,
-              ui.line, SKETCH_QUALITY_VERSION)) useProcessed(cached!);
+              actualLine(), SKETCH_QUALITY_VERSION)) useProcessed(cached!);
           else {
-            previewNote.textContent = `Подготовка на ${strokeLabel(ui.line)} линии…`;
+            previewNote.textContent = `Подготовка на ${strokeLabel(actualLine())} линии…`;
             detailDebounce = setTimeout(() => { detailDebounce = null; requestSketch(); }, 170);
           }
         }
@@ -252,7 +254,7 @@ export function initDay17EditPlaceholder(): {
     // This only changes the draft; applied selection changes on Draw.
     if (button.dataset.style && ui.style === 'sketch' && savedProcessed &&
         !matchesStrokeVariant(savedProcessed, sourceForSketch?.sourceId ?? '', ui.detail,
-          ui.line, SKETCH_QUALITY_VERSION)) {
+          actualLine(), SKETCH_QUALITY_VERSION)) {
       invalidateVariantPreview();
     }
     showUI();
@@ -275,9 +277,9 @@ export function initDay17EditPlaceholder(): {
     ui = next;
     if (ui.style === 'sketch') {
       invalidateVariantPreview();
-      const cached = strokeVariants.get(strokeVariantKey(ui.detail, ui.line));
+      const cached = strokeVariants.get(strokeVariantKey(ui.detail, actualLine()));
       if (matchesStrokeVariant(cached, sourceForSketch?.sourceId ?? '', ui.detail,
-          ui.line, SKETCH_QUALITY_VERSION)) useProcessed(cached!);
+          actualLine(), SKETCH_QUALITY_VERSION)) useProcessed(cached!);
       else {
         previewNote.textContent = `Подготовка на детайлност ${ui.detail}/5…`;
         detailDebounce = setTimeout(() => { detailDebounce = null; requestSketch(); }, 170);
@@ -298,7 +300,7 @@ export function initDay17EditPlaceholder(): {
         (ui.style !== null && ui.style !== 'sketch') ||
         (ui.style === 'sketch' && (sketchBuilding || !processedURL || !savedProcessed ||
           (savedProcessed.pipelineVersion === SKETCH_QUALITY_VERSION &&
-            !matchesStrokeVariant(savedProcessed, sourceForSketch.sourceId, ui.detail, ui.line, SKETCH_QUALITY_VERSION))))) return;
+            !matchesStrokeVariant(savedProcessed, sourceForSketch.sourceId, ui.detail, actualLine(), SKETCH_QUALITY_VERSION))))) return;
     const { projectId, sourceId } = sourceForSketch;
     const png = draftResult?.png ?? savedProcessed?.blob;
     if (ui.style === 'sketch' && !png) return;
@@ -330,14 +332,14 @@ export function initDay17EditPlaceholder(): {
       if (draftResult) {
         const provenance: ProcessedProvenance = {
           sourceAssetId: sourceId, pipelineVersion: draftResult.pipelineVersion,
-          params: { ...SKETCH_V4_SETTINGS, detail: ui.detail, line: ui.line, input: 'grayscale-u8', maxSide: 1024 },
+          params: { ...SKETCH_V4_SETTINGS, detail: ui.detail, line: actualLine(), input: 'grayscale-u8', maxSide: 1024 },
           modelId: 'none', backend: 'numpy-pyodide',
         };
         savedProcessed = await saveProcessedPng(projectId, provenance,
-          draftResult.png, draftResult.width, draftResult.height, true);
+          draftResult.png, draftResult.width, draftResult.height, true, ui.line);
         draftResult = null; // exact saved Blob remains in savedProcessed
       } else if (savedProcessed) {
-        await selectProcessedAsset(projectId, sourceId, savedProcessed.id);
+        await selectProcessedAsset(projectId, sourceId, savedProcessed.id, ui.line);
       }
       if (!savedProcessed) throw new Error('Липсва запазена скица.');
       D.log('info', 'day23', 'sketch.saved-and-selected', {
@@ -521,9 +523,9 @@ export function initDay17EditPlaceholder(): {
           // a newer cached draft that the user never applied.
           const candidate = storedProject.selectedProcessedAssetId
             ? await getSelectedProcessedAsset(storedProject, source)
-            : await getLatestProcessedPreview(project.id, source.id, SKETCH_QUALITY_VERSION, ui.detail, ui.line);
+            : await getLatestProcessedPreview(project.id, source.id, SKETCH_QUALITY_VERSION, ui.detail, actualLine());
           const processed = candidate && (storedProject.selectedProcessedAssetId ||
-            matchesStrokeVariant(candidate, source.id, ui.detail, ui.line, SKETCH_QUALITY_VERSION))
+            matchesStrokeVariant(candidate, source.id, ui.detail, actualLine(), SKETCH_QUALITY_VERSION))
             ? candidate : null;
           if (!route.isActive(token) || screen.hidden) return;
           if (processed) {
@@ -535,14 +537,15 @@ export function initDay17EditPlaceholder(): {
             // Legacy V1..V4 images without this field correspond to default D3.
             if (storedProject.selectedProcessedAssetId && !userTouchedDetail) {
               ui = setSketchUiDetail(ui, appliedDetail(processed));
-              if (!userTouchedLine) ui = setSketchUiLine(ui, appliedStroke(processed));
+              if (!userTouchedLine) ui = { ...ui,
+                line: storedProject.editorLine === undefined ? appliedStroke(processed) : storedProject.editorLine };
             }
-            if (matchesStrokeVariant(processed, source.id, ui.detail, ui.line, SKETCH_QUALITY_VERSION))
-              strokeVariants.set(strokeVariantKey(ui.detail, ui.line), processed);
+            if (matchesStrokeVariant(processed, source.id, ui.detail, actualLine(), SKETCH_QUALITY_VERSION))
+              strokeVariants.set(strokeVariantKey(ui.detail, actualLine()), processed);
             // Restore the last applied selection and separately saved preview.
             // An explicitly deselected style still shows the original.
             if ((userTouchedDetail || userTouchedLine) && ui.style === 'sketch' &&
-                !matchesStrokeVariant(processed, source.id, ui.detail, ui.line, SKETCH_QUALITY_VERSION)) {
+                !matchesStrokeVariant(processed, source.id, ui.detail, actualLine(), SKETCH_QUALITY_VERSION)) {
               invalidateVariantPreview();
             }
             showUI();

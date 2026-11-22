@@ -19,11 +19,11 @@ test('G28: older engines still exist, and V4 has independent version and provena
   const bridge=read('src/day22-sketch-mode.ts');
   const v4=read('../python_engine/ar_drawing/day28_flow_coherent.py');
   const editor=read('src/day17-sketch-placeholder.ts');
-  assert.match(bridge,/SKETCH_QUALITY_VERSION = 'day30-v4-stroke-v1'/);
+  assert.match(bridge,/SKETCH_QUALITY_VERSION = 'day30-v4-stroke-v2'/);
   assert.match(v4,/SKETCH_QUALITY_VERSION = 'day28-flow-coherent-v4'/);
   assert.match(bridge,/runPythonImage\(\{ \.\.\.gray, \.\.\.SKETCH_V4_SETTINGS, detail, line \}\)/);
   assert.match(editor,/params: \{ \.\.\.SKETCH_V4_SETTINGS, detail: (?:ui\.detail|requestedDetail),[\s\S]*?input: 'grayscale-u8', maxSide: 1024 \}/);
-  assert.match(editor,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION, ui\.detail, ui\.line\)/);
+  assert.match(editor,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION, ui\.detail, actualLine\(\)\)/);
   assert.doesNotMatch(editor,/SKETCH_V3_SETTINGS/);
 });
 
@@ -46,7 +46,7 @@ test('G28: active project only changes after Draw, original remains untouched',(
   const store=read('src/storage/project-store.ts');
   const home=read('src/home.ts');
   assert.match(editor,/saveProcessedPng\(projectId, provenance,\s*result\.png, result\.width, result\.height, false\)/);
-  assert.match(editor,/await selectProcessedAsset\(projectId, sourceId, savedProcessed\.id\)/);
+  assert.match(editor,/await selectProcessedAsset\(projectId, sourceId, savedProcessed\.id, ui\.line\)/);
   assert.match(editor,/await selectOriginalForDrawing\(projectId, sourceId\)/);
   assert.match(store,/asset\.id === project\.selectedProcessedAssetId/);
   assert.match(home,/listProjectThumbnails/);
@@ -55,8 +55,8 @@ test('G28: active project only changes after Draw, original remains untouched',(
 });
 
 test('G28 regression: ui SVG source unchanged; version moves to 0.29.0',()=>{
-  assert.equal(JSON.parse(read('package.json')).version,'0.30.0');
-  assert.equal(JSON.parse(read('package-lock.json')).version,'0.30.0');
+  assert.equal(JSON.parse(read('package.json')).version,'0.30.1');
+  assert.equal(JSON.parse(read('package-lock.json')).version,'0.30.1');
   assert.match(read('src/day13-image-bridge.ts'),/encodeTransparentPng/);
   assert.match(read('src/day17-sketch-placeholder.ts'),/generator\.detail\.requested/);
 });

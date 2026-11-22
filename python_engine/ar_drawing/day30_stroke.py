@@ -2,8 +2,8 @@
 
 The score and binary contour selection are exactly the Day 28/29 algorithms.
 Only the final binary mask is widened; this never re-runs ETF-lite/FDoG-lite.
-Thin=1-pixel, normal=radius-1 Euclidean disk, thick=radius-2 disk.
-The discrete disks are nested, so contour pixels cannot disappear when
+Thin=1-pixel, normal=radius-1 Euclidean cross, thick=3x3 square.
+The cross and square footprints are nested, so contour pixels cannot disappear when
 switching to a wider stroke at a fixed detail level.
 """
 from __future__ import annotations
@@ -14,14 +14,14 @@ from .day13_bridge import BridgeResult
 from .day28_flow_coherent import get_cached_flow_score
 from .day29_detail import select_detail_contours
 
-SKETCH_QUALITY_VERSION = 'day30-v4-stroke-v1'
-BRIDGE_VERSION = 'day30-gray8-stroke-v1'
+SKETCH_QUALITY_VERSION = 'day30-v4-stroke-v2'
+BRIDGE_VERSION = 'day30-gray8-stroke-v2'
 STROKES = ('thin', 'normal', 'thick')
-_RADII = {'thin': 0, 'normal': 1, 'thick': 2}
+_RADII = {'thin': 0, 'normal': 1, 'thick': 1}
 
 
 def widen_contours(mask: np.ndarray, line: str = 'normal') -> np.ndarray:
-    """Dilation by a small bounded disk, without cv2/SciPy or image wrapping.
+    """Dilation by a small bounded cross/square footprint, without cv2/SciPy or image wrapping.
 
     Input must be a 2-D binary mask. Output retains binary dtype; both
     spatial dimensions are unchanged and border pixels are not wrapped.
@@ -39,7 +39,7 @@ def widen_contours(mask: np.ndarray, line: str = 'normal') -> np.ndarray:
 
     for dy in range(-radius, radius + 1):
         for dx in range(-radius, radius + 1):
-            if dx * dx + dy * dy > radius * radius or (dx == 0 and dy == 0):
+            if (line != 'thick' and dx * dx + dy * dy > radius * radius) or (dx == 0 and dy == 0):
                 continue
             source_y_start, source_y_stop = max(0, -dy), min(height, height - dy)
             source_x_start, source_x_stop = max(0, -dx), min(width, width - dx)

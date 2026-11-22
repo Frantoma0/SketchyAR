@@ -33,11 +33,11 @@ test('G27 regression: V3 baseline remains versioned, while editor and Worker are
   const ui=read('src/day17-sketch-placeholder.ts');
   const draft=read('src/day22-sketch-mode.ts');
   const v3=read('../python_engine/ar_drawing/day27_importance.py');
-  assert.match(draft,/export const SKETCH_QUALITY_VERSION = 'day30-v4-stroke-v1'/);
+  assert.match(draft,/export const SKETCH_QUALITY_VERSION = 'day30-v4-stroke-v2'/);
   assert.match(v3,/SKETCH_QUALITY_VERSION = 'day27-importance-v3'/);
   assert.match(draft,/runPythonImage\(\{ \.\.\.gray, \.\.\.SKETCH_V4_SETTINGS, detail, line \}\)/);
   assert.match(ui,/params: \{ \.\.\.SKETCH_V4_SETTINGS, detail: (?:ui\.detail|requestedDetail),[\s\S]*?input: 'grayscale-u8', maxSide: 1024 \}/);
-  assert.match(ui,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION, ui\.detail, ui\.line\)/);
+  assert.match(ui,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION, ui\.detail, actualLine\(\)\)/);
   assert.match(ui,/!matchesStrokeVariant\(savedProcessed, sourceForSketch\?\.sourceId \?\? '', ui\.detail,/);
   assert.doesNotMatch(ui,/SKETCH_V2_SETTINGS/);
   assert.doesNotMatch(ui,/SKETCH_V3_SETTINGS/);
@@ -48,14 +48,14 @@ test('G27: only Draw commits applied style, PNG and Home; preview stays a draft'
   const home=read('src/home.ts');
   const store=read('src/storage/project-store.ts');
   assert.match(ui,/saveProcessedPng\(projectId, provenance,\s*result\.png, result\.width, result\.height, false\)/);
-  assert.match(ui,/await selectProcessedAsset\(projectId, sourceId, savedProcessed\.id\)/);
+  assert.match(ui,/await selectProcessedAsset\(projectId, sourceId, savedProcessed\.id, ui\.line\)/);
   assert.match(ui,/await selectOriginalForDrawing\(projectId, sourceId\)/);
   assert.match(store,/asset\.id === project\.selectedProcessedAssetId/);
   assert.match(home,/listProjectThumbnails/); // Home uses the persisted, applied state
 });
 
 test('G27: upgraded version and Figma UI untouched',()=>{
-  assert.equal(JSON.parse(read('package.json')).version,'0.30.0');
+  assert.equal(JSON.parse(read('package.json')).version,'0.30.1');
   assert.match(read('src/day13-image-bridge.ts'),/encodeTransparentPng/);
   assert.match(read('src/day17-sketch-placeholder.ts'),/generator\.detail\.requested/);
 });

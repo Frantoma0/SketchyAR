@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { appliedDetail, isDetailLevel, matchesDetailVariant } from '../src/day29-detail-variants.ts';
 const read = p => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
-const V='day30-v4-stroke-v1', SOURCE='source-a';
+const V='day30-v4-stroke-v2', SOURCE='source-a';
 const asset = (detail,sourceId=SOURCE,version=V)=>({role:'processed',params:{detail},sourceAssetId:sourceId,pipelineVersion:version});
 
 test('G29: detail levels are only integers 1 through 5',()=>{
@@ -53,7 +53,7 @@ test('G29: UI invalidates previous variant and never applies it before a new rea
   assert.match(editor,/matchesStrokeVariant\(cached, sourceId, requestedDetail, requestedLine, SKETCH_QUALITY_VERSION\)/);
   assert.match(editor,/if \(!isCurrent\(\)\) return/);
   assert.match(editor,/detailDebounce = setTimeout\(/);
-  assert.match(editor,/await selectProcessedAsset\(projectId, sourceId, savedProcessed\.id\)/);
+  assert.match(editor,/await selectProcessedAsset\(projectId, sourceId, savedProcessed\.id, ui\.line\)/);
   assert.match(editor,/await selectOriginalForDrawing\(projectId, sourceId\)/);
 });
 
@@ -78,5 +78,5 @@ test('G29+30: real detail and line width use the same Figma graphics',()=>{
   assert.doesNotMatch(editor,/generator\.detail\.visual-only/);
   assert.match(editor,/fitImageInAperture/);
   assert.match(read('src/styles.css'),/day20-figma-slider-fill/);
-  assert.equal(JSON.parse(read('package.json')).version,'0.30.0');
+  assert.equal(JSON.parse(read('package.json')).version,'0.30.1');
 });

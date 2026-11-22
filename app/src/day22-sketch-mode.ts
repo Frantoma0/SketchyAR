@@ -8,7 +8,7 @@ import type { SketchUiLine } from './day20-sketch-state';
 export { SketchDraftGate } from './day22-sketch-gate';
 
 /** Version is checked when reading a cached draft; old applied drawings stay valid. */
-export const SKETCH_QUALITY_VERSION = 'day30-v4-stroke-v1';
+export const SKETCH_QUALITY_VERSION = 'day30-v4-stroke-v2';
 
 // Historical V1 settings remain for reproducible Day 12/25 comparisons.
 export const SKETCH_V1_SETTINGS = Object.freeze({ sigma: 1, low: 0.04, high: 0.10 });

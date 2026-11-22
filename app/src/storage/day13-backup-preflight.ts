@@ -23,6 +23,9 @@ export function inspectBackupInput(projects: ProjectRecord[], assets: AssetRecor
     if (project.editorStyle !== undefined && project.editorStyle !== null &&
         !['sketch', 'manga', 'comic'].includes(project.editorStyle))
       throw new Error('Invalid remembered editor style');
+    if (project.editorLine !== undefined && project.editorLine !== null &&
+        !['thin', 'normal', 'thick'].includes(project.editorLine))
+      throw new Error('Invalid remembered line selection');
     if (project.selectedProcessedAssetId !== undefined) {
       const selected = assetById.get(project.selectedProcessedAssetId);
       if (selected?.role !== 'processed' || selected.projectId !== project.id ||
