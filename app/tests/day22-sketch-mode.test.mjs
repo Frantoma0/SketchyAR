@@ -70,6 +70,6 @@ test('D22+23+30: Draw enables only with a real processed Sketch' , () => {
   assert.match(editor,/Контурът е готов/);
   assert.doesNotMatch(service,/saveProcessedPng/);
   const pkg=JSON.parse(read('package.json'));
-  assert.equal(pkg.version,'0.32.1');
+  assert.equal(pkg.version,'0.32.2');
   assert.match(editor,/!sketchBuilding && isProductiveStyle\(ui.style\) &&[\s\S]*?Boolean\(processedURL\) && Boolean\(savedProcessed\)/);
 });

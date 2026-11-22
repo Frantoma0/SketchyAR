@@ -21,7 +21,7 @@
   </style>
 </head>
 <body>
-  <header><p><a href="../">← SketchyAR</a></p><h1>iPhone AI Lab · Ден 32.1</h1>
+  <header><p><a href="../">← SketchyAR</a></p><h1>iPhone AI Lab · Ден 32.2</h1>
     <p>Измерва <strong>истински локален AnimeGAN модел</strong> в Safari. Снимките не се качват никъде. Режимът „Манга“ в редактора още не е променен.</p>
   </header>
   <section class="panel">
@@ -44,8 +44,9 @@
     <input id="photo" type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif,image/*" />
     <p><button type="button" id="synthetic">Използвай синтетичен тест без снимка</button></p>
     <label for="size">Размер по дългата страна</label>
-    <select id="size"><option value="128">128 px — минимален тест</option><option value="192">192 px</option><option value="256" selected>256 px — препоръчителен</option><option value="384">384 px</option><option value="512">512 px — само ако 384 е стабилен</option></select>
-    <div class="actions"><button id="run" type="button" class="primary" disabled>Генерирай и измери</button><button id="series" type="button" disabled>Тест серия 128→256→384</button></div>
+    <select id="size"><option value="128">128 px — минимален тест</option><option value="192">192 px</option><option value="256" selected>256 px — препоръчителен</option><option value="384">384 px — безопасни припокриващи се плочки</option><option value="512">512 px — плочки, значително по-бавно</option></select>
+    <div class="actions"><button id="run" type="button" class="primary" disabled>Генерирай и измери</button><button id="series" type="button" disabled>Безопасна серия 128→256</button></div>
+    <p class="notice">При 384/512 px изображението се разделя на малки <strong>плочки</strong>, всяка ограничена до площта на успешния iPhone тест. Това НЕ е тест на по-голям модел, а на по-голямо изходно изображение. Резултатът може да има видими съединения между плочките. При прекъсване следващото отваряне показва последния записан етап.</p>
     <p id="run-status" class="status" role="status">Първо зареди модела и избери изображение.</p>
     <div class="gallery"><figure><figcaption>Оригинал</figcaption><img id="original" alt="Избраната локална снимка" /></figure><figure><figcaption>AI резултат (не Manga overlay)</figcaption><canvas id="result" width="256" height="256" aria-label="Реално генериран AI резултат"></canvas></figure></div>
     <p><button id="save-png" type="button" disabled>Запази AI резултата като PNG</button></p>
@@ -56,7 +57,7 @@
     <pre id="metrics">Още няма измервания.</pre>
     <button id="export" type="button" disabled>Експортирай анонимен JSON отчет</button>
   </section>
-  <section class="panel"><h2>Важно</h2><p>Това е експериментален AnimeGAN модел, не готов Manga стил. Ако Safari затвори страницата, намали размера. Не сравнявай времената с CPython бенчмарковете от Ден 31; те са различни алгоритми и среди.</p>
+  <section class="panel"><h2>Важно</h2><p>Това е експериментален AnimeGAN модел, не готов Manga стил. При рестартиране или загуба на WebGL контекст резултатът може да се прекъсне; следващото отваряне записва такъв опит като „interrupted“, без да твърди доказана причина. Избягвай директни големи inference текстури. Не сравнявай времената с CPython бенчмарковете от Ден 31; те са различни алгоритми и среди.</p>
     <p>След изтеглянето провери и режим „Самолет“, като презаредиш тази страница. Safari може да изтрие локалния кеш при недостиг на място; офлайн работата не е гарантирана без проверка.</p>
     <p><small>Източник: <a href="https://github.com/TonyLianLong/AnimeGAN.js">AnimeGAN.js</a> · TensorFlow.js · използване за некомерсиално изследване. Нито моделът, нито вашите снимки са включени в Git ZIP.</small></p>
   </section>

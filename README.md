@@ -1,3 +1,5 @@
+> **Ден 32.2 / v0.32.2:** Безопасен iPhone AI Lab с tiled AnimeGAN при 384/512 px, запис на прекъснати тестове и ограничени WebGL inference размери. Виж [docs/day32-2-safe-iphone-tiling.md](docs/day32-2-safe-iphone-tiling.md).
+
 # SketchyAR — Ден 32.1 / v0.32.1: iPhone-only AnimeGAN benchmark
 
 **Изолирана тестова страница `app/public/ai-lab/`** зарежда истински AnimeGAN TensorFlow.js модел **само на iPhone**, пази теглата в IndexedDB и изпълнява реален WebGL inference. Не заменя бутона „Манга“ до потвърдени Safari измервания. След първоначално сваляне на библиотека и модел не изпраща снимки; офлайн устойчивостта се проверява отделно. Виж `Day32_1_INSTALL.txt` и `docs/day32-1-iphone-ai-benchmark.md`.

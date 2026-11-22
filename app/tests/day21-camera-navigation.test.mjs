@@ -95,6 +95,6 @@ test('D21: camera menu stays inside safe area, Figma layout remains exactly as a
 });
 
 test('D21: version bumped with all previous D20 visual tests intact',()=>{
-  assert.equal(JSON.parse(read('package.json')).version,'0.32.1');
+  assert.equal(JSON.parse(read('package.json')).version,'0.32.2');
   assert.match(read('src/day17-sketch-placeholder.ts'),/id/);
 });

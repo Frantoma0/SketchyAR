@@ -100,8 +100,8 @@ test('G31: style follows asset provenance in atomic Draw paths; backup schema re
   assert.match(store,/editorStyle: a\.params\?\.style === 'manga' \? 'manga' : 'sketch'/);
   assert.match(store,/PROJECT_DB_VERSION = 1/);
   assert.match(backup,/\['sketch','manga','comic'\]/);
-  assert.equal(JSON.parse(read('package.json')).version,'0.32.1');
-  assert.equal(JSON.parse(read('package-lock.json')).version,'0.32.1');
+  assert.equal(JSON.parse(read('package.json')).version,'0.32.2');
+  assert.equal(JSON.parse(read('package-lock.json')).version,'0.32.2');
 });
 
 test('G31: Manga preprocessor changes tonal distribution, not the Sketch V4 input path',()=>{

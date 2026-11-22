@@ -55,6 +55,6 @@ test('G32.1 lab is isolated and explicitly disclaims unverified iPhone results',
   assert.match(html,/не е променен/);
   assert.match(read('src/main.ts'),/href="\.\/ai-lab\/"/);
   assert.doesNotMatch(app,/AnimeGAN|ai-lab|MODEL_URL/);
-  assert.equal(JSON.parse(read('package.json')).version,'0.32.1');
-  assert.equal(JSON.parse(read('package-lock.json')).version,'0.32.1');
+  assert.equal(JSON.parse(read('package.json')).version,'0.32.2');
+  assert.equal(JSON.parse(read('package-lock.json')).version,'0.32.2');
 });

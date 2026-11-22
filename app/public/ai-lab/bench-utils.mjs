@@ -43,3 +43,59 @@ export function summarizeRuns(runs) {
   }
   return result;
 }
+
+/** Day 32.2: never send an untested 384/512 texture through the full CNN.
+ * Our first real iPhone sample was 168x256 = 43,008 input pixels. A tile's
+ * upper bound deliberately stays at that observed input *area*. This is
+ * not a guarantee about intermediate GPU allocations on other images.
+ */
+export const MAX_DIRECT_PIXELS = 168 * 256;
+export const MAX_TILE_WIDTH = 192;
+export const MAX_TILE_HEIGHT = 224;
+export const TILE_OVERLAP = 32;
+
+export function tileStarts(length, tile, overlap = TILE_OVERLAP) {
+  if (![length, tile, overlap].every(Number.isInteger) || length < 16 || tile < 16 || overlap < 0 || overlap >= tile)
+    throw new RangeError('Невалидни размери на AI плочките');
+  if (length <= tile) return [0];
+  const starts = [0];
+  while (starts[starts.length - 1] + tile < length) {
+    const next = Math.min(length - tile, starts[starts.length - 1] + tile - overlap);
+    if (next <= starts[starts.length - 1]) throw new Error('AI tile progress stalled');
+    starts.push(next);
+  }
+  return starts;
+}
+
+/** Covers the output without gaps; deterministic order, identical bounded inference sizes. */
+export function planInference(width, height, side) {
+  validSize(side);
+  if (![width,height].every(x => Number.isInteger(x) && x >= 16 && x <= side && x % 8 === 0))
+    throw new RangeError('Очаква се предварително оразмерено изображение, кратно на 8');
+  if (side <= 256 && width * height <= MAX_DIRECT_PIXELS) return { mode: 'direct', tiles: [{ x:0, y:0, width, height }] };
+  const w = Math.min(width, MAX_TILE_WIDTH);
+  const h = Math.min(height, MAX_TILE_HEIGHT);
+  const xs = tileStarts(width,w);
+  const ys = tileStarts(height,h);
+  const tiles = [];
+  for(let row=0; row<ys.length;row++) for(let col=0;col<xs.length;col++) {
+    const x=xs[col], y=ys[row];
+    tiles.push({ x,y,width:w,height:h,
+      leftOverlap:col? xs[col-1]+w-x:0,
+      rightOverlap:col+1<xs.length? x+w-xs[col+1]:0,
+      topOverlap:row? ys[row-1]+h-y:0,
+      bottomOverlap:row+1<ys.length? y+h-ys[row+1]:0,
+    });
+  }
+  return { mode: 'tiled', tiles };
+}
+
+/** Smooth alpha blending of separately stylized neighboring tiles. */
+export function blendWeight(offset, length, before, after) {
+  if (![offset,length,before,after].every(Number.isFinite) || offset < 0 || offset >= length)
+    throw new RangeError('Невалидна позиция за смесване');
+  let weight=1;
+  if (before) weight=Math.min(weight,(offset+0.5)/before);
+  if (after) weight=Math.min(weight,(length-offset-0.5)/after);
+  return Math.max(1e-6,weight);
+}

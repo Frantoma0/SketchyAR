@@ -1,5 +1,5 @@
 import { BENCH_SCHEMA, IMAGE_SIZES, MODEL_ID, MODEL_CACHE, RUNTIME_CACHE,
-  TFJS_URL, MODEL_URL, validSize, fitToMaxSide, summarizeRuns } from './bench-utils.mjs';
+  TFJS_URL, MODEL_URL, validSize, fitToMaxSide, planInference, blendWeight, summarizeRuns } from './bench-utils.mjs';
 
 const get = id => document.getElementById(id);
 const install = get('install');
@@ -25,6 +25,47 @@ let offlineReady = false;
 const runs = [];
 const measured = {};
 const startedAt = new Date().toISOString();
+const CHECKPOINT_KEY = 'sketchyar-ai-lab-anonymous-checkpoint-v2';
+let webglContextLost = false;
+/** Persist only bounded numerical diagnostics. A Safari renderer kill cannot be caught;
+ * a checkpoint lets the next page load report an interrupted experiment. */
+function saveCheckpoint(pending = null) {
+  try {
+    localStorage.setItem(CHECKPOINT_KEY, JSON.stringify({
+      schema: BENCH_SCHEMA, runs: runs.slice(-60), pending,
+      savedAt: new Date().toISOString(),
+    }));
+  } catch { /* Private browsing/quota: testing still works. */ }
+}
+function restoreCheckpoint() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CHECKPOINT_KEY) || 'null');
+    if (!saved || saved.schema !== BENCH_SCHEMA) return;
+    if (Array.isArray(saved.runs)) for (const record of saved.runs.slice(-60)) {
+      if (record && ['ok','failed','interrupted'].includes(record.status) && IMAGE_SIZES.includes(record.longSide)) runs.push(record);
+    }
+    if (saved.pending && IMAGE_SIZES.includes(saved.pending.longSide)) {
+      runs.push({status:'interrupted', longSide:saved.pending.longSide,
+        mode:saved.pending.mode ?? 'unknown', completedTiles:saved.pending.completedTiles ?? 0,
+        tileCount:saved.pending.tileCount ?? null,
+        error:'Тестът е прекъснат преди запис на резултата. Safari може да е презаредил страницата или да е загубил WebGL контекста.'});
+      text('run-status', `Предишният тест (${saved.pending.longSide} px) е прекъснат. Данните са запазени в анонимния отчет; провери по-безопасен размер.`);
+    }
+    if (runs.length) updateMetrics();
+    saveCheckpoint(null);
+  } catch { /* Invalid/outdated cache is ignored. */ }
+}
+window.addEventListener('webglcontextlost', event => {
+  // The lightweight capability probe deliberately releases its own context.
+  // Ignore that event; only a real runtime context loss invalidates the model.
+  if (event.target?.dataset?.aiLabProbe === '1') return;
+  event.preventDefault();
+  webglContextLost = true;
+  lastError = 'WebGL контекстът е загубен. Презареди AI Lab; моделът се пази в IndexedDB.';
+  text('run-status', lastError);
+  updateMetrics();
+}, true);
+
 
 function milliseconds(t) { return Math.round(t * 10) / 10; }
 function text(id, message) { get(id).textContent = message; }
@@ -45,6 +86,7 @@ function captureEnvironment() {
   let maxTextureSize = null;
   try {
     const canvas = document.createElement('canvas');
+    canvas.dataset.aiLabProbe = '1';
     gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
     if (gl) maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
   } catch { /* browser may reject WebGL contexts */ }
@@ -82,6 +124,7 @@ async function updateStorage() {
   message.push(`TensorFlow.js библиотека в кеш: ${offlineReady ? 'да' : 'не'}`);
   text('storage', message.join(' · '));
 }
+restoreCheckpoint();
 void updateStorage();
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(err => {
@@ -175,6 +218,7 @@ function registerMirrorPad() {
 }
 
 async function loadModel() {
+  if (webglContextLost) throw new Error('WebGL контекстът е загубен. Презареди тази страница преди нов тест.');
   if (model) return;
   await loadTensorFlow();
   const t0 = performance.now();
@@ -214,76 +258,166 @@ function checkTfMemory() {
   } catch { return { numBytes: null, numTensors: null, unreliable: true, reasons: ['tf.memory unavailable'] }; }
 }
 
-async function runOne(side) {
-  if (!model || !image.complete || !image.naturalWidth) throw new Error('Избери снимка и зареди модел');
-  validSize(side);
-  const { width, height } = fitToMaxSide(image.naturalWidth, image.naturalHeight, side);
-  const buffer = document.createElement('canvas');
-  buffer.width = width; buffer.height = height;
-  const ctx = buffer.getContext('2d', {willReadFrequently: true});
-  if (!ctx) throw new Error('Canvas 2D не е наличен');
-  const totalStart = performance.now();
-  ctx.drawImage(image, 0, 0, width, height);
+/** A bounded graph call. All intermediate inference tensors are released, even if it throws. */
+async function inferCanvas(buffer, destination = null) {
   const preStart = performance.now();
   const input = tf.tidy(() => tf.browser.fromPixels(buffer).toFloat().div(255).expandDims(0));
+  let answer = null;
   let rawResult = null;
   let processed = null;
   try {
     const inferenceStart = performance.now();
-    const answer = await model.executeAsync({test: input});
+    answer = await model.executeAsync({test: input});
     rawResult = Array.isArray(answer) ? answer[0] : answer;
-    // toPixels below forces GPU synchronization. Inference-only time on WebGL
-    // can include deferred work; include total as the most reliable comparison.
     const inferenceMs = milliseconds(performance.now() - inferenceStart);
+    if (!rawResult?.shape || rawResult.shape.length !== 4) throw new Error('Моделът върна неочакван tensor');
     const outputStart = performance.now();
     processed = tf.tidy(() => rawResult.squeeze([0]).add(1).div(2).clipByValue(0, 1));
-    output.width = processed.shape[1]; output.height = processed.shape[0];
-    await tf.browser.toPixels(processed, output);
+    const h = processed.shape[0], w = processed.shape[1];
+    if (h !== buffer.height || w !== buffer.width || processed.shape[2] !== 3)
+      throw new Error(`Моделът промени размера на плочката (${w}×${h}).`);
+    let pixels = null;
+    if (destination) {
+      destination.width = w; destination.height = h;
+      await tf.browser.toPixels(processed, output);
+    } else {
+      // In tiled mode return just RGBA bytes; never grow the GPU inference texture.
+      pixels = await tf.browser.toPixels(processed);
+    }
     const renderMs = milliseconds(performance.now() - outputStart);
-    const entry = {
-      status: 'ok', longSide: side, width, height,
-      inferenceMs, renderMs,
-      prepareMs: milliseconds(inferenceStart - preStart),
-      totalMs: milliseconds(performance.now() - totalStart),
-    };
-    return entry;
+    return {pixels, inferenceMs, renderMs, prepareMs: milliseconds(inferenceStart - preStart)};
   } finally {
     input.dispose();
     processed?.dispose();
-    rawResult?.dispose();
-    buffer.width = 0; buffer.height = 0;
+    const outputs = Array.isArray(answer) ? answer : answer ? [answer] : [];
+    for (const tensor of outputs) tensor?.dispose?.();
   }
+}
+
+/** Larger pictures are generated as a mosaic of separately inferred, overlapping
+ * tiles. This increases output resolution WITHOUT raising peak inference area.
+ * It is an experimental workaround; differences/seams can remain at boundaries. */
+async function runTiled(side, width, height, tiles, totalStart, pending) {
+  const full = document.createElement('canvas');
+  full.width = width; full.height = height;
+  const fullCtx = full.getContext('2d');
+  if (!fullCtx) throw new Error('Canvas 2D не е наличен');
+  fullCtx.drawImage(image, 0, 0, width, height);
+  const small = document.createElement('canvas');
+  const smallCtx = small.getContext('2d', {willReadFrequently:true});
+  if (!smallCtx) throw new Error('Canvas 2D не е наличен');
+  const weights = new Float32Array(width * height);
+  const sums = new Float32Array(width * height * 3);
+  let inferenceMs = 0, renderMs = 0, prepareMs = 0;
+  let peakTfBytes = 0;
+  try {
+    for(let i=0; i<tiles.length; i++) {
+      if (webglContextLost) throw new Error('WebGL контекстът е загубен');
+      const tile=tiles[i];
+      text('run-status', `${side} px · обработвам плочка ${i+1}/${tiles.length} (${tile.width}×${tile.height}).`);
+      await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+      small.width=tile.width; small.height=tile.height;
+      smallCtx.drawImage(full, tile.x, tile.y, tile.width, tile.height, 0, 0, tile.width, tile.height);
+      const computed=await inferCanvas(small);
+      inferenceMs+=computed.inferenceMs;
+      renderMs+=computed.renderMs;
+      prepareMs+=computed.prepareMs;
+      const px=computed.pixels;
+      if (!px || px.length !== tile.width*tile.height*4) throw new Error('Невалиден RGBA резултат от AI плочката');
+      for(let yy=0;yy<tile.height;yy++) {
+        const wy=blendWeight(yy,tile.height,tile.topOverlap,tile.bottomOverlap);
+        for(let xx=0;xx<tile.width;xx++) {
+          const wx=blendWeight(xx,tile.width,tile.leftOverlap,tile.rightOverlap);
+          const weight=wx*wy;
+          const destination=(tile.y+yy)*width+tile.x+xx;
+          const src=(yy*tile.width+xx)*4;
+          weights[destination]+=weight;
+          sums[destination*3]+=px[src]*weight;
+          sums[destination*3+1]+=px[src+1]*weight;
+          sums[destination*3+2]+=px[src+2]*weight;
+        }
+      }
+      const mem=checkTfMemory();
+      if (Number.isFinite(mem.numBytes)) peakTfBytes=Math.max(peakTfBytes,mem.numBytes);
+      saveCheckpoint({...pending,completedTiles:i+1});
+      await tf.nextFrame();
+    }
+    output.width=width; output.height=height;
+    const ctx=output.getContext('2d');
+    if (!ctx) throw new Error('Canvas 2D за резултата не е наличен');
+    const imageData=ctx.createImageData(width,height);
+    const pixels=imageData.data;
+    for(let i=0;i<weights.length;i++) {
+      const inv=1/Math.max(1e-6,weights[i]);
+      pixels[i*4]=Math.round(sums[i*3]*inv);
+      pixels[i*4+1]=Math.round(sums[i*3+1]*inv);
+      pixels[i*4+2]=Math.round(sums[i*3+2]*inv);
+      pixels[i*4+3]=255;
+    }
+    ctx.putImageData(imageData,0,0);
+    return {status:'ok',longSide:side,width,height,mode:'tiled',tileCount:tiles.length,
+      maxTilePixels:Math.max(...tiles.map(t=>t.width*t.height)),
+      inferenceMs:milliseconds(inferenceMs),renderMs:milliseconds(renderMs),
+      prepareMs:milliseconds(prepareMs),totalMs:milliseconds(performance.now()-totalStart),
+      peakTfBytesAfterTile:peakTfBytes};
+  } finally {
+    full.width=0;full.height=0;small.width=0;small.height=0;
+  }
+}
+
+async function runOne(side) {
+  if (webglContextLost) throw new Error('WebGL контекстът е загубен. Презареди тази страница преди нов тест.');
+  if (!model || !image.complete || !image.naturalWidth) throw new Error('Избери снимка и зареди модела');
+  validSize(side);
+  const { width,height }=fitToMaxSide(image.naturalWidth,image.naturalHeight,side);
+  const plan=planInference(width,height,side);
+  const pending={longSide:side,mode:plan.mode,tileCount:plan.tiles.length,completedTiles:0,startedAt:new Date().toISOString()};
+  saveCheckpoint(pending);
+  const totalStart=performance.now();
+  if(plan.mode==='tiled') return runTiled(side,width,height,plan.tiles,totalStart,pending);
+  const buffer=document.createElement('canvas');
+  buffer.width=width;buffer.height=height;
+  const ctx=buffer.getContext('2d',{willReadFrequently:true});
+  if (!ctx) throw new Error('Canvas 2D не е наличен');
+  ctx.drawImage(image,0,0,width,height);
+  try {
+    const result=await inferCanvas(buffer,output);
+    return {status:'ok',longSide:side,width,height,mode:'direct',tileCount:1,
+      inferenceMs:result.inferenceMs,renderMs:result.renderMs,prepareMs:result.prepareMs,
+      totalMs:milliseconds(performance.now()-totalStart)};
+  } finally {buffer.width=0;buffer.height=0;}
 }
 
 async function runBench(sizes) {
   if (busy || !model || !sourceReady) return;
   setBusy(true);
-  savePng.disabled = true;
-  let currentSide = null;
+  savePng.disabled=true;
+  let currentSide=null;
   try {
-    for (const side of sizes) {
-      currentSide = side;
-      text('run-status', `Генерирам реален AI резултат (${side} px). Не затваряй страницата…`);
-      // Return control to Safari before heavy GPU work starts.
-      await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
-      const result = await runOne(side);
-      const memory = checkTfMemory();
-      result.tfBytesAfterRun = memory.numBytes;
-      result.tfTensorsAfterRun = memory.numTensors;
-      result.tfMemoryUnreliable = memory.unreliable;
+    for(const side of sizes) {
+      currentSide=side;
+      text('run-status', `Изчислявам ${side} px с автоматичен лимит за всяка AI операция…`);
+      await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0)));
+      const result=await runOne(side);
+      const memory=checkTfMemory();
+      result.tfBytesAfterRun=memory.numBytes;
+      result.tfTensorsAfterRun=memory.numTensors;
+      result.tfMemoryUnreliable=memory.unreliable;
       runs.push(result);
+      saveCheckpoint(null);
       updateMetrics();
-      text('run-status', `${side} px: ${result.totalMs} ms общо, ${result.inferenceMs} ms inference, ${result.renderMs} ms GPU→Canvas.`);
+      text('run-status', `${side} px (${result.mode==='tiled'?`${result.tileCount} плочки`:'една операция'}): ${result.totalMs} ms общо. Междинната GPU памет не е измерена.`);
     }
-    savePng.disabled = false;
-  } catch (err) {
-    lastError = errorText(err);
-    text('run-status', `Неуспешна AI обработка: ${lastError}. Пробвай 128 px или презареди.`);
-    runs.push({status: 'failed', longSide: currentSide, error: lastError});
+    savePng.disabled=false;
+  } catch(err) {
+    lastError=errorText(err);
+    runs.push({status:'failed',longSide:currentSide,error:lastError});
+    saveCheckpoint(null);
     updateMetrics();
-  } finally {
-    setBusy(false);
-  }
+    const lost=webglContextLost || /webgl|context lost|out of memory/i.test(lastError);
+    text('run-status', `Неуспешна AI обработка: ${lastError}. ${lost?'Презареди AI Lab, за да създадеш нов WebGL контекст.':'Пробвай 128 или 192 px.'}`);
+    if(lost) { model=null; setBusy(false); }
+  } finally {setBusy(false);}
 }
 
 function report() {
@@ -301,7 +435,7 @@ function report() {
     runs,
     summary: summarizeRuns(runs),
     lastError,
-    note: 'No photos, filenames, source image bytes, or rendered images are exported. tf.memory bytes are NOT total device RAM/GPU usage. Benchmarks require real iPhone verification.',
+    note: 'No photos, filenames, source image bytes, or rendered images are exported. 384/512 use separately inferred overlapping tiles, not a larger single model execution. tf.memory excludes peak iPhone GPU/RAM use. Interrupted status does not establish the cause of Safari restart.',
   };
 }
 function updateMetrics() {
@@ -375,7 +509,7 @@ get('synthetic').addEventListener('click', () => {
   applyLocalImage(canvas.toDataURL('image/png'), false);
 });
 runButton.addEventListener('click', () => { void runBench([validSize(get('size').value)]); });
-series.addEventListener('click', () => { void runBench([128, 256, 384]); });
+series.addEventListener('click', () => { void runBench([128, 256]); });
 savePng.addEventListener('click', () => { output.toBlob(blob => {if (!blob) return; download(blob, 'sketchyar-ai-animegan-result.png');}, 'image/png'); });
 exportButton.addEventListener('click', () => {
   const json = JSON.stringify(report(), null, 2);

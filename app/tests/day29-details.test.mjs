@@ -78,5 +78,5 @@ test('G29+30: real detail and line width use the same Figma graphics',()=>{
   assert.doesNotMatch(editor,/generator\.detail\.visual-only/);
   assert.match(editor,/fitImageInAperture/);
   assert.match(read('src/styles.css'),/day20-figma-slider-fill/);
-  assert.equal(JSON.parse(read('package.json')).version,'0.32.1');
+  assert.equal(JSON.parse(read('package.json')).version,'0.32.2');
 });
