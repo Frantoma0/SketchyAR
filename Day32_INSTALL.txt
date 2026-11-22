@@ -1,0 +1,36 @@
+SketchyAR — Ден 32: AI manga research test bench (v0.32.0)
+======================================================
+
+1) Това е research-only версия. Бутонът „Манга“ в iPhone приложението
+   продължава да използва работещия Day31 V1. Няма ново cloud/API поведение.
+
+2) Разархивирай Patch върху съществуващия ar-drawing Git проект,
+   заменяйки файловете; НЕ презаписвай .git, НЕ премахвай PWA/IndexedDB.
+
+3) Windows PowerShell от корена на проекта:
+   cd app
+   npm ci --include=dev
+   npm run typecheck
+   npm run build
+   npm run test:day32
+   cd ..
+   py -m pip install -r requirements-dev.txt
+   py -m pytest python_engine -q
+
+4) Самостоятелен експериментален протокол:
+   experiments/day32/README.md
+   docs/day32-ai-model-experiment.md
+
+5) Няма включени модели, лични тестови снимки, CUDA, Diffusers или ONNX.
+   `infer.py --dry-run` не изтегля нищо. Реален Qwen модел изисква мощен
+   GPU и инсталация според официалните инструкции. AnimeGANv3 изисква
+   собствени ONNX weights и спазване на non-commercial лиценз.
+
+6) Преди push: провери CI, запази ZIP backup на потребителските проекти.
+   git status
+   git add -A
+   git commit -m "research: Day 32 AI manga model comparison harness"
+   git push origin main
+
+7) Не добавяй лични снимки, outputs, модели или generated review files в Git.
+   Създай private project извън директорията на репото, напр. C:\SketchyAR-Day32-private.

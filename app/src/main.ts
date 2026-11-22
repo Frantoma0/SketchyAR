@@ -216,6 +216,11 @@ document.getElementById('app')!.innerHTML = `
     <button id="ver" class="ver" type="button" aria-label="Версия на приложението"></button>
   </header>
   <p class="lead">Ден 17: моливче, преименуване от името и директно отваряне. Backup и диагностика са запазени.</p>
+  <section id="day32-iphone-ai-lab">
+    <h2>Ден 32.1 — iPhone AI Lab</h2>
+    <p class="hint">Реална локална AnimeGAN проба в Safari: първоначално изтегляне на библиотека и модел, после измерване на 128–512 px, без качване на лични снимки. Не променя работещия Manga V1.</p>
+    <p><a class="act" href="./ai-lab/">Отвори iPhone AI Lab</a></p>
+  </section>
   <section><h2>Build</h2><dl id="build"></dl></section>
   <section><h2>Среда</h2><dl id="env"><dt>Зареждане</dt><dd>…</dd></dl></section>
   <section><h2>Възможности на устройството</h2><ul id="caps" class="caps"></ul></section>

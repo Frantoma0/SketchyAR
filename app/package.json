@@ -1,7 +1,7 @@
 {
   "name": "sketchyar",
   "private": true,
-  "version": "0.31.0",
+  "version": "0.32.1",
   "type": "module",
   "engines": {
     "node": ">=20.19"
@@ -29,7 +29,9 @@
     "test:day28-1": "node --experimental-strip-types --test tests/*.test.mjs",
     "test:day29": "node --experimental-strip-types --test tests/*.test.mjs",
     "test:day30": "node --experimental-strip-types --test tests/*.test.mjs",
-    "test:day31": "node --experimental-strip-types --test tests/*.test.mjs"
+    "test:day31": "node --experimental-strip-types --test tests/*.test.mjs",
+    "test:day32": "node --experimental-strip-types --test tests/*.test.mjs",
+    "test:iphone-ai": "node --experimental-strip-types --test tests/*.test.mjs"
   },
   "devDependencies": {
     "typescript": "7.0.2",

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="bg">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#f5f2eb" />
+  <title>SketchyAR · iPhone AI Lab</title>
+  <style>
+    :root{color-scheme:light;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;color:#292820;background:#f5f2eb}
+    *{box-sizing:border-box}body{margin:0;padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom);max-width:700px;margin-inline:auto}
+    h1{font-size:1.42rem;margin:18px 0 8px}h2{font-size:1.08rem}p{line-height:1.45}small,.muted{color:#666}
+    .panel{background:#fff;border:1px solid #d5d1c7;border-radius:15px;padding:16px;margin:14px 0;box-shadow:0 2px 9px #0000000a}
+    .actions{display:flex;gap:10px;flex-wrap:wrap}button,select,input[type=file]{font:inherit;max-width:100%}
+    button{border:1px solid #3e3a34;border-radius:11px;background:#eee9df;color:#292820;padding:12px 13px;font-weight:600;min-height:44px}
+    button.primary{background:#39352f;color:white}button:disabled{opacity:.48}a{color:#484139}
+    label{display:block;margin-bottom:10px;font-weight:600}select{padding:10px;background:white;border-radius:9px}
+    .gallery{display:grid;grid-template-columns:1fr 1fr;gap:10px}.gallery figure{margin:0;min-width:0}
+    .gallery img,.gallery canvas{display:block;width:100%;height:auto;max-height:340px;object-fit:contain;background:#f5f5f5;border:1px dashed #b8b3a7;border-radius:10px}
+    figcaption{font-size:.84rem;margin-bottom:5px}pre{white-space:pre-wrap;word-break:break-word;max-height:350px;overflow:auto;background:#f2f0ec;padding:12px;border-radius:10px;font-size:.78rem}
+    .notice{border-left:3px solid #926d3c;padding-left:10px;color:#50452f} .status{font-weight:600}
+  </style>
+</head>
+<body>
+  <header><p><a href="../">← SketchyAR</a></p><h1>iPhone AI Lab · Ден 32.1</h1>
+    <p>Измерва <strong>истински локален AnimeGAN модел</strong> в Safari. Снимките не се качват никъде. Режимът „Манга“ в редактора още не е променен.</p>
+  </header>
+  <section class="panel">
+    <h2>1. Проверка на iPhone</h2>
+    <p id="capabilities">Проверявам браузъра…</p>
+    <p id="storage" class="muted"></p>
+  </section>
+  <section class="panel">
+    <h2>2. Инсталиране на локален AI модел</h2>
+    <p class="notice">Само при първоначалното изтегляне е нужен интернет: TensorFlow.js от CDN и приблизително <strong>15 MB</strong> моделен файл от GitHub. Генерацията се извършва само на телефона. Използвай модела само за некомерсиални тестове.</p>
+    <div class="actions">
+      <button id="install" type="button" class="primary">Инсталирай / зареди модела</button>
+      <button id="remove" type="button">Изтрий локалния модел</button>
+    </div>
+    <p id="model-status" role="status" class="status">Още не е зареден модел.</p>
+  </section>
+  <section class="panel">
+    <h2>3. Избор на изображение</h2>
+    <label for="photo">Лична снимка (само локално)</label>
+    <input id="photo" type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif,image/*" />
+    <p><button type="button" id="synthetic">Използвай синтетичен тест без снимка</button></p>
+    <label for="size">Размер по дългата страна</label>
+    <select id="size"><option value="128">128 px — минимален тест</option><option value="192">192 px</option><option value="256" selected>256 px — препоръчителен</option><option value="384">384 px</option><option value="512">512 px — само ако 384 е стабилен</option></select>
+    <div class="actions"><button id="run" type="button" class="primary" disabled>Генерирай и измери</button><button id="series" type="button" disabled>Тест серия 128→256→384</button></div>
+    <p id="run-status" class="status" role="status">Първо зареди модела и избери изображение.</p>
+    <div class="gallery"><figure><figcaption>Оригинал</figcaption><img id="original" alt="Избраната локална снимка" /></figure><figure><figcaption>AI резултат (не Manga overlay)</figcaption><canvas id="result" width="256" height="256" aria-label="Реално генериран AI резултат"></canvas></figure></div>
+    <p><button id="save-png" type="button" disabled>Запази AI резултата като PNG</button></p>
+  </section>
+  <section class="panel">
+    <h2>4. Измервания</h2>
+    <p>Показваме <strong>изчакване на действително изчислените пиксели</strong>, а не само времето за извикване на функцията. <code>tf.memory()</code> измерва отчетените тензори, <strong>не пълната RAM/GPU памет на iPhone</strong>.</p>
+    <pre id="metrics">Още няма измервания.</pre>
+    <button id="export" type="button" disabled>Експортирай анонимен JSON отчет</button>
+  </section>
+  <section class="panel"><h2>Важно</h2><p>Това е експериментален AnimeGAN модел, не готов Manga стил. Ако Safari затвори страницата, намали размера. Не сравнявай времената с CPython бенчмарковете от Ден 31; те са различни алгоритми и среди.</p>
+    <p>След изтеглянето провери и режим „Самолет“, като презаредиш тази страница. Safari може да изтрие локалния кеш при недостиг на място; офлайн работата не е гарантирана без проверка.</p>
+    <p><small>Източник: <a href="https://github.com/TonyLianLong/AnimeGAN.js">AnimeGAN.js</a> · TensorFlow.js · използване за некомерсиално изследване. Нито моделът, нито вашите снимки са включени в Git ZIP.</small></p>
+  </section>
+  <script type="module" src="./lab.js"></script>
+</body>
+</html>

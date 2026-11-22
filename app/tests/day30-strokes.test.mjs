@@ -62,8 +62,8 @@ test('G30: the Worker runs Day30 on the shared V4/Day29 stages, no extra legacy 
   assert.match(py,/select_detail_contours\(/);
   assert.match(py,/widen_contours\(selected, line\)/);
   assert.doesNotMatch(py,/^\s*(?:from|import) (?:cv2|scipy|tensorflow|torch)\b/m);
-  assert.equal(JSON.parse(read('package.json')).version,'0.31.0');
-  assert.equal(JSON.parse(read('package-lock.json')).version,'0.31.0');
+  assert.equal(JSON.parse(read('package.json')).version,'0.32.1');
+  assert.equal(JSON.parse(read('package-lock.json')).version,'0.32.1');
 });
 
 test('G30: editor reacts to stroke taps with invalidation, source guard and a brief debounce', () => {

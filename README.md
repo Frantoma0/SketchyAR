@@ -1,3 +1,15 @@
+# SketchyAR — Ден 32.1 / v0.32.1: iPhone-only AnimeGAN benchmark
+
+**Изолирана тестова страница `app/public/ai-lab/`** зарежда истински AnimeGAN TensorFlow.js модел **само на iPhone**, пази теглата в IndexedDB и изпълнява реален WebGL inference. Не заменя бутона „Манга“ до потвърдени Safari измервания. След първоначално сваляне на библиотека и модел не изпраща снимки; офлайн устойчивостта се проверява отделно. Виж `Day32_1_INSTALL.txt` и `docs/day32-1-iphone-ai-benchmark.md`.
+
+# SketchyAR v0.32.0 — Ден 32: генеративен Manga AI експеримент
+
+**Изследователски пакет, не промяна на продукционния Manga бутон.** Добавени са три отделни inference adapters (Qwen-Image-2.1-Turbo, Qwen-Image-Edit-2511, AnimeGANv3 ONNX), анонимизирано подготвяне на снимки, равнопоставено D3/Normal AR превю, blind review с ≥2 оценяващи и проверка на SHA-256 provenance. **Няма включени AI checkpoints, лични снимки или непотвърдени оценки.** Сегашната PWA продължава да използва работещия Manga V1 от Ден 31, без промяна на Home/камера/записване.
+
+Процедура: [`Day32_INSTALL.txt`](Day32_INSTALL.txt) · Изследователски код: [`experiments/day32/README.md`](experiments/day32/README.md) · Документация: [`docs/day32-ai-model-experiment.md`](docs/day32-ai-model-experiment.md).
+
+---
+
 # SketchyAR v0.31.0 — Ден 31: реален многостъпков Manga V1
 
 **Текуща версия:** `v0.31.0` върху v0.30.1. Бутонът **„Манга“** вече

@@ -24,3 +24,10 @@ app/public/licenses/Caveat-OFL.txt
 
 # Day 25: per-file local QA may include source hashes. Never publish it.
 /day25-private-metrics.csv
+
+# Day 32 private image/model research artifacts; source code is tracked.
+experiments/day32/private/
+experiments/day32/results/
+experiments/day32/models/
+*.onnx
+*.safetensors

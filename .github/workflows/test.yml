@@ -14,6 +14,8 @@ jobs:
         working-directory: app
       - run: npm run typecheck
         working-directory: app
+      - run: npm run test:day32
+        working-directory: app
   python:
     runs-on: ubuntu-latest
     steps:
