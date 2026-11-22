@@ -40,7 +40,7 @@ test('G30.1: current PNG is never applied on toggle, nullable selection is commi
   assert.match(editor,/await selectProcessedAsset\(projectId, sourceId, savedProcessed\.id, ui\.line\)/);
   assert.match(editor,/draftResult\.png, draftResult\.width, draftResult\.height, true, ui\.line\)/);
   assert.match(editor,/storedProject\.editorLine === undefined \? appliedStroke\(processed\) : storedProject\.editorLine/);
-  assert.match(editor,/if \(ui\.style === 'sketch' && !processedURL\) requestSketch\(\)/);
+  assert.match(editor,/if \(isProductiveStyle\(ui.style\) && !processedURL\) requestSketch\(\)/);
 });
 
 test('G30.1: create -> Edit without Camera, Draw is the camera entry',()=>{
@@ -81,5 +81,5 @@ test('G30.1: tuned thick footprint is 3x3, V4 remains unchanged, and new cache v
   assert.match(py,/get_cached_flow_score\(/);
   assert.match(py,/select_detail_contours\(/);
   assert.match(draft,/day30-v4-stroke-v2/);
-  assert.equal(JSON.parse(read('package.json')).version,'0.30.1');
+  assert.equal(JSON.parse(read('package.json')).version,'0.31.0');
 });

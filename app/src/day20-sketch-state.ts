@@ -1,4 +1,4 @@
-/** Day 30: Sketch detail and stroke are real; Manga/Comic remain placeholders. */
+/** Day 31: Sketch and Manga are real; only Comic remains a placeholder. */
 export type SketchUiStyle = 'sketch' | 'manga' | 'comic';
 export type SketchUiSelection = SketchUiStyle | null;
 export type SketchUiLine = 'thin' | 'normal' | 'thick';

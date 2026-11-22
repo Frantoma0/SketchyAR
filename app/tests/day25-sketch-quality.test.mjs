@@ -23,9 +23,9 @@ test('G25: versioned previews do not silently reuse old Python output',()=>{
   assert.match(store,/pipelineVersion\?: string/);
   assert.match(store,/pipelineVersion === undefined \|\| a\.pipelineVersion === pipelineVersion/);
   assert.match(editor,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION, ui\.detail, actualLine\(\)\)/);
-  assert.match(editor,/!matchesStrokeVariant\(savedProcessed, sourceForSketch\?\.sourceId \?\? '', ui\.detail,/);
+  assert.match(editor,/!matchesStyledVariant\(savedProcessed, sourceForSketch\?\.sourceId \?\? '', ui\.style,/);
   assert.match(editor,/processedURL = null;\s*savedProcessed = null;/);
-  assert.match(editor,/if \(ui\.style === 'sketch'\)/);
+  assert.match(editor,/if \(isProductiveStyle\(ui\.style\)\)/);
 });
 
 test('G25: exact applied PNG stays authoritative until Draw, even after generator upgrade',()=>{
@@ -47,6 +47,6 @@ test('G25: no change to graphite SVGs, image size, detail/line or camera geometr
   assert.match(bridge,/image\.data\[i \* 4 \+ 3\] = mask\[i\] \? 255 : 0/);
   assert.match(engine,/SKETCH_V1_SETTINGS = Object\.freeze\(\{ sigma: 1, low: 0\.04, high: 0\.10 \}\)/);
   assert.match(editor,/generator\.detail\.requested/);
-  assert.match(editor,/Манга и Комикс предстоят/);
-  assert.equal(JSON.parse(get('package.json')).version,'0.30.1');
+  assert.match(editor,/Режимът Комикс предстои/);
+  assert.equal(JSON.parse(get('package.json')).version,'0.31.0');
 });

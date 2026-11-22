@@ -36,9 +36,9 @@ test('G27 regression: V3 baseline remains versioned, while editor and Worker are
   assert.match(draft,/export const SKETCH_QUALITY_VERSION = 'day30-v4-stroke-v2'/);
   assert.match(v3,/SKETCH_QUALITY_VERSION = 'day27-importance-v3'/);
   assert.match(draft,/runPythonImage\(\{ \.\.\.gray, \.\.\.SKETCH_V4_SETTINGS, detail, line \}\)/);
-  assert.match(ui,/params: \{ \.\.\.SKETCH_V4_SETTINGS, detail: (?:ui\.detail|requestedDetail),[\s\S]*?input: 'grayscale-u8', maxSide: 1024 \}/);
+  assert.match(ui,/params: \{ \.\.\.SKETCH_V4_SETTINGS, style: (?:selectedStyle|requestedStyle), detail: (?:ui\.detail|requestedDetail),[\s\S]*?input: 'grayscale-u8', maxSide: 1024 \}/);
   assert.match(ui,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION, ui\.detail, actualLine\(\)\)/);
-  assert.match(ui,/!matchesStrokeVariant\(savedProcessed, sourceForSketch\?\.sourceId \?\? '', ui\.detail,/);
+  assert.match(ui,/!matchesStyledVariant\(savedProcessed, sourceForSketch\?\.sourceId \?\? '', ui\.style,/);
   assert.doesNotMatch(ui,/SKETCH_V2_SETTINGS/);
   assert.doesNotMatch(ui,/SKETCH_V3_SETTINGS/);
 });
@@ -55,7 +55,7 @@ test('G27: only Draw commits applied style, PNG and Home; preview stays a draft'
 });
 
 test('G27: upgraded version and Figma UI untouched',()=>{
-  assert.equal(JSON.parse(read('package.json')).version,'0.30.1');
+  assert.equal(JSON.parse(read('package.json')).version,'0.31.0');
   assert.match(read('src/day13-image-bridge.ts'),/encodeTransparentPng/);
   assert.match(read('src/day17-sketch-placeholder.ts'),/generator\.detail\.requested/);
 });

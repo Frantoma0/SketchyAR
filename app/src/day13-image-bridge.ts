@@ -8,7 +8,7 @@ import { log } from './diagnostics';
 
 const PARAMS = { sigma: 1, low: .04, high: .10, input: 'grayscale-u8' as const, maxSide: 1024 as const };
 
-export async function decodeReducedGray(blob: Blob): Promise<{ gray: Uint8Array; width: number; height: number }> {
+export async function decodeReducedGray(blob: Blob, mangaColorLift = false): Promise<{ gray: Uint8Array; width: number; height: number }> {
   const url = URL.createObjectURL(blob);
   const img = new Image();
   const canvas = document.createElement('canvas');
@@ -32,8 +32,13 @@ export async function decodeReducedGray(blob: Blob): Promise<{ gray: Uint8Array;
     const pixels = ctx.getImageData(0, 0, width, height).data;
     const gray = new Uint8Array(width * height);
     for (let i = 0, k = 0; k < gray.length; i += 4, k++) {
+      // Manga needs a small saturation lift so strongly colored objects do
+      // not collapse into the same black area as genuinely dark objects.
+      // Sketch stays pixel-identical to v0.30.1 (mangaColorLift=false).
+      const r = pixels[i], g = pixels[i + 1], b = pixels[i + 2];
+      const chroma = mangaColorLift ? Math.min(26, (Math.max(r, g, b) - Math.min(r, g, b)) * 0.10) : 0;
       gray[k] = Math.max(0, Math.min(255, Math.round(
-        pixels[i] * .2126 + pixels[i + 1] * .7152 + pixels[i + 2] * .0722)));
+        r * .2126 + g * .7152 + b * .0722 + chroma)));
     }
     return { gray, width, height };
   } finally {
@@ -41,6 +46,12 @@ export async function decodeReducedGray(blob: Blob): Promise<{ gray: Uint8Array;
     URL.revokeObjectURL(url);
     canvas.width = 0; canvas.height = 0;
   }
+}
+
+/** Color-aware Manga luminance while keeping the Worker input grayscale-u8.
+ * No new image bytes are stored or sent off-device. */
+export function decodeReducedMangaGray(blob: Blob): Promise<{ gray: Uint8Array; width: number; height: number }> {
+  return decodeReducedGray(blob, true);
 }
 
 export async function encodeTransparentPng(mask: Uint8Array, width: number, height: number): Promise<Blob> {

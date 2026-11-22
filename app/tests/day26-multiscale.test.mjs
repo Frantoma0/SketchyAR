@@ -13,8 +13,8 @@ test('G26 regression: V2 stays available as a baseline while V4 is active',()=>{
   assert.doesNotMatch(worker,/_sketchyar_day13_result = _sketchyar_day25\.process_gray8_quality\(/);
   assert.match(draft,/export const SKETCH_QUALITY_VERSION = 'day30-v4-stroke-v2'/);
   assert.match(draft,/runPythonImage\(\{ \.\.\.gray, \.\.\.SKETCH_V4_SETTINGS, detail, line \}\)/);
-  assert.match(editor,/if \(ui\.style === 'sketch'\)/);
-  assert.match(editor,/!matchesStrokeVariant\(savedProcessed, sourceForSketch\?\.sourceId \?\? '', ui\.detail,/);
+  assert.match(editor,/if \(isProductiveStyle\(ui\.style\)\)/);
+  assert.match(editor,/!matchesStyledVariant\(savedProcessed, sourceForSketch\?\.sourceId \?\? '', ui\.style,/);
 });
 
 test('G26: V1, Day25 and V2 remain intact for baseline but are inactive in the editor',()=>{
@@ -44,7 +44,7 @@ test('G26: actual generated PNG remains a draft until Draw; Home only displays a
 });
 
 test('G26: version is bumped and all existing visual assets remain untouched',()=>{
-  assert.equal(JSON.parse(read('package.json')).version,'0.30.1');
+  assert.equal(JSON.parse(read('package.json')).version,'0.31.0');
   assert.match(read('src/day13-image-bridge.ts'),/encodeTransparentPng/);
   assert.match(read('src/day17-sketch-placeholder.ts'),/generator\.detail\.requested/);
 });

@@ -37,11 +37,11 @@ test('D22: only the existing validated Python bridge generates the real image', 
   assert.match(bridge,/image\.data\[i \* 4 \+ 3\] = mask\[i\] \? 255 : 0/);
 });
 
-test('D22: no processed preview may be shown for Manga and Comic', () => {
+test('D22+31: Comic is placeholder, Sketch and Manga use real processed PNG', () => {
   const editor=read('src/day17-sketch-placeholder.ts');
-  assert.match(editor,/ui\.style !== 'sketch' \|\| !processedURL/);
-  assert.match(editor,/if \(ui\.style === 'sketch'\)/);
-  assert.match(editor,/Манга и Комикс предстоят/);
+  assert.match(editor,/!isProductiveStyle\(ui.style\) \|\| !processedURL/);
+  assert.match(editor,/if \(isProductiveStyle\(ui\.style\)\)/);
+  assert.match(editor,/Режимът Комикс предстои/);
   assert.match(editor,/sourceForSketch = \{ projectId: project\.id, sourceId: source\.id, blob: source\.blob \}/);
   assert.match(editor,/sketchGate\.cancel\(\)/);
   assert.match(editor,/sketchGate\.isCurrent\(ticket, projectId, sourceId\)/);
@@ -57,7 +57,7 @@ test('D22+23: original Figma shell, stored PNG comparison and zoom remain', () =
   assert.match(editor,/showUI\(\)/);
   assert.match(editor,/openZoom/);
   assert.match(editor,/previewWindow\.classList\.add\('day22-processing'\)/);
-  assert.match(editor,/D\.log\('info', 'day30', 'sketch\.stroke\.generated'/);
+  assert.match(editor,/D\.log\('info', diagnosticDay, `\$\{diagnosticName\}\.generated`/);
   assert.match(main,/<button id="day19-draw"[^>]*disabled/);
   assert.match(main,/src="\.\/ui\/generator\/figma-polaroid\.svg"/);
   assert.match(css,/\.day20-figma-screen #day18-preview-window\.day22-processing::after/);
@@ -70,6 +70,6 @@ test('D22+23+30: Draw enables only with a real processed Sketch' , () => {
   assert.match(editor,/Контурът е готов/);
   assert.doesNotMatch(service,/saveProcessedPng/);
   const pkg=JSON.parse(read('package.json'));
-  assert.equal(pkg.version,'0.30.1');
-  assert.match(editor,/!sketchBuilding && ui\.style === 'sketch' &&[\s\S]*?Boolean\(processedURL\) && Boolean\(savedProcessed\)/);
+  assert.equal(pkg.version,'0.31.0');
+  assert.match(editor,/!sketchBuilding && isProductiveStyle\(ui.style\) &&[\s\S]*?Boolean\(processedURL\) && Boolean\(savedProcessed\)/);
 });

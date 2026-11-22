@@ -22,7 +22,7 @@ test('G28: older engines still exist, and V4 has independent version and provena
   assert.match(bridge,/SKETCH_QUALITY_VERSION = 'day30-v4-stroke-v2'/);
   assert.match(v4,/SKETCH_QUALITY_VERSION = 'day28-flow-coherent-v4'/);
   assert.match(bridge,/runPythonImage\(\{ \.\.\.gray, \.\.\.SKETCH_V4_SETTINGS, detail, line \}\)/);
-  assert.match(editor,/params: \{ \.\.\.SKETCH_V4_SETTINGS, detail: (?:ui\.detail|requestedDetail),[\s\S]*?input: 'grayscale-u8', maxSide: 1024 \}/);
+  assert.match(editor,/params: \{ \.\.\.SKETCH_V4_SETTINGS, style: (?:selectedStyle|requestedStyle), detail: (?:ui\.detail|requestedDetail),[\s\S]*?input: 'grayscale-u8', maxSide: 1024 \}/);
   assert.match(editor,/getLatestProcessedPreview\(project\.id, source\.id, SKETCH_QUALITY_VERSION, ui\.detail, actualLine\(\)\)/);
   assert.doesNotMatch(editor,/SKETCH_V3_SETTINGS/);
 });
@@ -55,8 +55,8 @@ test('G28: active project only changes after Draw, original remains untouched',(
 });
 
 test('G28 regression: ui SVG source unchanged; version moves to 0.29.0',()=>{
-  assert.equal(JSON.parse(read('package.json')).version,'0.30.1');
-  assert.equal(JSON.parse(read('package-lock.json')).version,'0.30.1');
+  assert.equal(JSON.parse(read('package.json')).version,'0.31.0');
+  assert.equal(JSON.parse(read('package-lock.json')).version,'0.31.0');
   assert.match(read('src/day13-image-bridge.ts'),/encodeTransparentPng/);
   assert.match(read('src/day17-sketch-placeholder.ts'),/generator\.detail\.requested/);
 });

@@ -18,6 +18,8 @@ OPTION A — PATCH into your CURRENT ar-drawing repository (RECOMMENDED):
     npm run test:day30
     cd ..
     python -m pytest python_engine -q
+    git diff --check
+    git status
 
 OPTION B — FULL v0.30.1 archive:
   Extract SketchyAR_Day30_1_Full_Project_v0.30.1.zip.

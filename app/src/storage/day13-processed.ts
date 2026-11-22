@@ -6,7 +6,7 @@ import { openProjectDB, type AssetRecord, type ProjectRecord } from './project-s
 export interface ProcessedProvenance {
   sourceAssetId: string;
   pipelineVersion: string;
-  params: { sigma: number; low: number; high: number; input: 'grayscale-u8'; maxSide: 1024; detail?: 1 | 2 | 3 | 4 | 5; line?: 'thin' | 'normal' | 'thick' };
+  params: { sigma: number; low: number; high: number; input: 'grayscale-u8'; maxSide: 1024; detail?: 1 | 2 | 3 | 4 | 5; line?: 'thin' | 'normal' | 'thick'; style?: 'sketch' | 'manga' };
   modelId: 'none';
   backend: 'numpy-pyodide';
 }
@@ -54,7 +54,8 @@ export async function saveProcessedPng(projectId: string, provenance: ProcessedP
       assets.add(asset);
       // Day 23: the selected derivative pointer is stored with the new asset atomically.
       // Original source remains active and overlay presets remain attached to it.
-      if (selectForDrawing) projects.put({ ...project, selectedProcessedAssetId: asset.id, editorStyle: 'sketch',
+      if (selectForDrawing) projects.put({ ...project, selectedProcessedAssetId: asset.id,
+        editorStyle: provenance.params.style === 'manga' ? 'manga' : 'sketch',
         ...(selectedLine === undefined ? {} : { editorLine: selectedLine }) });
       // Keep the source as the project's active image and avoid changing gallery order.
     };

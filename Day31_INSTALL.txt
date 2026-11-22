@@ -1,0 +1,38 @@
+SketchyAR v0.31.0 — DAY 31 MANGA V1
+===================================
+
+Начална версия: v0.30.1. НЕ прилагай patch върху по-стар код.
+
+1) Направи ZIP Backup на локалните си проекти от приложението.
+2) Разархивирай SketchyAR_Day31_Patch_v0.31.0.zip върху ROOT на Git проекта
+   (папката, която съдържа app/, python_engine/, docs/). Разреши подмяна
+   на променените файлове. Не изтривай .git, app/public или локална PWA.
+3) От root терминал, Windows PowerShell:
+
+   cd app
+   npm ci --include=dev
+   npm run typecheck
+   npm run build
+   npm run test:day31
+   cd ..
+   python -m pytest python_engine -q
+
+   За Node тестовете използвай Node 22+ (Node 20 може да изпълни Vite,
+   но не поддържа същата функция --experimental-strip-types).
+4) При успешно build:
+
+   git status
+   git add -A
+   git commit -m "feat: Day 31 Manga layered rendering pipeline"
+   git push origin main
+
+   Ако branch не е main, използвай неговото име. Изчакай deployment.
+5) На iPhone Safari/Home Screen затвори и отвори приложението, без да триеш
+   локалните данни. Тествай Manga D1–D5, Thin/Normal/Thick, hold compare,
+   Back (не прилага), Draw (прилага), повторно отваряне и ZIP backup.
+
+ВАЖНО: при неуспех на production build не качвай версията. Първо изпрати
+terminal log; не изтривай кеша или IndexedDB. Тестове само в CPython/Node
+не доказват че Pyodide Worker е успешно зареден в iPhone.
+
+Пълна документация: docs/day31-manga-v1.md

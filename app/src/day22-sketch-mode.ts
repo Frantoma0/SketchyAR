@@ -1,5 +1,5 @@
 /** Day 30: Sketch V4 with five detail tiers and three real line widths.
- * Manga / Comic remain future work.
+ * Manga has a separate Day31 pipeline; Comic remains future work.
  * The PNG is a temporary draft; no DB write or camera routing occurs in this module.
  */
 import { decodeReducedGray, encodeTransparentPng } from './day13-image-bridge';

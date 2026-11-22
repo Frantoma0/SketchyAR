@@ -150,9 +150,9 @@ test('G23.1: simulated quota errors roll back editor mode and original restore',
 test('G23.1: actual editor restores saved style and source-owned preview',()=>{
   const editor=readFileSync(resolve(app,'src/day17-sketch-placeholder.ts'),'utf8');
   const appMain=readFileSync(resolve(app,'src/main.ts'),'utf8');
-  assert.match(editor,/style: storedProject.selectedProcessedAssetId \? 'sketch' : null/);
-  assert.match(editor,/storedProject.selectedProcessedAssetId \? 'sketch' : null/);
-  assert.match(editor,/if \(!comparisonHeld && ui.style === 'sketch'\) preview.src = processedURL/);
+  assert.match(editor,/if \(!userTouchedStyle && !storedProject.selectedProcessedAssetId\) ui = \{ \.\.\.ui, style: null \}/);
+  assert.match(editor,/style: appliedProcessedStyle\(processed\)/);
+  assert.match(editor,/if \(!comparisonHeld && isProductiveStyle\(ui.style\)\) preview.src = processedURL/);
   assert.match(editor,/savedProcessed = processed/);
   assert.match(editor,/await saveProcessedPng\(projectId, provenance,[\s\S]*?false\)/);
   assert.match(editor,/await selectOriginalForDrawing\(projectId, sourceId\)/);
@@ -233,10 +233,10 @@ test('G24.1: editing without Draw has no persistence call or implicit style save
   const home=readFileSync(resolve(app,'src/storage/project-store.ts'),'utf8');
   const edits=editor.slice(editor.indexOf('controls.forEach(button => button.addEventListener'),
     editor.indexOf("drawButton.addEventListener('click'"));
-  assert.match(edits,/ui = setSketchUiStyle/);
+  assert.match(edits,/const next = setSketchUiStyle/);
   assert.doesNotMatch(edits,/saveProjectEditorStyle|selectProcessedAsset|selectOriginalForDrawing|saveProcessedPng/);
   assert.doesNotMatch(editor,/rememberStyle|styleWrites|saveProjectEditorStyle/);
-  assert.match(editor,/storedProject.selectedProcessedAssetId \? 'sketch' : null/);
+  assert.match(editor,/style: appliedProcessedStyle\(processed\)/);
   assert.match(editor,/await getSelectedProcessedAsset\(storedProject, source\)/);
   assert.match(home,/asset.id === project.selectedProcessedAssetId/);
 });

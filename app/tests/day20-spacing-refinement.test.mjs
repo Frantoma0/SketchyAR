@@ -31,5 +31,5 @@ test('Day20.3: camera, gallery, zoom and persistence are untouched by spacing pa
   assert.match(css, /\.day20-figma-screen \.day19-preview-zoom\s*\{\s*top:10%; right:11\.8%/s);
   assert.match(css, /--sketchy-home-image/);
   assert.match(css, /\.day20-figma-slider-fill/);
-  assert.match(JSON.parse(get('package.json')).version, /^0\.(20\.[3-9]|2[1-9]\.\d+|30\.\d+)$/, 'Day 20.3 or later must preserve approved spacing');
+  assert.match(JSON.parse(get('package.json')).version, /^0\.(20\.[3-9]|2[1-9]\.\d+|3[0-9]\.\d+)$/, 'Day 20.3 or later must preserve approved spacing');
 });

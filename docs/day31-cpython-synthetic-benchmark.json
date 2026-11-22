@@ -1,0 +1,32 @@
+{
+  "kind": "synthetic CPython only, NOT iPhone or Pyodide",
+  "results": [
+    {
+      "resolution": "256x256",
+      "CPython_first_manga_ms": 50,
+      "CPython_D4_thin_ms": 2,
+      "CPython_D4_thick_ms": 2,
+      "ink_first": 13510,
+      "ink_d4_thin": 12434,
+      "ink_d4_thick": 14012
+    },
+    {
+      "resolution": "512x512",
+      "CPython_first_manga_ms": 159,
+      "CPython_D4_thin_ms": 4,
+      "CPython_D4_thick_ms": 5,
+      "ink_first": 51506,
+      "ink_d4_thin": 49341,
+      "ink_d4_thick": 52532
+    },
+    {
+      "resolution": "1024x1024",
+      "CPython_first_manga_ms": 461,
+      "CPython_D4_thin_ms": 13,
+      "CPython_D4_thick_ms": 14,
+      "ink_first": 200823,
+      "ink_d4_thin": 196464,
+      "ink_d4_thick": 202898
+    }
+  ]
+}

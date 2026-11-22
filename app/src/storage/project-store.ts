@@ -306,7 +306,8 @@ export async function selectProcessedAsset(projectId: string, sourceId: string,
       if (!a || a.projectId !== projectId || a.sourceAssetId !== sourceId ||
           a.role !== 'processed' || a.mimeType !== 'image/png' || a.blob?.type !== 'image/png' || !a.blob ||
           !a.blob.size || a.byteSize !== a.blob.size) { invalid = true; tx.abort(); return; }
-      projects.put({ ...project, selectedProcessedAssetId: a.id, editorStyle: 'sketch',
+      projects.put({ ...project, selectedProcessedAssetId: a.id,
+        editorStyle: a.params?.style === 'manga' ? 'manga' : 'sketch',
         ...(selectedLine === undefined ? {} : { editorLine: selectedLine }) });
     };
   };

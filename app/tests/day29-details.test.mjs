@@ -49,8 +49,8 @@ test('G29: UI invalidates previous variant and never applies it before a new rea
   assert.match(editor,/invalidateVariantPreview\(\)/);
   assert.match(editor,/sketchGate\.cancel\(\)/);
   assert.match(editor,/generateSketchDraft\(blob, requestedDetail, requestedLine\)/);
-  assert.match(editor,/getLatestProcessedPreview\(projectId, sourceId,\s*SKETCH_QUALITY_VERSION, requestedDetail, requestedLine\)/);
-  assert.match(editor,/matchesStrokeVariant\(cached, sourceId, requestedDetail, requestedLine, SKETCH_QUALITY_VERSION\)/);
+  assert.match(editor,/getLatestProcessedPreview\(projectId, sourceId,\s*engineVersion\(requestedStyle\), requestedDetail, requestedLine\)/);
+  assert.match(editor,/matchesStyledVariant\(cached, sourceId, requestedStyle, requestedDetail, requestedLine\)/);
   assert.match(editor,/if \(!isCurrent\(\)\) return/);
   assert.match(editor,/detailDebounce = setTimeout\(/);
   assert.match(editor,/await selectProcessedAsset\(projectId, sourceId, savedProcessed\.id, ui\.line\)/);
@@ -59,7 +59,7 @@ test('G29: UI invalidates previous variant and never applies it before a new rea
 
 test('G29: new cached preview carries the exact level, but selection happens only on Draw',()=>{
   const editor=read('src/day17-sketch-placeholder.ts');
-  assert.match(editor,/params: \{ \.\.\.SKETCH_V4_SETTINGS, detail: requestedDetail,/);
+  assert.match(editor,/params: \{ \.\.\.SKETCH_V4_SETTINGS, style: requestedStyle, detail: requestedDetail,/);
   assert.match(editor,/result\.png, result\.width, result\.height, false\)/);
   assert.match(editor,/storedProject\.selectedProcessedAssetId && !userTouchedDetail/);
   assert.match(editor,/appliedDetail\(processed\)/);
@@ -78,5 +78,5 @@ test('G29+30: real detail and line width use the same Figma graphics',()=>{
   assert.doesNotMatch(editor,/generator\.detail\.visual-only/);
   assert.match(editor,/fitImageInAperture/);
   assert.match(read('src/styles.css'),/day20-figma-slider-fill/);
-  assert.equal(JSON.parse(read('package.json')).version,'0.30.1');
+  assert.equal(JSON.parse(read('package.json')).version,'0.31.0');
 });

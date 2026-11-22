@@ -48,12 +48,12 @@ test('G23: initial Figma graphics are unselected, and tap produces the real grap
     assert.match(main,new RegExp(`class="day20-line-chip" data-line="${l}" aria-pressed="false"`));
   assert.match(main,/style-sketch-off\.svg" data-selected-src/);
   assert.match(editor,/ui = DEFAULT_SKETCH_UI;/);
-  assert.match(editor,/style: storedProject\.selectedProcessedAssetId \? 'sketch' : null/);
+  assert.match(editor,/style: appliedProcessedStyle\(processed\)/);
   assert.match(editor,/button\.setAttribute\('aria-pressed', String\(selected\)\)/);
   assert.match(editor,/selected \? art\?\.dataset\.selectedSrc : art\?\.dataset\.defaultSrc/);
 });
-test('G23: original preview is the fallback for NONE/Manga/Comic and for all ungenerated images',()=>{
-  assert.match(editor,/ui\.style !== 'sketch' \|\| !processedURL/);
+test('G23+31: original preview is fallback for NONE/Comic and ungenerated images',()=>{
+  assert.match(editor,/!isProductiveStyle\(ui.style\) \|\| !processedURL/);
   assert.match(editor,/else if \(ui\.style === null\)/);
   assert.match(editor,/previewNote\.textContent = 'Оригинална снимка\.'/);
   assert.match(editor,/processedURL = savedURL/);
@@ -62,7 +62,7 @@ test('G23: original preview is the fallback for NONE/Manga/Comic and for all ung
 });
 test('G23.1: preview is persisted on generation, Camera selection changes only on Draw',()=>{
   assert.match(main,/<button id="day19-draw"[^>]*disabled/);
-  assert.match(editor,/ui.style === null \|\| \(!sketchBuilding && ui.style === 'sketch'/);
+  assert.match(editor,/ui.style === null \|\| \(!sketchBuilding && isProductiveStyle\(ui.style\)/);
   assert.match(editor,/drawButton.disabled = !ready/);
   const before=editor.slice(0,editor.indexOf("drawButton.addEventListener('click'"));
   assert.match(before,/await saveProcessedPng\(projectId, provenance,[\s\S]*?false\)/);
@@ -83,7 +83,7 @@ test('G23: original source remains active; selected derivative checked for owner
   assert.match(store,/asset\.sourceAssetId !== source\.id/);
   assert.match(store,/delete project\.selectedProcessedAssetId/);
   const actual=code('src/storage/day13-processed.ts');
-  assert.match(actual,/if \(selectForDrawing\) projects\.put\(\{ \.\.\.project, selectedProcessedAssetId: asset\.id, editorStyle: 'sketch',/);
+  assert.match(actual,/if \(selectForDrawing\) projects\.put\(\{ \.\.\.project, selectedProcessedAssetId: asset\.id,[\s\S]*?editorStyle: provenance\.params\.style === 'manga' \? 'manga' : 'sketch'/);
   assert.match(backup,/project\.selectedProcessedAssetId !== undefined/);
   assert.match(code('src/storage/day14-backup-service.ts'),/selectedProcessedAssetId/);
 });
