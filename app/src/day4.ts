@@ -8,7 +8,7 @@ import { createImageProject, replaceProjectSource, getProjectImage, getSelectedP
 import { makeThumbnail } from './storage/thumbnail';
 import { CameraEditTransition, sameDrawingPlacement, type CameraEditToken } from './day21-camera-navigation';
 import { detectWhitePaperRegion, rgbaToGray, type GrayImage, type PaperRegion } from './day33-contour-align';
-import { estimateQuadrantAlignment, temporalMedianGray } from './quadrant-alignment-engine.ts';
+import { estimateQuadrantAlignmentDetailed, temporalMedianGray } from './quadrant-alignment-engine.ts';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 let drawingOpen = false;
@@ -486,19 +486,33 @@ async function autoAlignToPaperContours(): Promise<void> {
     refCanvas.height = Math.max(96, Math.round(image.naturalHeight * refFactor));
     const refContext = refCanvas.getContext('2d', { willReadFrequently: true });
     if (!refContext) throw new Error('Не може да се анализира избраното изображение');
+    refContext.fillStyle = '#fff';
+    refContext.fillRect(0, 0, refCanvas.width, refCanvas.height);
     refContext.drawImage(image, 0, 0, refCanvas.width, refCanvas.height);
     const referencePixels = refContext.getImageData(0, 0, refCanvas.width, refCanvas.height);
     setMessage(`Листът е открит · анализирам 4×4 квадранта и проверявам 6×6 (${sequence.frameCount} стабилни кадъра)…`);
 
-    const match = estimateQuadrantAlignment(
+    const attempt = estimateQuadrantAlignmentDetailed(
       rgbaToGray(referencePixels.data, refCanvas.width, refCanvas.height),
       sequence.gray,
-      { maxDimension: 480, maxFeatures: 720, minInliers: 8, minConfidence: .10,
+      { maxDimension: 480, maxFeatures: 900, minInliers: 6, minConfidence: .035,
         coarseGridSize: 4, fineGridSize: 6, minAdjacentQuadrants: 1, overlap: .12 },
     );
+    const match = attempt.alignment;
     if (!match) {
-      setMessage('Няма достатъчно съседни квадранти със съвпадащи линии. Довърши още един-два съседни участъка, задръж телефона неподвижно и сканирай отново.');
-      D.log('info', 'day33.2', 'quadrant-align.no-consensus', {
+      const stats = attempt.diagnostics;
+      const reasonText: Record<string, string> = {
+        'small-image': 'Изображението или листът са твърде малки за анализ.',
+        'aspect-ratio': 'Размерите на кадъра са несъвместими. Дръж телефона успоредно на листа.',
+        'few-features': 'Не открих достатъчно отчетливи ъгли. Подобри светлината и очертай още линии.',
+        'few-matches': 'Локалните контури не си приличат достатъчно. Избери по-контрастни части от рисунката.',
+        'no-adjacent-consensus': 'Намерих отделни кандидати, но не и надеждно съвпадение в съседни квадранти.',
+        'few-final-inliers': 'Съвпадението не се потвърди от достатъчно независими точки.',
+        'low-confidence': 'Наместването е несигурно и не е приложено. Добави още очертания.',
+      };
+      setMessage(`${reasonText[stats.reason] ?? 'Не се получи надеждно наместване'} (${stats.coarseMatches} съвп., ${stats.coarseInliers} опорни точки, ${stats.coarseQuadrants} квадр.).`);
+      D.log('info', 'day33.3', 'quadrant-align.rejected-with-diagnostics', {
+        ...stats,
         reference: [refCanvas.width, refCanvas.height], camera: [width, height],
         paperRegion: [paperRegion.x, paperRegion.y, paperRegion.width, paperRegion.height],
         frameCount: sequence.frameCount, elapsedMs: Math.round(performance.now() - started),

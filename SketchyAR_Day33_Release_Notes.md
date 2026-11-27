@@ -1,27 +1,24 @@
-# SketchyAR Day 33.2 — Quadrant-based Automatic Contour Alignment
+# SketchyAR Day 33.3 — Adaptive Quadrant Matching Hotfix
 
-**App version remains v0.33.0.** This is a focused algorithm update to the previous Day 33.1 contour-alignment hotfix.
+**App version remains v0.33.0.** This update addresses repeated `quadrant-align.no-consensus` failures reported during real use of Day 33.2.
 
-## User-facing change
-The former mirror button continues to launch automatic alignment. The scan now samples the camera over time and attempts to register a partially traced reference image through local, neighbouring quadrants rather than matching the entire sketch as one feature cloud.
-
-## Implementation
-- New dedicated module: `app/src/quadrant-alignment-engine.ts`.
-- 4x4 coarse grid with overlapping local feature windows; local Harris-like corners, deterministic BRIEF descriptors and mutual ratio-tested matches.
-- One global RANSAC similarity transform is selected only when at least two adjacent 4x4 cells independently support it.
-- 6x6 finer matching validates/refines that same transform; no individual tile can move separately.
-- Five camera frames are sampled about 125 ms apart. Page bounds must stay stable; the same sheet area is converted to grayscale and fused using a temporal median.
-- Existing white-sheet isolation, camera mapping, overlay save path and camera lifecycle are reused.
-- No new runtime dependency, network request, model download, camera stream or IndexedDB migration.
+## What changed
+- Replaced strict mutual ratio-tested feature matching with a partial-sketch matcher that keeps up to two plausible local correspondences per reference feature. Geometry and adjacent-cell consensus reject false alternatives.
+- Increased the bounded feature pool and distributes keypoints spatially so highly textured parts of an image do not consume the entire feature budget.
+- Lowered the required inlier count from 8 to 6 and reduced the minimum confidence floor, while retaining the two-neighbouring-cell requirement and a single global similarity transform.
+- Uses deterministic pseudo-random RANSAC pair sampling rather than a fixed index stride that could repeatedly sample a narrow subset for certain match counts.
+- Fills the reference canvas white before drawing an image, preventing transparent PNG areas from becoming black features.
+- Adds detailed rejection diagnostics: failure stage, reference/camera feature counts, coarse matches, approximate inliers, supported cells, adjacency links, fine matches and confidence.
+- A failed match still does not move the overlay. The app now displays a specific diagnostic message rather than the same generic warning.
 
 ## Validation performed
-- Node tests: **215/215 PASS**, including adjacent-cell partial alignment, disconnected-cell rejection and temporal-noise suppression.
-- Focused TypeScript strict typecheck (including noUnusedLocals/noUnusedParameters): **PASS** with local TypeScript 5.8.3 and a temporary declaration for Vite's environment types.
-- `npm ci` did not finish in the isolated environment, so the production Vite build was **not verified**.
-- Real iPhone Safari/Home Screen camera test: **pending**.
+- Full Node regression suite: **217/217 PASS**.
+- New tests cover low-contrast pencil-like marks, partial drawings, noisy backgrounds, blank-page diagnostics and continued rejection of disconnected marks.
+- Focused TypeScript strict check for the changed camera and alignment modules: **PASS** with local TypeScript 5.8.3 and temporary declarations for Vite build globals.
+- Production Vite build and real iPhone Safari/Home Screen camera test: **not verified in this environment**.
 
 ## Geometry and limitations
-The current editor supports a single CSS transform (translation, uniform scale, rotation). It does not yet support full perspective homography or a mesh warp. Hold the phone approximately perpendicular to the flat paper. Use a white sheet against a darker matte surface with all edges visible and draw distinctive features in neighbouring grid cells. Glare, shadows, paper/background merging, motion, occlusion, repeating patterns or very faint pencil may cause rejection. Low-confidence matches preserve the prior overlay placement.
+The editor still applies one global translation, uniform scale and rotation. It does not yet apply a perspective homography or mesh warp. Keep the phone approximately perpendicular to the flat paper, with the whole white page visible against a darker matte surface. Feature matching can still fail when the original is very different from the drawing, when the marks are extremely faint, or when there are too few distinctive corners/intersections. The new diagnostics expose where the failure occurs rather than claiming that synthetic tests prove success on every physical drawing.
 
 ## Installation and test
-Follow `Day33_INSTALL.txt`. The full Node regression command is `node --experimental-strip-types --test tests/*.test.mjs` from `app/`.
+Follow `Day33_INSTALL.txt`. Run `node --experimental-strip-types --test tests/*.test.mjs` from `app/`.

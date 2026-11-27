@@ -1,4 +1,4 @@
-SketchyAR Day 33.2 — Quadrant-based contour alignment (app v0.33.0)
+SketchyAR Day 33.3 — Adaptive quadrant contour alignment (app v0.33.0)
 
 INSTALL
 1. Extract this archive.
@@ -19,9 +19,9 @@ HOW THE ALIGNMENT WORKS
 3. Draw distinctive parts of the reference in at least two neighbouring regions of the imagined 4x4 grid. Corners, turns and intersections help more than a single straight line.
 4. Hold the phone still and approximately perpendicular to the flat page.
 5. Unlock the overlay if it is locked, then tap the former mirror button (now the contour-alignment button).
-6. The app samples five frames, checks paper stability, fuses persistent marks, finds a 4x4 coarse match and checks/refines it with 6x6 local cells.
+6. The app samples five frames, checks paper stability, fuses persistent marks, uses adaptive partial-sketch correspondences across a 4x4 coarse grid and checks/refines the shared transform with 6x6 local cells.
 7. If enough adjacent cells agree, the app places the complete image with one shared scale/rotation/translation and saves the placement.
-8. If it refuses a match, add more distinctive marks in neighbouring areas and scan again. The existing overlay position is kept on failure.
+8. If it refuses a match, read the status details (match count, support points and quadrants), add more distinctive marks in neighbouring areas and scan again. The existing overlay position is kept on failure.
 
 RECOMMENDED TESTS
 - Light graphite pencil, then dark pen/marker (separately).
@@ -34,4 +34,4 @@ LIMITS
 - The 4x4 and 6x6 cells contribute evidence to one global transform; the image is not split into separately moving tiles.
 - The editor currently applies translation, uniform scale and rotation, not perspective homography. Keep the phone approximately perpendicular to the paper.
 - The sheet must stand out from its background. White table/background merging with the page, strong glare/shadows, occlusion, repeated shapes and very faint lines can prevent recognition.
-- Real iPhone Safari/Home Screen testing remains necessary. The included synthetic regression suite cannot guarantee camera performance on physical paper.
+- Real iPhone Safari/Home Screen testing remains necessary. The included synthetic regression suite (217/217 passing) cannot guarantee camera performance on physical paper.

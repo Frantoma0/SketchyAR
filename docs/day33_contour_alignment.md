@@ -1,7 +1,7 @@
-# Day 33.2 — Quadrant-based contour alignment (app v0.33.0)
+# Day 33.3 — Adaptive quadrant contour alignment (app v0.33.0)
 
 ## Goal
-Align the selected reference image to a partially completed pencil/pen drawing on a white sheet. The matcher no longer relies on one feature cloud from the entire drawing. It collects local matches in neighbouring quadrants and accepts only a consistent, shared placement.
+Align the selected reference image to a partially completed pencil/pen drawing on a white sheet. The matcher uses tolerant partial-sketch correspondences in local neighbouring quadrants. A geometric consensus check accepts only one consistent shared placement and rejects false descriptor alternatives.
 
 ## Runtime design
 - Reuses the existing camera stream; it does not request another camera session.
@@ -17,7 +17,7 @@ Align the selected reference image to a partially completed pencil/pen drawing o
 ## Safety gates
 - Locked artwork cannot be auto-positioned until the user unlocks it.
 - Missing source/camera frame, unstable paper bounds or too few stable frames are rejected with a visible status message.
-- A blank page, disconnected marks, non-adjacent quadrant evidence or low-confidence match cannot move the artwork.
+- A blank page, disconnected marks, non-adjacent quadrant evidence or low-confidence match cannot move the artwork. Failed attempts include counts for features, candidate matches, inliers and supported cells.
 - Scale outside the accepted safety range is rejected.
 - The align control remains tappable when prerequisites are missing and reports what needs attention. Only an in-progress scan disables it.
 - Manual drag, pinch, rotation, opacity, grid, lock, camera, selected image and project storage remain available.

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { detectWhitePaperRegion, estimateContourAlignment, rgbaToGray } from '../src/day33-contour-align.ts';
-import { estimateQuadrantAlignment, temporalMedianGray } from '../src/quadrant-alignment-engine.ts';
+import { estimateQuadrantAlignment, estimateQuadrantAlignmentDetailed, temporalMedianGray } from '../src/quadrant-alignment-engine.ts';
 
 function image(w, h, fill = 255) { return { width: w, height: h, data: new Uint8Array(w*h).fill(fill) }; }
 function line(img, x0, y0, x1, y1, value = 0) {
@@ -175,6 +175,47 @@ test('Day 33.2: rejects disconnected partial marks in distant quadrants', () => 
   }
   const result=estimateQuadrantAlignment(ref,cam,{minInliers:6,minConfidence:.05});
   assert.equal(result,null,'non-adjacent cells must not be enough to move the overlay');
+});
+
+
+
+test('Day 33.3: partial pencil marks with low contrast still produce adjacent-cell consensus', () => {
+  const ref = image(360, 360, 255);
+  const motifs = [
+    [[96,96,164,96],[164,96,164,144],[164,144,96,144],[96,144,96,96],[96,96,145,137],[112,122,151,108],[124,98,124,145]],
+    [[190,100,255,132],[255,132,215,164],[215,164,190,100],[194,143,249,110],[205,104,235,155],[190,150,258,150]],
+    [[100,190,150,190],[150,190,158,236],[158,236,108,254],[108,254,100,190],[100,210,158,224],[120,192,132,248]],
+    [[190,190,254,190],[254,190,254,250],[254,250,190,250],[190,250,190,190],[190,190,246,240],[202,222,244,204],[220,190,220,250]],
+  ];
+  for (const shape of motifs) for (const [x0,y0,x1,y1] of shape) line(ref,x0,y0,x1,y1,18);
+  const scale = 1.06, tx = 22, ty = 17;
+  const complete = transformed(ref, 420, 420, scale, tx, ty);
+  const partial = image(420,420,248);
+  const cells = [{x0:90,y0:90,x1:180,y1:180},{x0:180,y0:90,x1:270,y1:180},
+    {x0:90,y0:180,x1:180,y1:270},{x0:180,y0:180,x1:270,y1:270}];
+  for(let y=0;y<partial.height;y++) for(let x=0;x<partial.width;x++) {
+    const sx=(x-tx)/scale, sy=(y-ty)/scale;
+    if(cells.some(c=>sx>=c.x0&&sx<c.x1&&sy>=c.y0&&sy<c.y1)) {
+      const source=complete.data[y*complete.width+x];
+      partial.data[y*partial.width+x]=source<128?218:248;
+    }
+  }
+  // Add small sensor/lighting fluctuations without changing the persistent strokes.
+  for(let i=0;i<partial.data.length;i++) if(partial.data[i]===248) partial.data[i]=247+(i%3);
+  const attempt=estimateQuadrantAlignmentDetailed(ref,partial,{minInliers:6,minConfidence:.035,maxFeatures:900});
+  assert.ok(attempt.alignment, `expected low-contrast pencil consensus, got ${JSON.stringify(attempt.diagnostics)}`);
+  assert.ok(attempt.alignment.coarseQuadrants>=2);
+  assert.ok(Math.abs(attempt.alignment.scale-scale)<.12);
+  assert.ok(Math.abs(attempt.alignment.tx-tx)<14);
+  assert.ok(Math.abs(attempt.alignment.ty-ty)<14);
+});
+
+test('Day 33.3: detailed diagnostics identify blank-paper failure instead of hiding it as no-consensus', () => {
+  const blank=image(180,180,248);
+  const attempt=estimateQuadrantAlignmentDetailed(blank,blank);
+  assert.equal(attempt.alignment,null);
+  assert.equal(attempt.diagnostics.reason,'few-features');
+  assert.equal(attempt.diagnostics.referenceFeatures,0);
 });
 
 test('Day 33.2: temporal median keeps persistent pencil strokes and removes one-frame noise', () => {
