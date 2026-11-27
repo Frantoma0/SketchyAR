@@ -6,9 +6,9 @@ export interface Point { x: number; y: number }
 export interface SimilarityTransform { scale: number; rotationDeg: number; tx: number; ty: number; inliers: number; matches: number; confidence: number }
 export interface AlignOptions { maxDimension?: number; maxFeatures?: number; minInliers?: number; minConfidence?: number }
 export interface PaperRegion { x: number; y: number; width: number; height: number; confidence: number; coverage: number }
-type Feature = { x: number; y: number; descriptor: Uint8Array; score: number };
+export type Feature = { x: number; y: number; descriptor: Uint8Array; score: number };
 
-function downscale(image: GrayImage, maxDimension: number): GrayImage {
+export function downscale(image: GrayImage, maxDimension: number): GrayImage {
   const factor = Math.min(1, maxDimension / Math.max(image.width, image.height));
   if (factor === 1) return image;
   const width = Math.max(8, Math.round(image.width * factor));
@@ -46,7 +46,7 @@ const pairs: Int8Array = (() => {
   for (let i = 0; i < 256; i++) { p[i * 4] = Math.round(rnd()); p[i * 4 + 1] = Math.round(rnd()); p[i * 4 + 2] = Math.round(rnd()); p[i * 4 + 3] = Math.round(rnd()); }
   return p;
 })();
-function features(input: GrayImage, maxFeatures: number): Feature[] {
+export function features(input: GrayImage, maxFeatures: number): Feature[] {
   const img = edgeMap(input), { width: w, height: h, data } = img;
   const candidates: { x: number; y: number; score: number }[] = [];
   for (let y = 8; y < h - 8; y += 2) for (let x = 8; x < w - 8; x += 2) {
@@ -83,8 +83,8 @@ function hamming(a: Uint8Array, b: Uint8Array): number {
   for (let i = 0; i < a.length; i++) { let v = a[i] ^ b[i]; v = v - ((v >>> 1) & 0x55); v = (v & 0x33) + ((v >>> 2) & 0x33); d += (v + (v >>> 4)) & 0x0f; }
   return d;
 }
-type Match = { a: Feature; b: Feature; distance: number };
-function matchFeatures(a: Feature[], b: Feature[]): Match[] {
+export type Match = { a: Feature; b: Feature; distance: number };
+export function matchFeatures(a: Feature[], b: Feature[]): Match[] {
   const nearest = (from: Feature[], to: Feature[]): { index: number; best: number; second: number }[] => from.map(f => {
     let index = -1, best = 257, second = 257;
     for (let i = 0; i < to.length; i++) { const d = hamming(f.descriptor, to[i].descriptor); if (d < best) { second = best; best = d; index = i; } else if (d < second) second = d; }
@@ -94,7 +94,7 @@ function matchFeatures(a: Feature[], b: Feature[]): Match[] {
   for (let i = 0; i < ab.length; i++) { const n = ab[i]; if (n.index >= 0 && n.best < 92 && n.best < n.second * .82 && ba[n.index]?.index === i) out.push({ a: a[i], b: b[n.index], distance: n.best }); }
   return out;
 }
-function fitTwo(m1: Match, m2: Match): SimilarityTransform | null {
+export function fitTwo(m1: Match, m2: Match): SimilarityTransform | null {
   const ax = m2.a.x - m1.a.x, ay = m2.a.y - m1.a.y;
   const bx = m2.b.x - m1.b.x, by = m2.b.y - m1.b.y;
   const den = ax * ax + ay * ay; if (den < 100) return null;
@@ -104,7 +104,7 @@ function fitTwo(m1: Match, m2: Match): SimilarityTransform | null {
   const ty = m1.b.y - (imag * m1.a.x + real * m1.a.y);
   return { scale, rotationDeg: Math.atan2(imag, real) * 180 / Math.PI, tx, ty, inliers: 0, matches: 0, confidence: 0 };
 }
-function error(t: SimilarityTransform, m: Match): number {
+export function error(t: SimilarityTransform, m: Match): number {
   const r = t.rotationDeg * Math.PI / 180, c = Math.cos(r) * t.scale, s = Math.sin(r) * t.scale;
   return Math.hypot(c * m.a.x - s * m.a.y + t.tx - m.b.x, s * m.a.x + c * m.a.y + t.ty - m.b.y);
 }
@@ -280,3 +280,4 @@ export function rgbaToGray(data: Uint8ClampedArray, width: number, height: numbe
   for (let i = 0, p = 0; i < gray.length; i++, p += 4) gray[i] = Math.round(.299 * data[p] + .587 * data[p + 1] + .114 * data[p + 2]);
   return { width, height, data: gray };
 }
+

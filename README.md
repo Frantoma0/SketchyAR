@@ -1,3 +1,5 @@
+> **Ден 33.2 / v0.33.0:** автоматично наместване чрез локално съпоставяне на съседни квадранти: 4×4 за начално разпознаване, 6×6 за прецизиране, плюс времева стабилизация на пет кадъра. Една обща трансформация позиционира цялото изображение. Виж [docs/day33_contour_alignment.md](docs/day33_contour_alignment.md) и [Day33_INSTALL.txt](Day33_INSTALL.txt).
+
 > **Ден 32.2 / v0.32.2:** Безопасен iPhone AI Lab с tiled AnimeGAN при 384/512 px, запис на прекъснати тестове и ограничени WebGL inference размери. Виж [docs/day32-2-safe-iphone-tiling.md](docs/day32-2-safe-iphone-tiling.md).
 
 # SketchyAR — Ден 32.1 / v0.32.1: iPhone-only AnimeGAN benchmark

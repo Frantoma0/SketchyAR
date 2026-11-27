@@ -7,7 +7,8 @@ import { isBusy } from './day2';
 import { createImageProject, replaceProjectSource, getProjectImage, getSelectedProcessedAsset, assertProjectIntegrity, saveProjectOverlay, type ProjectRecord, type OverlayPreset, type OverlaySnapshot } from './storage/project-store';
 import { makeThumbnail } from './storage/thumbnail';
 import { CameraEditTransition, sameDrawingPlacement, type CameraEditToken } from './day21-camera-navigation';
-import { detectWhitePaperRegion, estimateContourAlignment, rgbaToGray } from './day33-contour-align';
+import { detectWhitePaperRegion, rgbaToGray, type GrayImage, type PaperRegion } from './day33-contour-align';
+import { estimateQuadrantAlignment, temporalMedianGray } from './quadrant-alignment-engine.ts';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 let drawingOpen = false;
@@ -374,9 +375,79 @@ function updateArtworkGesture(): void {
   reflect();
   schedulePresetSave();
 }
-/** Day 33: align the selected reference image to already-drawn pencil/ink contours.
- * Camera remains the existing stream. All pixels are processed locally in a bounded canvas.
- */
+/** Capture a short, stable sequence. A median frame suppresses transient glare/noise
+ * and keeps pencil/ink strokes that persist while the phone remains still. */
+async function captureStablePaperSequence(
+  video: HTMLVideoElement, context: CanvasRenderingContext2D,
+  width: number, height: number,
+): Promise<{ region: PaperRegion; gray: GrayImage; frameCount: number }> {
+  const samples: Array<{ pixels: Uint8ClampedArray; region: PaperRegion }> = [];
+  const sampleCount = 5;
+  for (let index = 0; index < sampleCount; index++) {
+    if (index > 0) await new Promise<void>(resolve => window.setTimeout(resolve, 125));
+    if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || !video.videoWidth) {
+      throw new Error('Камерата загуби кадър по време на сканирането');
+    }
+    context.drawImage(video, 0, 0, width, height);
+    const frame = context.getImageData(0, 0, width, height);
+    const region = detectWhitePaperRegion(frame.data, width, height);
+    if (region) samples.push({ pixels: frame.data, region });
+  }
+  if (samples.length < 3) {
+    throw new Error('Листът не се открива стабилно във видеото. Покажи целия лист върху по-тъмен фон.');
+  }
+  const median = (values: number[]): number => {
+    const ordered = [...values].sort((a, b) => a - b);
+    return ordered[Math.floor(ordered.length / 2)];
+  };
+  const centerX = median(samples.map(sample => sample.region.x + sample.region.width / 2));
+  const centerY = median(samples.map(sample => sample.region.y + sample.region.height / 2));
+  const baseWidth = median(samples.map(sample => sample.region.width));
+  const baseHeight = median(samples.map(sample => sample.region.height));
+  const stable = samples.filter(sample => {
+    const region = sample.region;
+    const centerDrift = Math.hypot(
+      (region.x + region.width / 2 - centerX) / Math.max(1, baseWidth),
+      (region.y + region.height / 2 - centerY) / Math.max(1, baseHeight),
+    );
+    const sizeDrift = Math.max(
+      Math.abs(region.width - baseWidth) / Math.max(1, baseWidth),
+      Math.abs(region.height - baseHeight) / Math.max(1, baseHeight),
+    );
+    return centerDrift <= .02 && sizeDrift <= .045;
+  });
+  if (stable.length < 3) {
+    throw new Error('Листът се движи между кадрите. Задръж телефона неподвижно и опитай отново.');
+  }
+  const x = Math.max(0, Math.round(median(stable.map(sample => sample.region.x))));
+  const y = Math.max(0, Math.round(median(stable.map(sample => sample.region.y))));
+  const cropWidth = Math.min(width - x, Math.round(median(stable.map(sample => sample.region.width))));
+  const cropHeight = Math.min(height - y, Math.round(median(stable.map(sample => sample.region.height))));
+  if (cropWidth < 64 || cropHeight < 64) throw new Error('Откритата област на листа е твърде малка');
+
+  const grayFrames: GrayImage[] = stable.map(sample => {
+    const data = new Uint8Array(cropWidth * cropHeight);
+    for (let row = 0; row < cropHeight; row++) for (let col = 0; col < cropWidth; col++) {
+      const source = ((y + row) * width + x + col) * 4;
+      data[row * cropWidth + col] = Math.round(
+        .299 * sample.pixels[source] + .587 * sample.pixels[source + 1] + .114 * sample.pixels[source + 2],
+      );
+    }
+    return { width: cropWidth, height: cropHeight, data };
+  });
+  const region: PaperRegion = {
+    x, y, width: cropWidth, height: cropHeight,
+    confidence: median(stable.map(sample => sample.region.confidence)),
+    coverage: median(stable.map(sample => sample.region.coverage)),
+  };
+  // Avoid retaining references to full camera frames after this point.
+  samples.length = 0;
+  return { region, gray: temporalMedianGray(grayFrames), frameCount: stable.length };
+}
+
+/** Day 33.2: local quadrant consensus aligns one selected reference image to
+ * a partially traced sheet. Camera ownership, gesture handling and project
+ * persistence remain unchanged. */
 async function autoAlignToPaperContours(): Promise<void> {
   if (!drawingOpen) return;
   if (entering) { setMessage('Камерата се подготвя. Опитай отново след малко.'); return; }
@@ -395,60 +466,54 @@ async function autoAlignToPaperContours(): Promise<void> {
   reflect();
   const button = el<HTMLButtonElement>('sketch-camera-mirror');
   button.setAttribute('aria-busy', 'true');
-  setMessage('Търся съвпадащи контури върху белия лист…');
+  setMessage('Задръж телефона неподвижно — събирам 5 кадъра и откривам листа…');
   const started = performance.now();
   try {
     const maxSide = 640;
     const factor = Math.min(1, maxSide / Math.max(video.videoWidth, video.videoHeight));
-    const width = Math.max(64, Math.round(video.videoWidth * factor));
-    const height = Math.max(64, Math.round(video.videoHeight * factor));
+    const width = Math.max(96, Math.round(video.videoWidth * factor));
+    const height = Math.max(96, Math.round(video.videoHeight * factor));
     const cameraCanvas = document.createElement('canvas');
     cameraCanvas.width = width; cameraCanvas.height = height;
     const cameraContext = cameraCanvas.getContext('2d', { willReadFrequently: true });
     if (!cameraContext) throw new Error('Не може да се прочете кадърът от камерата');
-    cameraContext.drawImage(video, 0, 0, width, height);
-    const fullCameraPixels = cameraContext.getImageData(0, 0, width, height);
-    // Segment the actual white/off-white sheet first; do not match the desk,
-    // room or the dark camera controls as if they were part of the drawing.
-    const paperRegion = detectWhitePaperRegion(fullCameraPixels.data, width, height);
-    if (!paperRegion) {
-      setMessage('Не открих ясно отделен бял лист. Постави листа върху по-тъмен фон, така че да се виждат всичките му краища, и опитай отново.');
-      D.log('info', 'day33', 'paper-detection.no-region', { frame: [width, height] });
-      return;
-    }
-    const cameraPixels = cameraContext.getImageData(paperRegion.x, paperRegion.y, paperRegion.width, paperRegion.height);
+    const sequence = await captureStablePaperSequence(video, cameraContext, width, height);
+    const paperRegion = sequence.region;
+
     const refCanvas = document.createElement('canvas');
     const refFactor = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
-    refCanvas.width = Math.max(64, Math.round(image.naturalWidth * refFactor));
-    refCanvas.height = Math.max(64, Math.round(image.naturalHeight * refFactor));
+    refCanvas.width = Math.max(96, Math.round(image.naturalWidth * refFactor));
+    refCanvas.height = Math.max(96, Math.round(image.naturalHeight * refFactor));
     const refContext = refCanvas.getContext('2d', { willReadFrequently: true });
     if (!refContext) throw new Error('Не може да се анализира избраното изображение');
     refContext.drawImage(image, 0, 0, refCanvas.width, refCanvas.height);
     const referencePixels = refContext.getImageData(0, 0, refCanvas.width, refCanvas.height);
-    // Feature extraction/RANSAC is CPU-local and bounded to 640px on the longest side.
-    const match = estimateContourAlignment(
+    setMessage(`Листът е открит · анализирам 4×4 квадранта и проверявам 6×6 (${sequence.frameCount} стабилни кадъра)…`);
+
+    const match = estimateQuadrantAlignment(
       rgbaToGray(referencePixels.data, refCanvas.width, refCanvas.height),
-      rgbaToGray(cameraPixels.data, paperRegion.width, paperRegion.height),
-      { maxDimension: 480, maxFeatures: 420, minInliers: 9, minConfidence: .30 },
+      sequence.gray,
+      { maxDimension: 480, maxFeatures: 720, minInliers: 8, minConfidence: .10,
+        coarseGridSize: 4, fineGridSize: 6, minAdjacentQuadrants: 1, overlap: .12 },
     );
     if (!match) {
-      setMessage('Не открих достатъчно надеждни съвпадения. Нарисувай още няколко характерни линии и опитай отново.');
-      D.log('info', 'day33', 'contour-align.no-match', { reference: [refCanvas.width, refCanvas.height], camera: [width, height], elapsedMs: Math.round(performance.now() - started) });
+      setMessage('Няма достатъчно съседни квадранти със съвпадащи линии. Довърши още един-два съседни участъка, задръж телефона неподвижно и сканирай отново.');
+      D.log('info', 'day33.2', 'quadrant-align.no-consensus', {
+        reference: [refCanvas.width, refCanvas.height], camera: [width, height],
+        paperRegion: [paperRegion.x, paperRegion.y, paperRegion.width, paperRegion.height],
+        frameCount: sequence.frameCount, elapsedMs: Math.round(performance.now() - started),
+      });
       return;
     }
     const stageRect = stage.getBoundingClientRect();
     const cover = Math.max(stageRect.width / video.videoWidth, stageRect.height / video.videoHeight);
     const offsetX = (stageRect.width - video.videoWidth * cover) / 2;
     const offsetY = (stageRect.height - video.videoHeight * cover) / 2;
-    // match maps original-image pixels to camera-video pixels.
-    // The feature matcher sees two bounded canvases, not the full-resolution media.
-    // Convert its reference/camera coordinates back to natural-image/video pixels first.
+    // Convert the shared page-space transform to the actual video/stage space.
     const referencePixelScale = image.naturalWidth / refCanvas.width;
     const cameraPixelScaleX = video.videoWidth / width;
     const cameraPixelScaleY = video.videoHeight / height;
     const effectiveScale = match.scale * cameraPixelScaleX / referencePixelScale;
-    // The feature matcher works inside the cropped sheet; add the crop origin
-    // before mapping its coordinates back into the full camera video.
     const txVideo = (match.tx + paperRegion.x) * cameraPixelScaleX;
     const tyVideo = (match.ty + paperRegion.y) * cameraPixelScaleY;
     const refCenterX = image.naturalWidth / 2, refCenterY = image.naturalHeight / 2;
@@ -460,8 +525,8 @@ async function autoAlignToPaperContours(): Promise<void> {
     const displayedWidth = Math.max(1, image.offsetWidth);
     const desiredScale = effectiveScale * cover * image.naturalWidth / displayedWidth;
     if (!Number.isFinite(desiredScale) || desiredScale < .15 || desiredScale > 4.5) {
-      setMessage('Намерих контури, но мащабът е извън безопасния диапазон. Опитай с повече рисунка на листа.');
-      D.log('warn', 'day33', 'contour-align.rejected-scale', { desiredScale, inliers: match.inliers, matches: match.matches });
+      setMessage('Квадрантите откриха съвпадение, но мащабът е извън безопасния диапазон. Добави още очертания и опитай отново.');
+      D.log('warn', 'day33.2', 'quadrant-align.rejected-scale', { desiredScale, inliers: match.inliers, matches: match.matches });
       return;
     }
     const base = artworkBaseCenter();
@@ -473,16 +538,21 @@ async function autoAlignToPaperContours(): Promise<void> {
     reflect();
     schedulePresetSave();
     await flushPresetSave();
-    setMessage(`Съвпадението е намерено · ${match.inliers}/${match.matches} точки · ${Math.round(match.confidence * 100)}% увереност.`);
-    D.log('info', 'day33', 'contour-align.applied', {
+    setMessage(`Наместването е потвърдено · ${match.coarseQuadrants} съседни 4×4 клетки · ${match.fineQuadrants} фини 6×6 клетки · ${Math.round(match.confidence * 100)}% увереност.`);
+    D.log('info', 'day33.2', 'quadrant-align.applied', {
       inliers: match.inliers, matches: match.matches, confidence: Number(match.confidence.toFixed(3)),
+      coarseQuadrants: match.coarseQuadrants, fineQuadrants: match.fineQuadrants,
+      adjacencyLinks: match.adjacencyLinks, coarseMatches: match.coarseMatches, fineMatches: match.fineMatches,
       scale: Number(artworkScale.toFixed(1)), rotationDeg: Number(artworkAngle.toFixed(1)),
-      x: Math.round(artworkX), y: Math.round(artworkY), elapsedMs: Math.round(performance.now() - started),
-      cameraResolution: [video.videoWidth, video.videoHeight], paperRegion: [paperRegion.x, paperRegion.y, paperRegion.width, paperRegion.height], paperConfidence: Number(paperRegion.confidence.toFixed(3)),
+      x: Math.round(artworkX), y: Math.round(artworkY), frameCount: sequence.frameCount,
+      elapsedMs: Math.round(performance.now() - started), cameraResolution: [video.videoWidth, video.videoHeight],
+      paperRegion: [paperRegion.x, paperRegion.y, paperRegion.width, paperRegion.height],
+      paperConfidence: Number(paperRegion.confidence.toFixed(3)),
     });
   } catch (error) {
-    setMessage('Автоматичното разпознаване не успя. Камерата и изображението са запазени.');
-    D.log('error', 'day33', 'contour-align.failed', { message: String(error), elapsedMs: Math.round(performance.now() - started) });
+    const message = error instanceof Error ? error.message : String(error);
+    setMessage(message || 'Автоматичното разпознаване не успя. Камерата и изображението са запазени.');
+    D.log('error', 'day33.2', 'quadrant-align.failed', { message, elapsedMs: Math.round(performance.now() - started) });
   } finally {
     contourAlignBusy = false;
     button.removeAttribute('aria-busy');

@@ -4,10 +4,13 @@ import { readFileSync } from 'node:fs';
 const read = p => readFileSync(new URL(p, import.meta.url), 'utf8');
 
 test('Day 33: former mirror button invokes local contour registration and has accessible Bulgarian label', () => {
-  const main=read('../src/main.ts'), camera=read('../src/day4.ts');
+  const main=read('../src/main.ts'), camera=read('../src/day4.ts'), engine=read('../src/quadrant-alignment-engine.ts');
   assert.match(main,/id="sketch-camera-mirror"[^>]*aria-label="Намести по очертанията на рисунката"/);
   assert.match(main,/ui\/camera\/align-contours\.svg/);
-  assert.match(camera,/estimateContourAlignment\(/);
+  assert.match(camera,/estimateQuadrantAlignment\(/);
+  assert.match(engine,/coarseGridSize/);
+  assert.match(engine,/fineGridSize/);
+  assert.match(engine,/adjacencyLinks/);
   assert.match(camera,/detectWhitePaperRegion\(/);
   assert.match(camera,/autoAlignToPaperContours\(\)/);
   assert.match(camera,/addEventListener\('click', \(\) => \{\s*D\.log\([^;]+;\s*void autoAlignToPaperContours\(\);/);
@@ -18,8 +21,11 @@ test('Day 33: alignment is local, bounded, and refuses locked/insufficient-confi
   const camera=read('../src/day4.ts');
   assert.match(camera,/if \(artworkLocked\).*Отключи заключването/s);
   assert.match(camera,/maxSide = 640/);
-  assert.match(camera,/minInliers: 9, minConfidence: \.30/);
-  assert.match(camera,/Не открих достатъчно надеждни съвпадения/);
+  assert.match(camera,/coarseGridSize: 4, fineGridSize: 6/);
+  assert.match(camera,/captureStablePaperSequence\(/);
+  assert.match(camera,/temporalMedianGray/);
+  assert.match(camera,/minInliers: 8, minConfidence: \.10/);
+  assert.match(camera,/Няма достатъчно съседни квадранти със съвпадащи линии/);
   assert.match(camera,/schedulePresetSave\(\);\s*await flushPresetSave\(\);/);
 });
 

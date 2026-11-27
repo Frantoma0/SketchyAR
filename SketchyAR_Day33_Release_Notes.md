@@ -1,43 +1,27 @@
-# SketchyAR Day 33.1 hotfix — Automatic Contour Alignment v0.33.0
+# SketchyAR Day 33.2 — Quadrant-based Automatic Contour Alignment
+
+**App version remains v0.33.0.** This is a focused algorithm update to the previous Day 33.1 contour-alignment hotfix.
 
 ## User-facing change
-The former mirror button on the Camera/Drawing screen now starts **automatic alignment to the contours already drawn on the sheet**. The user can draw part of the selected reference image on ordinary white paper with either graphite pencil or pen/marker, then tap the new contour-alignment control. The app scans the current camera frame and attempts to register the reference image to those marks.
+The former mirror button continues to launch automatic alignment. The scan now samples the camera over time and attempts to register a partially traced reference image through local, neighbouring quadrants rather than matching the entire sketch as one feature cloud.
 
 ## Implementation
-- New local CV module: `app/src/day33-contour-align.ts`.
-- Neutral-bright paper-region detection, morphological gap closing and crop to the sheet interior; the surrounding desk/background is excluded before matching.
-- Grayscale conversion and local edge map with a lower threshold for faint graphite lines.
-- Harris-like corner candidates, deterministic BRIEF binary descriptors, mutual ratio matching, deterministic RANSAC and least-squares similarity refinement.
-- Transform includes translation, uniform scale and rotation.
-- Camera frame is bounded to 640 px longest side; matcher internally works at <=480 px.
-- Camera coordinates are mapped through the actual video dimensions and `object-fit: cover` to CSS stage coordinates. Fixed the scale conversion for unequal reference/camera canvas resolutions.
-- The contour button remains tappable if an image or camera frame is missing, or the artwork is locked; each case now produces a visible status message. It is disabled only while a scan is already running.
-- The camera-stage fallback background is white when the live feed is not covering it.
-- Uses the existing camera stream and existing overlay placement/persistence path.
-- No network calls, cloud inference, AI model, or additional camera request.
-
-## Safety and compatibility
-- Low-confidence / insufficient matches do not move the image.
-- Locked artwork must be unlocked before automatic placement.
-- Scale outside the safety interval is rejected.
-- Manual drag, pinch, rotation, opacity, grid, lock, original image and project storage remain available.
-- Legacy `mirroredOverlay` remains in the v1 backup schema for compatibility, but the live overlay is no longer mirrored.
-- No IndexedDB schema migration.
+- New dedicated module: `app/src/quadrant-alignment-engine.ts`.
+- 4x4 coarse grid with overlapping local feature windows; local Harris-like corners, deterministic BRIEF descriptors and mutual ratio-tested matches.
+- One global RANSAC similarity transform is selected only when at least two adjacent 4x4 cells independently support it.
+- 6x6 finer matching validates/refines that same transform; no individual tile can move separately.
+- Five camera frames are sampled about 125 ms apart. Page bounds must stay stable; the same sheet area is converted to grayscale and fused using a temporal median.
+- Existing white-sheet isolation, camera mapping, overlay save path and camera lifecycle are reused.
+- No new runtime dependency, network request, model download, camera stream or IndexedDB migration.
 
 ## Validation performed
-- Node tests: **212/212 PASS**.
-- Python tests: **295/295 PASS**.
-- TypeScript strict typecheck: PASS using a temporary local Vite type declaration in the isolated build workspace; normal dependency install was unavailable in this environment.
-- Production Vite build: not verified here.
-- Real iPhone testing: pending. Synthetic tests validate geometric transform recovery, not camera performance or reliability on real paper.
+- Node tests: **215/215 PASS**, including adjacent-cell partial alignment, disconnected-cell rejection and temporal-noise suppression.
+- Focused TypeScript strict typecheck (including noUnusedLocals/noUnusedParameters): **PASS** with local TypeScript 5.8.3 and a temporary declaration for Vite's environment types.
+- `npm ci` did not finish in the isolated environment, so the production Vite build was **not verified**.
+- Real iPhone Safari/Home Screen camera test: **pending**.
 
-## Important limitations
-This is a first geometric contour matcher, not semantic AI recognition. It first needs to separate a neutral-bright sheet from its surroundings; a white table/background that merges into the sheet can prevent detection. It needs enough distinctive overlapping marks. It estimates a similarity transform, not full perspective/homography. Strong shadows, glare, hand occlusion, repetitive contours, very light pencil, or a very small partial drawing may prevent alignment. On failure it preserves the existing placement and reports what to correct.
+## Geometry and limitations
+The current editor supports a single CSS transform (translation, uniform scale, rotation). It does not yet support full perspective homography or a mesh warp. Hold the phone approximately perpendicular to the flat paper. Use a white sheet against a darker matte surface with all edges visible and draw distinctive features in neighbouring grid cells. Glare, shadows, paper/background merging, motion, occlusion, repeating patterns or very faint pencil may cause rejection. Low-confidence matches preserve the prior overlay placement.
 
-## Suggested iPhone test
-1. Open a drawing with its reference image.
-2. Use a plain white sheet on a darker surface, camera steady, with the full sheet boundary visible and no strong shadow or glare.
-3. Draw several distinctive features with graphite pencil; test again with dark pen/marker.
-4. Tap the contour-corners button.
-5. Check overlay alignment on the drawn marks. Repeat with early/partial drawings and different camera distances.
-6. If it rejects, send the diagnostics export and note the instrument (pencil/pen), approximate amount drawn, and camera distance.
+## Installation and test
+Follow `Day33_INSTALL.txt`. The full Node regression command is `node --experimental-strip-types --test tests/*.test.mjs` from `app/`.

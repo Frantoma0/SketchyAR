@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { detectWhitePaperRegion, estimateContourAlignment, rgbaToGray } from '../src/day33-contour-align.ts';
+import { estimateQuadrantAlignment, temporalMedianGray } from '../src/quadrant-alignment-engine.ts';
 
 function image(w, h, fill = 255) { return { width: w, height: h, data: new Uint8Array(w*h).fill(fill) }; }
 function line(img, x0, y0, x1, y1, value = 0) {
@@ -122,4 +123,67 @@ test('Day 33: end-to-end sheet crop excludes the dark scene and aligns line art 
   assert.ok(match, 'expected line art to align after isolating the paper');
   assert.ok(Math.abs(match.scale-1)<.05);
   assert.ok(Math.abs(match.tx)<3 && Math.abs(match.ty)<3);
+});
+
+
+test('Day 33.2: aligns a partial drawing only when adjacent 4x4 quadrants agree', () => {
+  const ref = image(360, 360, 255);
+  // Four distinct neighbouring cells, each with enough local corners for BRIEF matching.
+  const motifs = [
+    [[96,96,164,96],[164,96,164,144],[164,144,96,144],[96,144,96,96],[96,96,145,137],[112,122,151,108],[124,98,124,145]],
+    [[190,100,255,132],[255,132,215,164],[215,164,190,100],[194,143,249,110],[205,104,235,155],[190,150,258,150]],
+    [[100,190,150,190],[150,190,158,236],[158,236,108,254],[108,254,100,190],[100,210,158,224],[120,192,132,248]],
+    [[190,190,254,190],[254,190,254,250],[254,250,190,250],[190,250,190,190],[190,190,246,240],[202,222,244,204],[220,190,220,250]],
+  ];
+  for (const shape of motifs) for (const [x0,y0,x1,y1] of shape) line(ref,x0,y0,x1,y1,12);
+  const scale = 1.08, tx = 24, ty = 18;
+  const full = transformed(ref, 430, 430, scale, tx, ty);
+  const partial = image(full.width, full.height, 255);
+  // Keep the four adjacent source quadrants only; the rest of the sheet is blank.
+  const sourceCells = [{x0:90,y0:90,x1:180,y1:180},{x0:180,y0:90,x1:270,y1:180},
+    {x0:90,y0:180,x1:180,y1:270},{x0:180,y0:180,x1:270,y1:270}];
+  for (let y=0;y<partial.height;y++) for(let x=0;x<partial.width;x++) {
+    const sx=(x-tx)/scale, sy=(y-ty)/scale;
+    if (sourceCells.some(cell => sx>=cell.x0 && sx<cell.x1 && sy>=cell.y0 && sy<cell.y1)) {
+      partial.data[y*partial.width+x] = full.data[y*full.width+x];
+    }
+  }
+  const result = estimateQuadrantAlignment(ref, partial, {
+    maxDimension:480, maxFeatures:720, minInliers:8, minConfidence:.08,
+    coarseGridSize:4, fineGridSize:6, minAdjacentQuadrants:1, overlap:.12,
+  });
+  assert.ok(result, 'expected neighbouring cells to agree on a single transform');
+  assert.ok(result.coarseQuadrants >= 2, `coarse quadrants ${result.coarseQuadrants}`);
+  assert.ok(result.fineQuadrants >= 2, `fine quadrants ${result.fineQuadrants}`);
+  assert.ok(result.fineMatches > 0, '6x6 refinement should contribute local matches');
+  assert.ok(result.adjacencyLinks >= 1, `adjacency links ${result.adjacencyLinks}`);
+  assert.ok(Math.abs(result.scale-scale)<.10, `scale ${result.scale}`);
+  assert.ok(Math.abs(result.tx-tx)<12, `tx ${result.tx}`);
+  assert.ok(Math.abs(result.ty-ty)<12, `ty ${result.ty}`);
+});
+
+test('Day 33.2: rejects disconnected partial marks in distant quadrants', () => {
+  const ref = image(360,360,255);
+  for(const [x0,y0,x1,y1] of [[24,24,80,24],[80,24,80,80],[80,80,24,80],[24,80,24,24],
+    [280,280,330,280],[330,280,330,330],[330,330,280,330],[280,330,280,280]]) line(ref,x0,y0,x1,y1,0);
+  const cam = transformed(ref,380,380,1,10,10);
+  // Remove everything except the two distant marked areas.
+  for(let y=0;y<cam.height;y++) for(let x=0;x<cam.width;x++) {
+    const sx=x-10, sy=y-10;
+    const keep=(sx<100&&sy<100)||(sx>260&&sy>260);
+    if(!keep) cam.data[y*cam.width+x]=255;
+  }
+  const result=estimateQuadrantAlignment(ref,cam,{minInliers:6,minConfidence:.05});
+  assert.equal(result,null,'non-adjacent cells must not be enough to move the overlay');
+});
+
+test('Day 33.2: temporal median keeps persistent pencil strokes and removes one-frame noise', () => {
+  const frames = Array.from({length:5},()=>image(8,8,245));
+  // Persistent light graphite line in all five samples.
+  for(const frame of frames) frame.data[3*8+4]=205;
+  // A transient dark reflection/noise exists in only one frame.
+  frames[0].data[5*8+5]=0;
+  const median=temporalMedianGray(frames);
+  assert.equal(median.data[3*8+4],205);
+  assert.equal(median.data[5*8+5],245);
 });
