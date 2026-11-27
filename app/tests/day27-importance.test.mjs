@@ -55,7 +55,7 @@ test('G27: only Draw commits applied style, PNG and Home; preview stays a draft'
 });
 
 test('G27: upgraded version and Figma UI untouched',()=>{
-  assert.equal(JSON.parse(read('package.json')).version,'0.32.2');
+  assert.equal(JSON.parse(read('package.json')).version,'0.33.0');
   assert.match(read('src/day13-image-bridge.ts'),/encodeTransparentPng/);
   assert.match(read('src/day17-sketch-placeholder.ts'),/generator\.detail\.requested/);
 });

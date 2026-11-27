@@ -81,5 +81,5 @@ test('G30.1: tuned thick footprint is 3x3, V4 remains unchanged, and new cache v
   assert.match(py,/get_cached_flow_score\(/);
   assert.match(py,/select_detail_contours\(/);
   assert.match(draft,/day30-v4-stroke-v2/);
-  assert.equal(JSON.parse(read('package.json')).version,'0.32.2');
+  assert.equal(JSON.parse(read('package.json')).version,'0.33.0');
 });

@@ -7,6 +7,7 @@ import { isBusy } from './day2';
 import { createImageProject, replaceProjectSource, getProjectImage, getSelectedProcessedAsset, assertProjectIntegrity, saveProjectOverlay, type ProjectRecord, type OverlayPreset, type OverlaySnapshot } from './storage/project-store';
 import { makeThumbnail } from './storage/thumbnail';
 import { CameraEditTransition, sameDrawingPlacement, type CameraEditToken } from './day21-camera-navigation';
+import { estimateContourAlignment, rgbaToGray } from './day33-contour-align';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 let drawingOpen = false;
@@ -20,7 +21,8 @@ let artworkAngle = 0;
 let userImageUrl: string | null = null;
 let opacity = 50;
 let artworkLocked = false;
-let artworkMirrored = false;
+let artworkMirrored = false; // Legacy preset field; Day 33 replaces mirror with contour alignment.
+let contourAlignBusy = false;
 let pendingNewDrawing = false;
 let activeProjectId: string | null = null;
 let activeAssetId: string | null = null;
@@ -191,7 +193,7 @@ function reflect(): void {
   el('drawing-artwork').style.setProperty('--artwork-x', `${artworkX}px`);
   el('drawing-artwork').style.setProperty('--artwork-y', `${artworkY}px`);
   el('drawing-artwork').style.setProperty('--artwork-angle', `${artworkAngle}deg`);
-  el('drawing-artwork').style.setProperty('--artwork-mirror', artworkMirrored ? '-1' : '1');
+  el('drawing-artwork').style.setProperty('--artwork-mirror', '1');
   el<HTMLInputElement>('day4-scale').value = String(artworkScale);
   el('day4-scale-number').textContent = `${artworkScale}%`;
   el('drawing-artwork').style.opacity = String(opacity / 100);
@@ -214,7 +216,9 @@ function reflect(): void {
   }
   lockButton.setAttribute('aria-label', artworkLocked ? 'Отключи позицията на рисунката' : 'Заключи позицията на рисунката');
   lockButton.title = artworkLocked ? 'Отключи рисунката' : 'Заключи рисунката';
-  el<HTMLButtonElement>('sketch-camera-mirror').setAttribute('aria-pressed', String(artworkMirrored));
+  const alignButton = el<HTMLButtonElement>('sketch-camera-mirror');
+  alignButton.setAttribute('aria-pressed', 'false');
+  alignButton.disabled = contourAlignBusy || !userImageUrl || !cameraController.active || artworkLocked;
   el<HTMLButtonElement>('sketch-camera-grid').setAttribute('aria-pressed', String(showGrid));
   el<HTMLButtonElement>('sketch-camera-reset').disabled = artworkLocked;
   el('drawing-video-stage').classList.toggle('artwork-locked', artworkLocked);
@@ -365,6 +369,106 @@ function updateArtworkGesture(): void {
   reflect();
   schedulePresetSave();
 }
+/** Day 33: align the selected reference image to already-drawn pencil/ink contours.
+ * Camera remains the existing stream. All pixels are processed locally in a bounded canvas.
+ */
+async function autoAlignToPaperContours(): Promise<void> {
+  if (!drawingOpen || entering || contourAlignBusy) return;
+  if (artworkLocked) { setMessage('Отключи заключването, за да наместиш автоматично.'); return; }
+  const video = el<HTMLVideoElement>('drawing-camera');
+  const image = el<HTMLImageElement>('drawing-user-image');
+  const stage = el<HTMLElement>('drawing-video-stage');
+  if (!userImageUrl || !image.complete || !image.naturalWidth || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+    setMessage('Първо зареди изображение и изчакай камерата.'); return;
+  }
+  contourAlignBusy = true;
+  reflect();
+  const button = el<HTMLButtonElement>('sketch-camera-mirror');
+  button.setAttribute('aria-busy', 'true');
+  setMessage('Търся съвпадащи контури върху белия лист…');
+  const started = performance.now();
+  try {
+    const maxSide = 640;
+    const factor = Math.min(1, maxSide / Math.max(video.videoWidth, video.videoHeight));
+    const width = Math.max(64, Math.round(video.videoWidth * factor));
+    const height = Math.max(64, Math.round(video.videoHeight * factor));
+    const cameraCanvas = document.createElement('canvas');
+    cameraCanvas.width = width; cameraCanvas.height = height;
+    const cameraContext = cameraCanvas.getContext('2d', { willReadFrequently: true });
+    if (!cameraContext) throw new Error('Не може да се прочете кадърът от камерата');
+    cameraContext.drawImage(video, 0, 0, width, height);
+    const cameraPixels = cameraContext.getImageData(0, 0, width, height);
+    const refCanvas = document.createElement('canvas');
+    const refFactor = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+    refCanvas.width = Math.max(64, Math.round(image.naturalWidth * refFactor));
+    refCanvas.height = Math.max(64, Math.round(image.naturalHeight * refFactor));
+    const refContext = refCanvas.getContext('2d', { willReadFrequently: true });
+    if (!refContext) throw new Error('Не може да се анализира избраното изображение');
+    refContext.drawImage(image, 0, 0, refCanvas.width, refCanvas.height);
+    const referencePixels = refContext.getImageData(0, 0, refCanvas.width, refCanvas.height);
+    // Feature extraction/RANSAC is CPU-local and bounded to 640px on the longest side.
+    const match = estimateContourAlignment(
+      rgbaToGray(referencePixels.data, refCanvas.width, refCanvas.height),
+      rgbaToGray(cameraPixels.data, width, height),
+      { maxDimension: 480, maxFeatures: 420, minInliers: 9, minConfidence: .30 },
+    );
+    if (!match) {
+      setMessage('Не открих достатъчно надеждни съвпадения. Нарисувай още няколко характерни линии и опитай отново.');
+      D.log('info', 'day33', 'contour-align.no-match', { reference: [refCanvas.width, refCanvas.height], camera: [width, height], elapsedMs: Math.round(performance.now() - started) });
+      return;
+    }
+    const stageRect = stage.getBoundingClientRect();
+    const cover = Math.max(stageRect.width / video.videoWidth, stageRect.height / video.videoHeight);
+    const offsetX = (stageRect.width - video.videoWidth * cover) / 2;
+    const offsetY = (stageRect.height - video.videoHeight * cover) / 2;
+    // match maps original-image pixels to camera-video pixels.
+    // The feature matcher sees two bounded canvases, not the full-resolution media.
+    // Convert its reference/camera coordinates back to natural-image/video pixels first.
+    const referencePixelScale = image.naturalWidth / refCanvas.width;
+    const cameraPixelScaleX = video.videoWidth / width;
+    const cameraPixelScaleY = video.videoHeight / height;
+    const effectiveScale = match.scale * cameraPixelScaleX / referencePixelScale;
+    const txVideo = match.tx * cameraPixelScaleX;
+    const tyVideo = match.ty * cameraPixelScaleY;
+    const refCenterX = image.naturalWidth / 2, refCenterY = image.naturalHeight / 2;
+    const angle = match.rotationDeg * Math.PI / 180;
+    const cameraCenterX = effectiveScale * (Math.cos(angle) * refCenterX - Math.sin(angle) * refCenterY) + txVideo;
+    const cameraCenterY = effectiveScale * (Math.sin(angle) * refCenterX + Math.cos(angle) * refCenterY) + tyVideo;
+    const targetX = cameraCenterX * cover + offsetX;
+    const targetY = cameraCenterY * cover + offsetY;
+    const displayedWidth = Math.max(1, image.offsetWidth);
+    const desiredScale = effectiveScale * cover * image.naturalWidth / displayedWidth;
+    if (!Number.isFinite(desiredScale) || desiredScale < .15 || desiredScale > 4.5) {
+      setMessage('Намерих контури, но мащабът е извън безопасния диапазон. Опитай с повече рисунка на листа.');
+      D.log('warn', 'day33', 'contour-align.rejected-scale', { desiredScale, inliers: match.inliers, matches: match.matches });
+      return;
+    }
+    const base = artworkBaseCenter();
+    artworkX = targetX - base.x;
+    artworkY = targetY - base.y;
+    artworkScale = clamp(desiredScale * 100, 25, 250);
+    artworkAngle = match.rotationDeg;
+    artworkMirrored = false;
+    reflect();
+    schedulePresetSave();
+    await flushPresetSave();
+    setMessage(`Съвпадението е намерено · ${match.inliers}/${match.matches} точки · ${Math.round(match.confidence * 100)}% увереност.`);
+    D.log('info', 'day33', 'contour-align.applied', {
+      inliers: match.inliers, matches: match.matches, confidence: Number(match.confidence.toFixed(3)),
+      scale: Number(artworkScale.toFixed(1)), rotationDeg: Number(artworkAngle.toFixed(1)),
+      x: Math.round(artworkX), y: Math.round(artworkY), elapsedMs: Math.round(performance.now() - started),
+      cameraResolution: [video.videoWidth, video.videoHeight],
+    });
+  } catch (error) {
+    setMessage('Автоматичното разпознаване не успя. Камерата и изображението са запазени.');
+    D.log('error', 'day33', 'contour-align.failed', { message: String(error), elapsedMs: Math.round(performance.now() - started) });
+  } finally {
+    contourAlignBusy = false;
+    button.removeAttribute('aria-busy');
+    reflect();
+  }
+}
+
 function initArtworkGestures(): void {
   const stage = el<HTMLElement>('drawing-video-stage');
   const toLocal = (event: PointerEvent): TouchPoint => {
@@ -468,6 +572,7 @@ async function exit(): Promise<void> {
   saveChain = saveChain.catch(() => {});
   artworkLocked = false;
   artworkMirrored = false;
+  contourAlignBusy = false;
   artworkScale = 100;
   artworkX = 0;
   artworkY = 0;
@@ -868,12 +973,7 @@ export function initDay4(): void {
     if (!artworkLocked) el<HTMLButtonElement>('btn-day4-center').click();
   });
   el<HTMLButtonElement>('sketch-camera-mirror').addEventListener('click', () => {
-    if (artworkLocked) return;
-    artworkMirrored = !artworkMirrored;
-    reflect();
-    schedulePresetSave();
-    void flushPresetSave().catch(() => {});
-    D.log('info', 'day4', 'artwork.mirror', { mirrored: artworkMirrored });
+    void autoAlignToPaperContours();
   });
   el<HTMLButtonElement>('sketch-camera-lock').addEventListener('click', () => {
     artworkLocked = !artworkLocked;

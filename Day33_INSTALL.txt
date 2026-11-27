@@ -1,0 +1,30 @@
+SketchyAR Day 33 / v0.33.0 — Automatic contour alignment
+
+INSTALL
+1. Extract this archive.
+2. Copy the CONTENTS of ar-drawing/ into the existing Git repository folder (the folder that contains .git).
+3. Replace files when prompted. Do not delete .git and do not run git init.
+4. From the repository root:
+   cd app
+   npm ci --include=dev
+   npm run typecheck
+   npm run build
+   node --experimental-strip-types --test tests/*.test.mjs
+   cd ..
+5. Publish the updated app to GitHub Pages and open it on the iPhone.
+
+USAGE
+1. Open a saved drawing / Camera screen with the selected reference image loaded.
+2. Put the paper flat and visible in the rear camera view. Use a white sheet.
+3. Draw several distinctive parts of the reference with graphite pencil or pen/marker.
+4. Unlock the artwork if it is locked.
+5. Tap the former mirror button (now the contour-corners icon).
+6. Wait for the local match. If confidence is insufficient, draw more distinctive lines and try again.
+7. Manual drag/pinch/rotation remains available after automatic alignment.
+
+LIMITS
+- All image processing is local in the browser; no image upload or external AI service.
+- Estimates translation, uniform scale and rotation, not perspective/homography.
+- Needs enough distinctive overlapping marks; shadows, glare, occlusion and very light strokes can reduce reliability.
+- A failed match does not change the current placement.
+- Real iPhone camera tests are still required.

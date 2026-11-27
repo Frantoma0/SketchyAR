@@ -8,8 +8,8 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const read = rel => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8');
 
 test('G32 release version and three explicit independent AI backends',()=>{
-  assert.equal(JSON.parse(read('package.json')).version,'0.32.2');
-  assert.equal(JSON.parse(read('package-lock.json')).version,'0.32.2');
+  assert.equal(JSON.parse(read('package.json')).version,'0.33.0');
+  assert.equal(JSON.parse(read('package-lock.json')).version,'0.33.0');
   const inf = read('../experiments/day32/infer.py');
   for(const engine of ['qwen21_turbo','qwen_edit2511','animeganv3']) assert.match(inf,new RegExp(engine));
   assert.match(inf,/--dry-run/);

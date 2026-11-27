@@ -55,8 +55,8 @@ test('G28: active project only changes after Draw, original remains untouched',(
 });
 
 test('G28 regression: ui SVG source unchanged; version moves to 0.29.0',()=>{
-  assert.equal(JSON.parse(read('package.json')).version,'0.32.2');
-  assert.equal(JSON.parse(read('package-lock.json')).version,'0.32.2');
+  assert.equal(JSON.parse(read('package.json')).version,'0.33.0');
+  assert.equal(JSON.parse(read('package-lock.json')).version,'0.33.0');
   assert.match(read('src/day13-image-bridge.ts'),/encodeTransparentPng/);
   assert.match(read('src/day17-sketch-placeholder.ts'),/generator\.detail\.requested/);
 });

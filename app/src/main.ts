@@ -361,7 +361,7 @@ document.getElementById('app')!.innerHTML = `
         </div>
       </div>
       <div class="sketch-camera-actions" role="group" aria-label="Управление на рисунката">
-        <button id="sketch-camera-mirror" class="sketch-camera-icon" type="button" aria-label="Огледално обръщане" aria-pressed="false" title="Огледално обръщане"><img src="./ui/camera/mirror.svg" alt="" /></button>
+        <button id="sketch-camera-mirror" class="sketch-camera-icon" type="button" aria-label="Намести по очертанията на рисунката" aria-pressed="false" title="Автоматично наместване по очертанията"><img src="./ui/camera/align-contours.svg" alt="" /></button>
         <button id="sketch-camera-grid" class="sketch-camera-icon" type="button" aria-label="Мрежа 3 на 3 върху цялата камера" aria-pressed="false" title="Мрежа 3×3: включи/изключи"><img src="./ui/camera/grid.svg" alt="" /></button>
         <button id="sketch-camera-reset" class="sketch-camera-icon" type="button" aria-label="Центрирай и възстанови мащаба" title="Центрирай"><img src="./ui/camera/reset.svg" alt="" /></button>
         <button id="sketch-camera-lock" class="sketch-camera-icon" type="button" aria-label="Заключи позицията на рисунката" aria-pressed="false" title="Заключи рисунката"><img src="./ui/camera/lock.svg" alt="" /></button>

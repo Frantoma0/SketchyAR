@@ -360,7 +360,7 @@ body.drawing-open { background: #090b0c !important; }
 /* Artwork uses one CSS transform; mirroring never changes the live video stream. */
 .drawing-artwork {
   transform:translate(-50%,-50%) translate3d(var(--artwork-x,0px),var(--artwork-y,0px),0)
-    rotate(var(--artwork-angle,0deg)) scale(var(--artwork-scale,1)) scaleX(var(--artwork-mirror,1));
+    rotate(var(--artwork-angle,0deg)) scale(var(--artwork-scale,1));
 }
 /* Let the grid be independently enabled without replacing an imported picture. */
 .drawing-artwork { isolation:isolate; aspect-ratio:3/4; display:flex; align-items:center; justify-content:center; }

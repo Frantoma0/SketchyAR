@@ -44,7 +44,7 @@ test('G26: actual generated PNG remains a draft until Draw; Home only displays a
 });
 
 test('G26: version is bumped and all existing visual assets remain untouched',()=>{
-  assert.equal(JSON.parse(read('package.json')).version,'0.32.2');
+  assert.equal(JSON.parse(read('package.json')).version,'0.33.0');
   assert.match(read('src/day13-image-bridge.ts'),/encodeTransparentPng/);
   assert.match(read('src/day17-sketch-placeholder.ts'),/generator\.detail\.requested/);
 });
