@@ -7,7 +7,7 @@ import { isBusy } from './day2';
 import { createImageProject, replaceProjectSource, getProjectImage, getSelectedProcessedAsset, assertProjectIntegrity, saveProjectOverlay, type ProjectRecord, type OverlayPreset, type OverlaySnapshot } from './storage/project-store';
 import { makeThumbnail } from './storage/thumbnail';
 import { CameraEditTransition, sameDrawingPlacement, type CameraEditToken } from './day21-camera-navigation';
-import { estimateContourAlignment, rgbaToGray } from './day33-contour-align';
+import { detectWhitePaperRegion, estimateContourAlignment, rgbaToGray } from './day33-contour-align';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 let drawingOpen = false;
@@ -218,7 +218,12 @@ function reflect(): void {
   lockButton.title = artworkLocked ? 'Отключи рисунката' : 'Заключи рисунката';
   const alignButton = el<HTMLButtonElement>('sketch-camera-mirror');
   alignButton.setAttribute('aria-pressed', 'false');
-  alignButton.disabled = contourAlignBusy || !userImageUrl || !cameraController.active || artworkLocked;
+  // Do not silently disable this control for missing prerequisites. A tap must
+  // always produce a useful status message; only an active scan blocks repeats.
+  alignButton.disabled = contourAlignBusy;
+  alignButton.dataset.state = contourAlignBusy ? 'scanning' : 'idle';
+  alignButton.setAttribute('aria-label', contourAlignBusy ? 'Сканиране на белия лист' : 'Намести по очертанията на рисунката');
+  alignButton.title = contourAlignBusy ? 'Сканиране…' : !userImageUrl ? 'Първо избери изображение' : artworkLocked ? 'Отключи рисунката за автоматично наместване' : !cameraController.active ? 'Изчакай камерата да се активира' : 'Намести по очертанията върху белия лист';
   el<HTMLButtonElement>('sketch-camera-grid').setAttribute('aria-pressed', String(showGrid));
   el<HTMLButtonElement>('sketch-camera-reset').disabled = artworkLocked;
   el('drawing-video-stage').classList.toggle('artwork-locked', artworkLocked);
@@ -373,13 +378,18 @@ function updateArtworkGesture(): void {
  * Camera remains the existing stream. All pixels are processed locally in a bounded canvas.
  */
 async function autoAlignToPaperContours(): Promise<void> {
-  if (!drawingOpen || entering || contourAlignBusy) return;
+  if (!drawingOpen) return;
+  if (entering) { setMessage('Камерата се подготвя. Опитай отново след малко.'); return; }
+  if (contourAlignBusy) { setMessage('Сканирането вече е започнало…'); return; }
   if (artworkLocked) { setMessage('Отключи заключването, за да наместиш автоматично.'); return; }
   const video = el<HTMLVideoElement>('drawing-camera');
   const image = el<HTMLImageElement>('drawing-user-image');
   const stage = el<HTMLElement>('drawing-video-stage');
-  if (!userImageUrl || !image.complete || !image.naturalWidth || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-    setMessage('Първо зареди изображение и изчакай камерата.'); return;
+  if (!userImageUrl || !image.complete || !image.naturalWidth) {
+    setMessage('Първо избери изображение от бутона горе вдясно.'); return;
+  }
+  if (!cameraController.active || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || !video.videoWidth) {
+    setMessage('Камерата още не е готова. Изчакай кадър или натисни „Опитай пак“.'); return;
   }
   contourAlignBusy = true;
   reflect();
@@ -397,7 +407,16 @@ async function autoAlignToPaperContours(): Promise<void> {
     const cameraContext = cameraCanvas.getContext('2d', { willReadFrequently: true });
     if (!cameraContext) throw new Error('Не може да се прочете кадърът от камерата');
     cameraContext.drawImage(video, 0, 0, width, height);
-    const cameraPixels = cameraContext.getImageData(0, 0, width, height);
+    const fullCameraPixels = cameraContext.getImageData(0, 0, width, height);
+    // Segment the actual white/off-white sheet first; do not match the desk,
+    // room or the dark camera controls as if they were part of the drawing.
+    const paperRegion = detectWhitePaperRegion(fullCameraPixels.data, width, height);
+    if (!paperRegion) {
+      setMessage('Не открих ясно отделен бял лист. Постави листа върху по-тъмен фон, така че да се виждат всичките му краища, и опитай отново.');
+      D.log('info', 'day33', 'paper-detection.no-region', { frame: [width, height] });
+      return;
+    }
+    const cameraPixels = cameraContext.getImageData(paperRegion.x, paperRegion.y, paperRegion.width, paperRegion.height);
     const refCanvas = document.createElement('canvas');
     const refFactor = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
     refCanvas.width = Math.max(64, Math.round(image.naturalWidth * refFactor));
@@ -409,7 +428,7 @@ async function autoAlignToPaperContours(): Promise<void> {
     // Feature extraction/RANSAC is CPU-local and bounded to 640px on the longest side.
     const match = estimateContourAlignment(
       rgbaToGray(referencePixels.data, refCanvas.width, refCanvas.height),
-      rgbaToGray(cameraPixels.data, width, height),
+      rgbaToGray(cameraPixels.data, paperRegion.width, paperRegion.height),
       { maxDimension: 480, maxFeatures: 420, minInliers: 9, minConfidence: .30 },
     );
     if (!match) {
@@ -428,8 +447,10 @@ async function autoAlignToPaperContours(): Promise<void> {
     const cameraPixelScaleX = video.videoWidth / width;
     const cameraPixelScaleY = video.videoHeight / height;
     const effectiveScale = match.scale * cameraPixelScaleX / referencePixelScale;
-    const txVideo = match.tx * cameraPixelScaleX;
-    const tyVideo = match.ty * cameraPixelScaleY;
+    // The feature matcher works inside the cropped sheet; add the crop origin
+    // before mapping its coordinates back into the full camera video.
+    const txVideo = (match.tx + paperRegion.x) * cameraPixelScaleX;
+    const tyVideo = (match.ty + paperRegion.y) * cameraPixelScaleY;
     const refCenterX = image.naturalWidth / 2, refCenterY = image.naturalHeight / 2;
     const angle = match.rotationDeg * Math.PI / 180;
     const cameraCenterX = effectiveScale * (Math.cos(angle) * refCenterX - Math.sin(angle) * refCenterY) + txVideo;
@@ -457,7 +478,7 @@ async function autoAlignToPaperContours(): Promise<void> {
       inliers: match.inliers, matches: match.matches, confidence: Number(match.confidence.toFixed(3)),
       scale: Number(artworkScale.toFixed(1)), rotationDeg: Number(artworkAngle.toFixed(1)),
       x: Math.round(artworkX), y: Math.round(artworkY), elapsedMs: Math.round(performance.now() - started),
-      cameraResolution: [video.videoWidth, video.videoHeight],
+      cameraResolution: [video.videoWidth, video.videoHeight], paperRegion: [paperRegion.x, paperRegion.y, paperRegion.width, paperRegion.height], paperConfidence: Number(paperRegion.confidence.toFixed(3)),
     });
   } catch (error) {
     setMessage('Автоматичното разпознаване не успя. Камерата и изображението са запазени.');
@@ -973,6 +994,7 @@ export function initDay4(): void {
     if (!artworkLocked) el<HTMLButtonElement>('btn-day4-center').click();
   });
   el<HTMLButtonElement>('sketch-camera-mirror').addEventListener('click', () => {
+    D.log('info', 'day33', 'contour-align.button-tap', { hasImage: Boolean(userImageUrl), cameraActive: cameraController.active, locked: artworkLocked, busy: contourAlignBusy });
     void autoAlignToPaperContours();
   });
   el<HTMLButtonElement>('sketch-camera-lock').addEventListener('click', () => {

@@ -8,8 +8,9 @@ test('Day 33: former mirror button invokes local contour registration and has ac
   assert.match(main,/id="sketch-camera-mirror"[^>]*aria-label="Намести по очертанията на рисунката"/);
   assert.match(main,/ui\/camera\/align-contours\.svg/);
   assert.match(camera,/estimateContourAlignment\(/);
+  assert.match(camera,/detectWhitePaperRegion\(/);
   assert.match(camera,/autoAlignToPaperContours\(\)/);
-  assert.match(camera,/addEventListener\('click', \(\) => \{\s*void autoAlignToPaperContours\(\);/);
+  assert.match(camera,/addEventListener\('click', \(\) => \{\s*D\.log\([^;]+;\s*void autoAlignToPaperContours\(\);/);
   assert.doesNotMatch(camera,/artwork\.mirror/);
 });
 
@@ -26,4 +27,16 @@ test('Day 33: no CSS mirror transform remains and saved legacy field is forced n
   const css=read('../src/styles.css'), camera=read('../src/day4.ts');
   assert.doesNotMatch(css,/scaleX\(var\(--artwork-mirror/);
   assert.match(camera,/setProperty\('--artwork-mirror', '1'\)/);
+});
+
+
+test('Day 33: align control stays tappable and reports missing prerequisites instead of silently disabling', () => {
+  const camera=read('../src/day4.ts'), css=read('../src/styles.css');
+  assert.match(camera,/alignButton\.disabled = contourAlignBusy/);
+  assert.doesNotMatch(camera,/alignButton\.disabled = contourAlignBusy \|\| !userImageUrl/);
+  assert.match(camera,/Първо избери изображение от бутона горе вдясно/);
+  assert.match(camera,/Камерата още не е готова/);
+  assert.match(camera,/contour-align\.button-tap/);
+  assert.match(css,/\.drawing-video-stage[^\n]*background: #fff/);
+  assert.match(css,/#drawing-camera[^\n]*background: #fff/);
 });

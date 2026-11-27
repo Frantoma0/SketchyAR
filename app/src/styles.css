@@ -81,9 +81,9 @@ body.day3-fullscreen-open { overscroll-behavior: none; }
 
 /* Day 4 Drawing shell. Final Figma UI replaces only controls/assets, not camera lifecycle. */
 .drawing-screen[hidden], .drawing-overlay-grid[hidden] { display: none !important; }
-.drawing-screen { position: fixed; inset: 0; z-index: 1200; width: 100%; height: 100vh; height: 100dvh; overflow: hidden; background: #050606; color: #fff; isolation: isolate; }
-.drawing-video-stage { position: absolute; inset: 0; overflow: hidden; background: #090b0c; }
-#drawing-camera { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; background: #090b0c; }
+.drawing-screen { position: fixed; inset: 0; z-index: 1200; width: 100%; height: 100vh; height: 100dvh; overflow: hidden; background: #fff; color: #fff; isolation: isolate; }
+.drawing-video-stage { position: absolute; inset: 0; overflow: hidden; background: #fff; }
+#drawing-camera { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; background: #fff; }
 .drawing-overlay-grid { position: absolute; inset: 0; pointer-events: none; opacity: .5; background-image: linear-gradient(to right, rgba(239,240,241,.3) 1px, transparent 1px), linear-gradient(to bottom, rgba(239,240,241,.3) 1px, transparent 1px); background-size: 12.5% 12.5%; }
 .drawing-top-controls { position: absolute; inset: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: calc(env(safe-area-inset-top, 0px) + 16px) calc(env(safe-area-inset-right, 0px) + 16px) 14px calc(env(safe-area-inset-left, 0px) + 16px); background: linear-gradient(rgba(0,0,0,.75), rgba(0,0,0,0)); }
 .drawing-title { font-size: .82rem; font-weight: 600; letter-spacing: .02em; text-shadow: 0 1px 4px #000; }
@@ -303,7 +303,7 @@ html.drawing-open, body.drawing-open {
 }
 
 /* If a WebKit PWA reports a short 100dvh, prevent a white strip below the video. */
-body.drawing-open { background: #090b0c !important; }
+body.drawing-open { background: #fff !important; }
 .drawing-screen { min-height: 100vh; }
 
 /* Day 4.5: reliable boot fallback: Home must be visible even without optional modules. */
@@ -353,6 +353,7 @@ body.drawing-open { background: #090b0c !important; }
 .sketch-camera-icon { flex:0 1 79px; min-width:0; aspect-ratio:79 / 69; position:relative; }
 .sketch-camera-icon img { object-fit:contain !important; }
 .sketch-camera-icon:disabled { opacity:.4; }
+.sketch-camera-icon[data-state="scanning"] { opacity:.68; cursor:progress; }
 .sketch-camera-status { color:white; font-size:13px; text-align:center; text-shadow:0 2px 3px #000; min-height:0; }
 .sketch-camera-status:empty { display:none; }
 .sketch-camera-retry:not([hidden]) { background:rgba(255,255,255,.94); border:1px solid #777; border-radius:13px; color:#333; min-height:40px; }

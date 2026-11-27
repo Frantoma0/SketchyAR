@@ -5,6 +5,7 @@ export interface GrayImage { width: number; height: number; data: Uint8Array }
 export interface Point { x: number; y: number }
 export interface SimilarityTransform { scale: number; rotationDeg: number; tx: number; ty: number; inliers: number; matches: number; confidence: number }
 export interface AlignOptions { maxDimension?: number; maxFeatures?: number; minInliers?: number; minConfidence?: number }
+export interface PaperRegion { x: number; y: number; width: number; height: number; confidence: number; coverage: number }
 type Feature = { x: number; y: number; descriptor: Uint8Array; score: number };
 
 function downscale(image: GrayImage, maxDimension: number): GrayImage {
@@ -32,7 +33,9 @@ function edgeMap(image: GrayImage): GrayImage {
     const d2 = Math.abs(src[i - w + 1] - src[i + w - 1]);
     const mag = Math.max(gx, gy, Math.round((d1 + d2) * .5));
     // Keep dark pencil/ink strokes and sharp edges; threshold adapts to local contrast.
-    out[i] = mag >= 17 ? 255 : 0;
+    // Graphite has much lower contrast than marker ink. A lower gradient floor
+    // is safe here because sheet isolation happens before this edge pass.
+    out[i] = mag >= 8 ? 255 : 0;
   }
   return { width: w, height: h, data: out };
 }
@@ -105,6 +108,131 @@ function error(t: SimilarityTransform, m: Match): number {
   const r = t.rotationDeg * Math.PI / 180, c = Math.cos(r) * t.scale, s = Math.sin(r) * t.scale;
   return Math.hypot(c * m.a.x - s * m.a.y + t.tx - m.b.x, s * m.a.x + c * m.a.y + t.ty - m.b.y);
 }
+/**
+ * Find the dominant neutral-bright sheet in a camera frame. The scan is kept
+ * local and bounded (the caller limits frames to 640 px). A connected bright
+ * region is preferred over simply thresholding the whole image, so a dark desk,
+ * coloured mat or room background does not become part of the feature matcher.
+ * Returns null when a white/off-white sheet cannot be separated confidently.
+ */
+export function detectWhitePaperRegion(
+  rgba: Uint8ClampedArray, width: number, height: number,
+): PaperRegion | null {
+  const total = width * height;
+  if (width < 64 || height < 64 || rgba.length < total * 4) return null;
+
+  const gray = new Uint8Array(total);
+  const neutral = new Uint8Array(total);
+  const histogram = new Uint32Array(256);
+  for (let i = 0, p = 0; i < total; i++, p += 4) {
+    const r = rgba[p], g = rgba[p + 1], b = rgba[p + 2];
+    const hi = Math.max(r, g, b), lo = Math.min(r, g, b);
+    const luminance = Math.round(.299 * r + .587 * g + .114 * b);
+    gray[i] = luminance;
+    // Warm indoor lighting is allowed; highly saturated objects are not paper.
+    if (hi - lo <= 105) {
+      neutral[i] = 1;
+      histogram[luminance]++;
+    }
+  }
+
+  // Otsu threshold over neutral pixels, clamped to a useful white-paper range.
+  let count = 0, sum = 0;
+  for (let i = 0; i < 256; i++) { count += histogram[i]; sum += i * histogram[i]; }
+  if (!count) return null;
+  let backgroundCount = 0, backgroundSum = 0, bestVariance = -1, otsu = 170;
+  for (let threshold = 0; threshold < 256; threshold++) {
+    backgroundCount += histogram[threshold];
+    backgroundSum += threshold * histogram[threshold];
+    const foregroundCount = count - backgroundCount;
+    if (!backgroundCount || !foregroundCount) continue;
+    const meanBackground = backgroundSum / backgroundCount;
+    const meanForeground = (sum - backgroundSum) / foregroundCount;
+    const variance = backgroundCount * foregroundCount * (meanBackground - meanForeground) ** 2;
+    if (variance > bestVariance) { bestVariance = variance; otsu = threshold; }
+  }
+  const threshold = Math.max(142, Math.min(218, otsu));
+  let mask = new Uint8Array(total);
+  for (let i = 0; i < total; i++) {
+    if (neutral[i] && gray[i] >= threshold) mask[i] = 1;
+  }
+
+  // Close thin pencil/pen gaps in the white region before labelling components.
+  const dilated = new Uint8Array(total);
+  for (let y = 1; y < height - 1; y++) for (let x = 1; x < width - 1; x++) {
+    const i = y * width + x;
+    if (mask[i] || mask[i - 1] || mask[i + 1] || mask[i - width] || mask[i + width] ||
+        mask[i - width - 1] || mask[i - width + 1] || mask[i + width - 1] || mask[i + width + 1]) {
+      dilated[i] = 1;
+    }
+  }
+  mask = new Uint8Array(total);
+  for (let y = 1; y < height - 1; y++) for (let x = 1; x < width - 1; x++) {
+    const i = y * width + x;
+    if (dilated[i] && dilated[i - 1] && dilated[i + 1] && dilated[i - width] && dilated[i + width]) {
+      mask[i] = 1;
+    }
+  }
+
+  const visited = new Uint8Array(total);
+  const queue = new Int32Array(total);
+  let best: { minX: number; minY: number; maxX: number; maxY: number; area: number } | null = null;
+  for (let start = 0; start < total; start++) {
+    if (!mask[start] || visited[start]) continue;
+    let head = 0, tail = 0;
+    queue[tail++] = start;
+    visited[start] = 1;
+    let minX = width, minY = height, maxX = -1, maxY = -1, area = 0;
+    while (head < tail) {
+      const index = queue[head++];
+      const x = index % width, y = Math.floor(index / width);
+      area++;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+      if (x > 0) {
+        const next = index - 1;
+        if (!visited[next] && mask[next]) { visited[next] = 1; queue[tail++] = next; }
+      }
+      if (x + 1 < width) {
+        const next = index + 1;
+        if (!visited[next] && mask[next]) { visited[next] = 1; queue[tail++] = next; }
+      }
+      if (y > 0) {
+        const next = index - width;
+        if (!visited[next] && mask[next]) { visited[next] = 1; queue[tail++] = next; }
+      }
+      if (y + 1 < height) {
+        const next = index + width;
+        if (!visited[next] && mask[next]) { visited[next] = 1; queue[tail++] = next; }
+      }
+    }
+    const boxWidth = maxX - minX + 1, boxHeight = maxY - minY + 1;
+    const boxArea = boxWidth * boxHeight;
+    const aspect = boxWidth / Math.max(1, boxHeight);
+    const coverage = area / total;
+    const fill = area / Math.max(1, boxArea);
+    if (coverage < .10 || coverage > .92 || boxWidth < width * .28 || boxHeight < height * .28 ||
+        aspect < .32 || aspect > 3.1 || fill < .30) continue;
+    if (!best || area > best.area) best = { minX, minY, maxX, maxY, area };
+  }
+  if (!best) return null;
+
+  // Exclude the paper edge and any shadow just outside it from contour matching.
+  const rawWidth = best.maxX - best.minX + 1;
+  const rawHeight = best.maxY - best.minY + 1;
+  const insetX = Math.max(2, Math.round(rawWidth * .018));
+  const insetY = Math.max(2, Math.round(rawHeight * .018));
+  const x = best.minX + insetX, y = best.minY + insetY;
+  const right = best.maxX + 1 - insetX, bottom = best.maxY + 1 - insetY;
+  const cropWidth = right - x, cropHeight = bottom - y;
+  if (cropWidth < 64 || cropHeight < 64) return null;
+  const coverage = best.area / total;
+  const confidence = Math.max(0, Math.min(1, .55 + Math.min(.25, coverage * .35) + Math.min(.2, (best.area / (rawWidth * rawHeight)) * .2)));
+  return { x, y, width: cropWidth, height: cropHeight, confidence, coverage };
+}
+
 export function estimateContourAlignment(reference: GrayImage, camera: GrayImage, options: AlignOptions = {}): SimilarityTransform | null {
   const maxDimension = options.maxDimension ?? 480;
   const ref = downscale(reference, maxDimension), cam = downscale(camera, maxDimension);
@@ -140,7 +268,10 @@ export function estimateContourAlignment(reference: GrayImage, camera: GrayImage
   for (const m of inliers) { const x = m.a.x - ma.x, y = m.a.y - ma.y, u = m.b.x - mb.x, v = m.b.y - mb.y; den += x*x+y*y; real += x*u+y*v; imag += x*v-y*u; }
   if (den > 0) { real /= den; imag /= den; best.scale = Math.hypot(real, imag); best.rotationDeg = Math.atan2(imag, real) * 180 / Math.PI; best.tx = mb.x - real * ma.x + imag * ma.y; best.ty = mb.y - imag * ma.x - real * ma.y; }
   // Convert from reduced-image coordinates back to original reference/camera pixels.
-  best.scale *= refScaleX / camScaleX;
+  // Convert the reduced transform back to the original canvas coordinate
+  // systems: camera pixels per reference pixel. The previous reciprocal
+  // (refScale/camScale) distorted matches whenever the two canvases differed.
+  best.scale *= camScaleX / refScaleX;
   best.tx *= camScaleX; best.ty *= camScaleY;
   return best;
 }
